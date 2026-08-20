@@ -431,3 +431,8 @@ a.plaqueta:hover .glyph,a.plaqueta:focus-visible .glyph{scale:1.06}
   .reveal{opacity:0;translate:0 24px;transition:opacity .7s cubic-bezier(.2,.7,.2,1),translate .7s cubic-bezier(.2,.7,.2,1)}
   .reveal.in{opacity:1;translate:0 0}
 }
+
+/* cierva caminante al bottom del viewport */
+.deer-walker{position:fixed;bottom:0.8rem;left:0;z-index:30;width:80px;height:50px;pointer-events:none;
+  transition:left .08s linear;background-size:contain;background-repeat:no-repeat;background-position:center;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.4));background-color:rgba(255,255,255,0.05)}
