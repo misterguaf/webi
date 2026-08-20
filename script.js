@@ -97,28 +97,12 @@
   var hdr=document.querySelector("header.top");
 
   // cierva caminante al bottom del viewport (si no hi ha prefers-reduced-motion)
-  // parche estilo pañoleta scout: verde arriba, roig abajo, cérvola blanca a caballo
+  // usa el parche real del grupo (img/cierva-parche.png)
   var prefersReducedMotion=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
   if(!prefersReducedMotion){
     var deerWalker=document.createElement("div");
     deerWalker.className="deer-walker";
     deerWalker.setAttribute("aria-hidden","true");
-    // path del parche: forma irregular tipo insignia bordada
-    var patchPath="M20 40 C30 18 70 8 120 12 C160 15 200 20 218 42 C232 60 230 88 214 112 C198 134 155 148 110 148 C68 148 30 138 16 118 C4 100 6 66 20 40 Z";
-    // usamos el símbolo #cervola ya definido en el HTML (la cierva original del grupo)
-    // rellenado de blanco para que resalte sobre el parche verde/rojo
-    deerWalker.innerHTML=''
-      +'<svg viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">'
-      +  '<defs><clipPath id="patch-clip"><path d="'+patchPath+'"/></clipPath></defs>'
-      +  '<g clip-path="url(#patch-clip)">'
-      +    '<rect x="0" y="0" width="240" height="95" fill="#2C4636"/>'
-      +    '<rect x="0" y="95" width="240" height="65" fill="#A93A2C"/>'
-      +  '</g>'
-      +  '<path d="'+patchPath+'" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linejoin="round"/>'
-      +  '<g transform="translate(10 -20)" style="color:#FFFFFF">'
-      +    '<use href="#cervola" width="220" height="180"/>'
-      +  '</g>'
-      +'</svg>';
     document.body.appendChild(deerWalker);
   }
 
