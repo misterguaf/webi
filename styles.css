@@ -417,12 +417,15 @@ main section[id]{scroll-margin-top:88px}
   transition:width .08s linear}
 header.top{transition:box-shadow .3s ease}
 header.top.scrolled{box-shadow:0 8px 26px rgba(18,14,8,.22)}
-.to-top{position:fixed;right:1.1rem;bottom:1.1rem;z-index:55;width:46px;height:46px;border-radius:50%;
-  border:2px solid var(--ocre-clar);background:var(--verd-fosc);color:var(--ocre-clar);font-size:1.3rem;line-height:1;cursor:pointer;
-  display:flex;align-items:center;justify-content:center;opacity:0;translate:0 12px;pointer-events:none;
-  box-shadow:0 6px 18px rgba(0,0,0,.28);transition:opacity .3s ease,translate .3s ease,background .2s ease,color .2s ease}
+.to-top{position:fixed;right:1.1rem;bottom:1.1rem;z-index:55;width:64px;height:64px;
+  border:0;background:transparent;padding:0;cursor:pointer;
+  background-image:url("img/cierva-parche.png");background-size:contain;
+  background-repeat:no-repeat;background-position:center;
+  opacity:0;translate:0 12px;pointer-events:none;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));
+  transition:opacity .3s ease,translate .3s ease,transform .2s ease,filter .2s ease}
 .to-top.show{opacity:1;translate:0 0;pointer-events:auto}
-.to-top:hover,.to-top:focus-visible{background:var(--ocre-clar);color:var(--verd-fosc)}
+.to-top:hover,.to-top:focus-visible{transform:scale(1.08);filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
 /* micro-interaccions més fines */
 .btn{transition:transform .18s ease,background .2s ease,box-shadow .2s ease,color .2s ease}
 .plaqueta .glyph,.plaqueta .cierva{transition:scale .25s ease}
@@ -432,8 +435,3 @@ a.plaqueta:hover .glyph,a.plaqueta:focus-visible .glyph{scale:1.06}
   .reveal.in{opacity:1;translate:0 0}
 }
 
-/* cierva caminante al bottom del viewport — parche pañoleta scout */
-.deer-walker{position:fixed;bottom:0.8rem;left:0;z-index:30;width:75px;height:75px;pointer-events:none;
-  transition:left .12s linear;filter:drop-shadow(0 3px 6px rgba(0,0,0,.35));
-  background-image:url("img/cierva-parche.png");background-size:contain;
-  background-repeat:no-repeat;background-position:center}

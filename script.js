@@ -89,22 +89,13 @@
   });
 
   // ===== experiència premium =====
-  // barra de progrés + botó "tornar a dalt" + elevació de la capçalera
+  // barra de progrés + botó "tornar a dalt" (parche del grup) + elevació de la capçalera
   var pbar=document.createElement("div"); pbar.className="progress-bar"; document.body.appendChild(pbar);
   var totop=document.createElement("button"); totop.className="to-top"; totop.type="button";
-  totop.setAttribute("aria-label","Torna a dalt"); totop.textContent="↑"; document.body.appendChild(totop);
+  totop.setAttribute("aria-label","Torna a dalt");
+  document.body.appendChild(totop);
   totop.addEventListener("click",function(){ window.scrollTo({top:0,behavior:"smooth"}); });
   var hdr=document.querySelector("header.top");
-
-  // cierva caminante al bottom del viewport (si no hi ha prefers-reduced-motion)
-  // usa el parche real del grupo (img/cierva-parche.png)
-  var prefersReducedMotion=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if(!prefersReducedMotion){
-    var deerWalker=document.createElement("div");
-    deerWalker.className="deer-walker";
-    deerWalker.setAttribute("aria-hidden","true");
-    document.body.appendChild(deerWalker);
-  }
 
   function onScroll(){
     var st=window.pageYOffset||document.documentElement.scrollTop||0;
@@ -112,19 +103,6 @@
     pbar.style.width=(max>0?(st/max*100):0)+"%";
     if(hdr) hdr.classList.toggle("scrolled", st>8);
     totop.classList.toggle("show", st>window.innerHeight*0.6);
-
-    // mueve la cierva según el progreso del scroll
-    if(!prefersReducedMotion){
-      var deerWalker=document.querySelector(".deer-walker");
-      if(deerWalker){
-        var progress=max>0?(st/max):0;
-        var viewportWidth=window.innerWidth;
-        var deerWidth=60; // ancho de la cierva (en píxeles)
-        var maxLeft=viewportWidth-deerWidth;
-        var left=progress*maxLeft;
-        deerWalker.style.left=left+"px";
-      }
-    }
   }
   window.addEventListener("scroll",onScroll,{passive:true});
   window.addEventListener("resize",onScroll,{passive:true});
