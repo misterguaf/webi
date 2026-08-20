@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tipografies · Grup Scout Parpalló</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Alfa+Slab+One&family=Bevan&family=Big+Shoulders+Display:wght@700&family=Cinzel:wght@700&family=IM+Fell+English+SC&family=Marcellus&family=Rye&family=Shantell+Sans:wght@700&family=Yeseva+One&family=Zilla+Slab:wght@700&family=Caveat:wght@600&display=swap" rel="stylesheet">
+<style>
+:root{--verd:#2C4636;--ocre:#D6A24E;--roig:#C9463A;--cal:#E6E0D2;--cal3:#DBD3C2}
+*{box-sizing:border-box}
+body{margin:0;background:var(--cal);color:#211C16;
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.5}
+header{padding:2.2rem 1.2rem 1rem;max-width:1100px;margin:0 auto}
+header h1{font-family:"Caveat",cursive;color:var(--roig);font-size:2rem;margin:0 0 .2rem;transform:rotate(-1.5deg)}
+header p{margin:.2rem 0 0;max-width:60ch;opacity:.8}
+.grid{max-width:1100px;margin:1.4rem auto 4rem;padding:0 1.2rem;display:grid;gap:1.1rem;grid-template-columns:1fr}
+@media(min-width:760px){.grid{grid-template-columns:1fr 1fr}}
+.tile{position:relative;background:var(--verd);color:var(--cal);border-radius:14px;padding:2.2rem 1.4rem 1.3rem;
+  min-height:190px;display:flex;flex-direction:column;justify-content:center;overflow:hidden}
+.num{position:absolute;top:.7rem;left:1rem;font-family:"Caveat",cursive;font-size:1.7rem;color:var(--ocre);font-weight:600}
+.wm{margin:0;color:#fff;font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.05;word-break:break-word}
+.rule{height:10px;width:180px;margin:.7rem 0 0;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='12' viewBox='0 0 120 12' preserveAspectRatio='none'%3E%3Cpath d='M3 7 Q30 3 60 6 T117 5' fill='none' stroke='%23C9463A' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E") left/100% 100% no-repeat}
+.fname{position:absolute;bottom:.8rem;right:1.1rem;font-size:.8rem;color:var(--cal3);text-align:right;max-width:60%}
+.fname b{color:#fff;font-weight:700}
+.note{max-width:1100px;margin:0 auto 4rem;padding:0 1.2rem;font-family:"Caveat",cursive;font-size:1.4rem;color:var(--verd)}
+</style>
+</head>
+<body>
+<header>
+  <h1>Tria una tipografia per al nom</h1>
+  <p>Deu opcions per a «Grup Scout Parpalló», sobre el verd de la portada. Cap d'elles és la grotesca genèrica de sempre. Digues-me el <b>número</b> que t'agrade (o dos, per a comparar) i la deixe posada.</p>
+</header>
+
+<div class="grid">
+  <div class="tile"><span class="num">1</span><p class="wm" style="font-family:'Cinzel',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Cinzel</b><br>inscrita en pedra (l'actual)</span></div>
+  <div class="tile"><span class="num">2</span><p class="wm" style="font-family:'Marcellus',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Marcellus</b><br>inscrita, més suau</span></div>
+  <div class="tile"><span class="num">3</span><p class="wm" style="font-family:'Alfa Slab One',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Alfa Slab One</b><br>slab vintage, rótul</span></div>
+  <div class="tile"><span class="num">4</span><p class="wm" style="font-family:'Bevan',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Bevan</b><br>slab de lletrista</span></div>
+  <div class="tile"><span class="num">5</span><p class="wm" style="font-family:'Zilla Slab',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Zilla Slab</b><br>slab robusta, tallada</span></div>
+  <div class="tile"><span class="num">6</span><p class="wm" style="font-family:'Big Shoulders Display',sans-serif;font-weight:700">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Big Shoulders</b><br>industrial, condensada</span></div>
+  <div class="tile"><span class="num">7</span><p class="wm" style="font-family:'Yeseva One',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Yeseva One</b><br>serif display càlida</span></div>
+  <div class="tile"><span class="num">8</span><p class="wm" style="font-family:'Rye',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Rye</b><br>vintage rústica</span></div>
+  <div class="tile"><span class="num">9</span><p class="wm" style="font-family:'IM Fell English SC',serif">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>IM Fell English SC</b><br>lletrapremsa antiga</span></div>
+  <div class="tile"><span class="num">10</span><p class="wm" style="font-family:'Shantell Sans',sans-serif;font-weight:700">Grup Scout Parpalló</p><span class="rule"></span><span class="fname"><b>Shantell Sans</b><br>dibuixada a mà</span></div>
+</div>
+
+<p class="note">↑ Digues-me el número i la pose al títol i al logotip.</p>
+</body>
+</html>
