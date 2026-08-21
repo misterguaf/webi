@@ -1,0 +1,62 @@
+/* Grup Scout Parpalló — estils NOMÉS dels elements nous del formulari d'alta.
+ *
+ * Fitxer a banda a propòsit: styles.css no es toca. Ací només hi ha els tres
+ * elements que abans no existien (el camp trampa anti-bots, el missatge de
+ * resultat i els errors per camp), amb les variables de color ja definides a
+ * styles.css perquè encaixen amb la paleta del lloc sense inventar-ne cap.
+ */
+
+/* Camp trampa per a bots. No es pot usar display:none ni visibility:hidden:
+   alguns bots els detecten i el salten. Es trau de la vista i del focus. */
+.npot {
+  position: absolute !important;
+  left: -9999px !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+/* Missatge de resultat de l'enviament (èxit, error o "enviant"). */
+.alta-avis {
+  margin: 0 0 1.2rem;
+  padding: .85rem 1rem;
+  border-radius: 10px 7px 12px 8px;
+  border: 2px solid var(--calcaria-3);
+  background: var(--calcaria);
+  font-size: .98rem;
+  line-height: 1.5;
+}
+.alta-avis:focus-visible {
+  outline: 3px solid var(--ocre);
+  outline-offset: 3px;
+}
+/* Verd del grup per a la confirmació, roig pañoleta per a l'error: els mateixos
+   colors que ja usa la resta del lloc per a "endavant" i "atenció". */
+.alta-avis.ok {
+  border-color: var(--verd);
+  border-left-width: 8px;
+  background: color-mix(in srgb, var(--verd) 10%, var(--calcaria-2));
+}
+.alta-avis.err {
+  border-color: var(--roig);
+  border-left-width: 8px;
+  background: color-mix(in srgb, var(--roig) 9%, var(--calcaria-2));
+}
+.alta-avis.wait {
+  border-left-width: 8px;
+  border-color: var(--ocre);
+}
+
+/* Error d'un camp concret, just davall de l'input al qual pertany. */
+.field-err {
+  margin: .35rem 0 0;
+  color: var(--roig-fosc);
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.field input[aria-invalid="true"],
+.field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] {
+  border-color: var(--roig);
+}

@@ -1,0 +1,10 @@
+{
+  "name": "web-parpallo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web del Grup Scout Parpalló (Gandia). Lloc estàtic + endpoint d'alta.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.js"
+  }
+}

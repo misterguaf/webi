@@ -1,1 +1,12 @@
 .aider*
+
+# Secrets: mai al repositori. Els valors reals viuen al panell del hosting.
+.env
+.env.*
+!.env.example
+
+node_modules/
+.vercel/
+.netlify/
+.wrangler/
+.DS_Store

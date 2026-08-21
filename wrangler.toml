@@ -1,0 +1,16 @@
+# Grup Scout Parpalló — configuració de Cloudflare Workers.
+#
+# El Worker només atén POST /api/alta; la resta del lloc el serveix
+# Cloudflare Pages (o el hosting estàtic que es trie).
+#
+# Els secrets NO es posen ací. Es carreguen una vegada amb:
+#   npx wrangler secret put NOTION_TOKEN
+#   npx wrangler secret put NOTION_DATABASE_ID
+
+name = "parpallo-alta"
+main = "worker.js"
+compatibility_date = "2024-09-23"
+
+[vars]
+# Domini públic del lloc; buit vol dir "no comprovar l'origen".
+ALLOWED_ORIGIN = ""
