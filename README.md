@@ -152,3 +152,46 @@ quins camps han fallat la validació. Les respostes amb dades personals van amb
 
 Si el JavaScript està desactivat, el formulari segueix enviant-se com un POST
 normal i el servidor respon una pàgina de confirmació mínima.
+
+---
+
+## Capçaleres de seguretat
+
+Estan definides dues vegades, perquè cada plataforma llig un format:
+
+- `_headers` — el llig Netlify i Cloudflare Pages.
+- `vercel.json` — les mateixes capçaleres per a Vercel.
+
+Si canvies una, canvia l'altra.
+
+La política de contingut (CSP) està ajustada al que la web fa de veritat:
+
+| Directiva | Per què |
+|---|---|
+| `script-src 'self'` | No hi ha ni un sol script inline al lloc, així que es poden prohibir del tot. Això és el que atura de veritat un XSS. |
+| `style-src 'self' 'unsafe-inline' fonts.googleapis.com` | L'HTML actual fa servir atributs `style="` en 78 llocs. Llevar-los seria reescriure el maquetat. Els estils inline són molt menys perillosos que els scripts inline. |
+| `font-src fonts.gstatic.com` | Les tipografies del lloc. Si algun dia s'allotgen al propi servidor, es pot llevar d'ací i de la política de cookies. |
+| `frame-ancestors 'none'` | Que ningú puga posar la web dins d'un iframe per a suplantar el formulari. |
+| `form-action 'self'` | El formulari només pot enviar-se al nostre servidor. |
+| `img-src 'self' data:` | Els fons i les icones del CSS són SVG en `data:`. |
+
+**Un detall conegut:** `index.html` té un `onerror="this.style.display='none'"` a la
+imatge decorativa de la portada. Amb esta CSP eixe manejador no s'executarà. No
+passa res: la imatge té `alt=""` i és decorativa, així que si algun dia fallara,
+el navegador no mostraria res igualment. Si es vol que funcione, la solució és
+moure eixa línia a `script.js`, no debilitar la CSP.
+
+**HSTS** està comentada al `_headers` a propòsit. Activa-la només quan el domini
+definitiu ja funcione bé per HTTPS: una vegada un navegador la rep, no accepta
+HTTP en eixe domini durant un any.
+
+## Si algun dia es vol un panell d'administració
+
+Ara mateix no n'hi ha cap, i és una bona notícia: no hi ha res que autenticar.
+
+Si algun dia es vol veure o gestionar les sol·licituds des de la mateixa web,
+**cal parlar-ho abans de programar res**. Un panell que ensenya dades de menors
+necessita autenticació de veritat (usuaris, contrasenyes ben guardades, sessions,
+tancament de sessió), no una URL secreta ni un formulari amb una contrasenya
+única al codi. Mentre no hi haja eixa conversa, la manera segura de consultar les
+fitxes és entrar a Notion amb el compte de cadascú.

@@ -1,0 +1,16 @@
+# Grup Scout Parpalló
+# El lloc és públic i volem que es trobe: tot obert menys el que no té sentit
+# indexar.
+
+User-agent: *
+Allow: /
+
+# L'endpoint del formulari no és una pàgina: no s'ha d'indexar ni rastrejar.
+Disallow: /api/
+
+# Pàgina interna de treball per a triar tipografies, no és contingut del lloc.
+Disallow: /fuentes.html
+
+# PENDENT: canvia EL-TEU-DOMINI pel domini definitiu abans de publicar.
+# Sense això, els buscadors no trobaran el sitemap.
+Sitemap: https://EL-TEU-DOMINI/sitemap.xml

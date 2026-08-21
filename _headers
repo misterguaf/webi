@@ -1,0 +1,37 @@
+# Grup Scout Parpalló — capçaleres de seguretat.
+#
+# Este format el llegixen Netlify i Cloudflare Pages directament.
+# Per a Vercel, les mateixes capçaleres estan a vercel.json.
+#
+# La política de contingut (CSP) està ajustada al que la web fa DE VERITAT:
+#   - script-src 'self': no hi ha ni un sol script inline al lloc, així que es
+#     poden prohibir del tot. Això és el que atura de veritat un XSS.
+#   - style-src ... 'unsafe-inline': l'HTML actual fa servir atributs style="
+#     en 78 llocs. Llevar-los seria reescriure el maquetat, i el plan diu que
+#     el disseny no es toca. Els estils inline són molt menys perillosos que
+#     els scripts inline.
+#   - fonts.googleapis.com / fonts.gstatic.com: les tipografies del lloc.
+#     Si algun dia s'allotgen al propi servidor, es poden llevar d'ací i de la
+#     política de cookies.
+#   - frame-ancestors 'none': que ningú puga posar la web dins d'un iframe per
+#     a suplantar el formulari.
+#   - form-action 'self': el formulari només pot enviar-se al nostre servidor.
+
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# HSTS obliga el navegador a no tornar a entrar mai per HTTP.
+# ATENCIÓ: actívala només quan el domini definitiu ja funcione bé per HTTPS.
+# Una vegada un navegador la rep, no accepta HTTP en eixe domini durant un any.
+# Descomenta-la quan el lloc estiga en producció i estable:
+#  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Les respostes de l'endpoint porten dades personals: no s'han de cachejar mai.
+/api/*
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff
