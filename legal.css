@@ -1,0 +1,60 @@
+/* Grup Scout Parpalló — estils NOMÉS de les pàgines legals (avís legal,
+ * privacitat i cookies). Fitxer a banda: styles.css no es toca.
+ *
+ * Estes pàgines són text llarg amb molts subtítols i llistes, un format que
+ * la resta del lloc no tenia. Ací només s'ajusta eixe ritme de lectura, amb
+ * els colors i les tipografies que ja defineix styles.css.
+ */
+
+/* Els h2 del lloc estan pensats per a titulars de secció, molt grans. En un
+   document legal, on n'hi ha un cada pocs paràgrafs, es queden a mida de
+   subtítol perquè el text seguisca sent el protagonista. */
+.legal-doc h2 {
+  font-size: clamp(1.25rem, 1vw + .95rem, 1.5rem);
+  /* El fons d'esta secció és el verd fosc del cos de la pàgina, no un fons
+     clar: l'ocre clar és el color que ja fa esta faena a tot el lloc sobre
+     verd (titulets, dades destacades, peu de pàgina). */
+  color: var(--ocre-clar);
+  margin-top: 2.4rem;
+}
+.legal-doc h2:first-of-type { margin-top: 1.4rem; }
+
+/* .sec-content > p puja la mida a 1.15rem, que va bé per a un paràgraf solt
+   de presentació però cansa en dos pàgines de text seguit. */
+.legal-doc > p { font-size: 1.02rem; }
+.legal-doc > p:first-child { font-size: 1.15rem; }
+
+.legal-doc ul {
+  margin: 0 0 1.2rem;
+  padding-left: 1.3rem;
+  max-width: 62ch;
+}
+.legal-doc li {
+  margin-bottom: .6rem;
+  line-height: 1.6;
+}
+.legal-doc li::marker { color: var(--ocre); }
+
+/* Dada legal encara per confirmar. Fa la mateixa faena que .pend de styles.css
+   (avisar que allò no és definitiu) però pot ocupar diverses línies: .pend
+   porta white-space:nowrap i estos textos són llargs. */
+.legal-pend {
+  background: color-mix(in srgb, var(--ocre) 22%, var(--calcaria));
+  /* El fons del marcador és clar, així que el text ha de ser fosc: si heretara
+     el color clar del cos quedaria il·legible. */
+  color: var(--negre);
+  border-bottom: 2px dashed var(--ocre);
+  padding: 0 .25em;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+/* Els enllaços dins del text legal van sobre el verd fosc del cos. El color
+   base dels enllaços (var(--verd)) és eixe mateix verd i quedarien invisibles.
+   S'usa l'ocre clar, que és el que styles.css ja aplica als enllaços de les
+   seccions fosques (.dark a) i del peu. */
+.legal-doc a {
+  color: var(--ocre-clar);
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
