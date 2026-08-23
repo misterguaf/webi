@@ -8,12 +8,12 @@
  *
  * PRIVACITAT — regla d'or d'este fitxer: ací passen dades de menors, incloses
  * possibles dades de salut. MAI s'escriu el contingut d'un camp a la consola.
- * Els logs diuen què ha passat (validació fallida, error de Notion), mai amb quines dades.
+ * Els logs diuen què ha passat (validació fallida, error de Sheets), mai amb quines dades.
  */
 
 import { validate, isSpam } from "./validate.js";
 import { check as rateCheck } from "./ratelimit.js";
-import { createPage } from "./notion.js";
+import { appendRow } from "./sheets.js";
 
 const MAX_BODY = 16 * 1024; // 16 KB: molt per damunt d'un formulari legítim
 
@@ -173,10 +173,10 @@ export async function handleAlta(req) {
   }
 
   try {
-    await createPage(v.data, req.env || {});
+    await appendRow(v.data, req.env || {});
   } catch (e) {
-    // e.message pot incloure text de Notion, però mai els valors del formulari
-    // (notion.js retalla el missatge i no hi afig el cos enviat).
+    // e.message pot incloure text de Sheets, però mai els valors del formulari
+    // (sheets.js retalla el missatge i no hi afig el cos enviat).
     console.error("[alta] error en registrar:", e.code || "ERR", e.message);
     return respond(502, { ok: false, message: MISSATGES.server });
   }
@@ -185,4 +185,7 @@ export async function handleAlta(req) {
   return respond(200, { ok: true, message: MISSATGES.ok });
 }
 
-export { MISSATGES };
+/* Els ajudants d'HTTP s'exporten perquè handler-reserva.js els reutilitze:
+ * així les dues respostes (alta i reserva) tenen exactament les mateixes
+ * capçaleres de seguretat i el mateix comportament sense JS. */
+export { MISSATGES, json, html, volJson, parseBody, MAX_BODY };

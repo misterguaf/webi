@@ -1,0 +1,5733 @@
+{
+  "SHR-001": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Salta al contingut",
+    "es": "Saltar al contenido",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "cova.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "estol.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "tropa.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "esculta.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "clan.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "fersescout.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "merchandising.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "privacitat.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "cookies.html",
+        "region": "skip",
+        "occurrenceIndex": 1
+      }
+    ]
+  },
+  "SHR-002": {
+    "type": "html-shared",
+    "kind": "aria-label",
+    "va": "Grup Scout Parpalló, inici",
+    "es": null,
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 1
+      }
+    ]
+  },
+  "SHR-003": {
+    "type": "html-shared",
+    "kind": "aria-label",
+    "va": "Principal",
+    "es": null,
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      }
+    ]
+  },
+  "SHR-004": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Seccions",
+    "es": "Secciones",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 97
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 26
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 35
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 32
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 34
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 32
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 71
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 39
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 83
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 2
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 38
+      }
+    ]
+  },
+  "SHR-005": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "La Cova",
+    "es": "La Cueva",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 98
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 27
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 33
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 35
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 33
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 38
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 72
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 40
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 84
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 39
+      }
+    ]
+  },
+  "SHR-006": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Botiga",
+    "es": "Tienda",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 99
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 28
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 34
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 34
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 39
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 73
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 41
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 85
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 40
+      }
+    ]
+  },
+  "SHR-007": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Història",
+    "es": "Historia",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 100
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 29
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      }
+    ]
+  },
+  "SHR-008": {
+    "type": "html-shared",
+    "kind": "aria-label",
+    "va": "Canvia a castellà",
+    "es": null,
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      }
+    ]
+  },
+  "SHR-009": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Fer-se scout",
+    "es": "Hacerse scout",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "header",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 101
+      },
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 30
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 38
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 35
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 35
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 40
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 74
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 42
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 86
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 7
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 41
+      }
+    ]
+  },
+  "SHR-010": {
+    "type": "html-shared",
+    "kind": "aria-label",
+    "va": "Grup Scout Parpalló",
+    "es": null,
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 4
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 6
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 28
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 5
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 5
+      }
+    ]
+  },
+  "SHR-011": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Escoltisme a Gandia des de 1974. Federats en Scouts Valencians.",
+    "es": "Escultismo en Gandia desde 1974. Federados en Scouts Valencians.",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 92
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 22
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 32
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 29
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 31
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 29
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 34
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 68
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 80
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 35
+      }
+    ]
+  },
+  "SHR-012": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Fet a mà a Gandia.",
+    "es": "Hecho a mano en Gandia.",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 93
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 23
+      }
+    ]
+  },
+  "SHR-013": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Contacte",
+    "es": "Contacto",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 94
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 24
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 33
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 30
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 32
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 30
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 35
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 69
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 81
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      }
+    ]
+  },
+  "SHR-014": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Anar a…",
+    "es": "Ir a…",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 96
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 25
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 34
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 31
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 33
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 31
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 70
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 38
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 82
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      }
+    ]
+  },
+  "SHR-015": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Avís legal",
+    "es": "Aviso legal",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 102
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 31
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 39
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 38
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 36
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 41
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 75
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 43
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 87
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 42
+      }
+    ]
+  },
+  "SHR-016": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Privacitat",
+    "es": "Privacidad",
+    "locations": [
+      {
+        "file": "index.html",
+        "region": "footer",
+        "occurrenceIndex": 103
+      },
+      {
+        "file": "cova.html",
+        "region": "footer",
+        "occurrenceIndex": 32
+      },
+      {
+        "file": "estol.html",
+        "region": "footer",
+        "occurrenceIndex": 40
+      },
+      {
+        "file": "tropa.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      },
+      {
+        "file": "esculta.html",
+        "region": "footer",
+        "occurrenceIndex": 39
+      },
+      {
+        "file": "clan.html",
+        "region": "footer",
+        "occurrenceIndex": 37
+      },
+      {
+        "file": "fersescout.html",
+        "region": "footer",
+        "occurrenceIndex": 42
+      },
+      {
+        "file": "merchandising.html",
+        "region": "footer",
+        "occurrenceIndex": 76
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "footer",
+        "occurrenceIndex": 44
+      },
+      {
+        "file": "privacitat.html",
+        "region": "footer",
+        "occurrenceIndex": 88
+      },
+      {
+        "file": "cookies.html",
+        "region": "footer",
+        "occurrenceIndex": 43
+      }
+    ]
+  },
+  "SHR-017": {
+    "type": "html-shared",
+    "kind": "pair",
+    "va": "Not&#237;cies",
+    "es": "Noticias",
+    "locations": [
+      {
+        "file": "cova.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "estol.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "tropa.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "esculta.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "clan.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "fersescout.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "merchandising.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "avis-legal.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "privacitat.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      },
+      {
+        "file": "cookies.html",
+        "region": "header",
+        "occurrenceIndex": 3
+      }
+    ]
+  },
+  "IDX-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Grup Scout Parpalló · Gandia",
+    "es": null
+  },
+  "IDX-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Escoltisme a Gandia des de 1974. Xiquets i xiquetes de 6 a 21 anys. Els dissabtes de vesprada, a la Safor.",
+    "es": null
+  },
+  "IDX-003": {
+    "type": "html",
+    "kind": "heading",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Grup Scout<br>Parpalló",
+    "es": null
+  },
+  "IDX-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 7,
+    "va": "Escoltisme a Gandia · des de 1974",
+    "es": "Escultismo en Gandia · desde 1974"
+  },
+  "IDX-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "↓ baixa i mira-ho",
+    "es": "↓ baja y míralo"
+  },
+  "IDX-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Qui som",
+    "es": "Quiénes somos"
+  },
+  "IDX-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Un grup scout de Gandia, des de 1974.",
+    "es": "Un grupo scout de Gandia, desde 1974."
+  },
+  "IDX-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Un grup scout és molt més que una activitat de dissabte: és un lloc on el teu fill o filla aprendrà a decidir, a cuidar dels altres i a estimar la muntanya, sempre acompanyat per un equip de monitors voluntaris.",
+    "es": "Un grupo scout es mucho más que una actividad de sábado: es un lugar donde tu hijo o hija aprenderá a decidir, a cuidar de los demás y a querer la montaña, siempre acompañado por un equipo de monitores voluntarios."
+  },
+  "IDX-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Som un grup d'escoltisme de Gandia, a la Safor. L'escoltisme és un moviment educatiu juvenil, voluntari i sense ànim de lucre, que va nàixer fa més de cent anys i que hui està present en tot el món. Ací el fem a la nostra manera: eixint a la muntanya, jugant i aprenent a decidir entre tots.",
+    "es": "Somos un grupo de escultismo de Gandia, en La Safor. El escultismo es un movimiento educativo juvenil, voluntario y sin ánimo de lucro, que nació hace más de cien años y que hoy está presente en todo el mundo. Aquí lo hacemos a nuestra manera: saliendo al monte, jugando y aprendiendo a decidir entre todos."
+  },
+  "IDX-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Ens reunim els dissabtes de vesprada al nostre local i cada estiu pugem de campament. Els monitors som voluntaris i la majoria hem crescut ací dins. Venim de <span class=\"pend\">l'any 1974</span>, quan un grapat de famílies de Gandia va muntar el grup per als seus fills, i encara seguim.",
+    "es": "Nos reunimos los sábados por la tarde en nuestro local y cada verano subimos de campamento. Los monitores somos voluntarios y la mayoría hemos crecido aquí dentro. Venimos de <span class=\"pend\">el año 1974</span>, cuando un puñado de familias de Gandia montó el grupo para sus hijos, y todavía seguimos."
+  },
+  "IDX-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Federats en",
+    "es": "Federados en"
+  },
+  "IDX-012": {
+    "type": "html",
+    "kind": "alt",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "ASDE — Scouts Valencians",
+    "es": null
+  },
+  "IDX-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Les seccions",
+    "es": "Las secciones"
+  },
+  "IDX-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Cada edat té la seua secció, el seu color i el seu animal. Entra en la que li toque al teu fill.",
+    "es": "Cada edad tiene su sección, su color y su animal. Entra en la que le toque a tu hijo."
+  },
+  "IDX-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "anys",
+    "es": "años"
+  },
+  "IDX-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "IDX-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "La selva d'en Kipling. Viuen en manada i comencen a fer coses sols.",
+    "es": "La selva de Kipling. Viven en manada y empiezan a hacer cosas solos."
+  },
+  "IDX-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Entra a l'Estol",
+    "es": "Entra en la Manada"
+  },
+  "IDX-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "anys",
+    "es": "años"
+  },
+  "IDX-020": {
+    "type": "html",
+    "kind": "heading",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 2,
+    "va": "Tropa",
+    "es": null
+  },
+  "IDX-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Patrulles, aventura i les primeres responsabilitats de veritat.",
+    "es": "Patrullas, aventura y las primeras responsabilidades de verdad."
+  },
+  "IDX-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Entra a la Tropa",
+    "es": "Entra en la Tropa"
+  },
+  "IDX-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "anys",
+    "es": "años"
+  },
+  "IDX-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "IDX-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Projectes propis i eixides més serioses. Comencen a decidir ells.",
+    "es": "Proyectos propios y salidas más serias. Empiezan a decidir ellos."
+  },
+  "IDX-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Entra als Escoltes",
+    "es": "Entra en los Escultas"
+  },
+  "IDX-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "anys",
+    "es": "años"
+  },
+  "IDX-028": {
+    "type": "html",
+    "kind": "heading",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 3,
+    "va": "Clan",
+    "es": null
+  },
+  "IDX-029": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "El servici i el compromís. Fan la seua ruta i decidixen com ajudar.",
+    "es": "El servicio y el compromiso. Hacen su ruta y deciden cómo ayudar."
+  },
+  "IDX-030": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Entra al Clan",
+    "es": "Entra en el Clan"
+  },
+  "IDX-031": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "D'on ix el nostre nom",
+    "es": "De dónde sale nuestro nombre"
+  },
+  "IDX-032": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 32,
+    "va": "La Cova del Parpalló",
+    "es": "La Cueva del Parpalló"
+  },
+  "IDX-033": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 33,
+    "va": "A 3 km de Barx hi ha una cova amb milers de gravats de fa 20.000 anys. Una cérvola, entre ells, ens va donar el nom.",
+    "es": "A 3 km de Barx hay una cueva con miles de grabados de hace 20.000 años. Una cierva, entre ellos, nos dio el nombre."
+  },
+  "IDX-034": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 34,
+    "va": "Entra a la Cova →",
+    "es": "Entra en la Cueva →"
+  },
+  "IDX-035": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 35,
+    "va": "50 anys fent muntanya",
+    "es": "50 años haciendo monte"
+  },
+  "IDX-036": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 36,
+    "va": "El quadern del grup",
+    "es": "El cuaderno del grupo"
+  },
+  "IDX-037": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 37,
+    "va": "La nostra història des de 1974. Passa les pàgines.",
+    "es": "Nuestra historia desde 1974. Pasa las páginas."
+  },
+  "IDX-038": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Història del grup",
+    "es": null
+  },
+  "IDX-039": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 38,
+    "va": "Ronda solar 1974-75",
+    "es": "Ronda solar 1974-75"
+  },
+  "IDX-040": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 39,
+    "va": "El principi",
+    "es": "El principio"
+  },
+  "IDX-041": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 40,
+    "va": "Tot va començar el 1974. Un grapat de famílies de Gandia va muntar un grup scout per als seus fills. I encara dura.",
+    "es": "Todo empezó en 1974. Un puñado de familias de Gandia montó un grupo scout para sus hijos. Y todavía dura."
+  },
+  "IDX-042": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 41,
+    "va": "La primera ronda solar.",
+    "es": "La primera ronda solar."
+  },
+  "IDX-043": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 42,
+    "va": "Els anys 80",
+    "es": "Los años 80"
+  },
+  "IDX-044": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 43,
+    "va": "La veu de qui hi era",
+    "es": "La voz de quien estuvo"
+  },
+  "IDX-045": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 44,
+    "va": "«Ací anirà un tros de l'entrevista a Paco Ferrer Luján, en les seues pròpies paraules.»",
+    "es": null
+  },
+  "IDX-046": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 45,
+    "va": "text per confirmar",
+    "es": "texto por confirmar"
+  },
+  "IDX-047": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 46,
+    "va": "⬇ Memòries del grup (PDF) — per confirmar",
+    "es": "⬇ Memorias del grupo (PDF) — por confirmar"
+  },
+  "IDX-048": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 47,
+    "va": "50 anys contats per algú que hi va estar.",
+    "es": "50 años contados por alguien que estuvo."
+  },
+  "IDX-049": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 48,
+    "va": "Cada estiu",
+    "es": "Cada verano"
+  },
+  "IDX-050": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 49,
+    "va": "Els campaments",
+    "es": "Los campamentos"
+  },
+  "IDX-051": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 50,
+    "va": "Cada estiu, la motxilla al coll i cap a la muntanya. El fang, el foc de nit i els amics de per vida.",
+    "es": "Cada verano, la mochila al hombro y hacia el monte. El barro, el fuego de noche y los amigos de por vida."
+  },
+  "IDX-052": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 51,
+    "va": "Açò no s'oblida.",
+    "es": "Esto no se olvida."
+  },
+  "IDX-053": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 52,
+    "va": "Excursions",
+    "es": "Excursiones"
+  },
+  "IDX-054": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 53,
+    "va": "Cims i muntanya",
+    "es": "Cimas y monte"
+  },
+  "IDX-055": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 54,
+    "va": "text per redactar",
+    "es": "texto por redactar"
+  },
+  "IDX-056": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 55,
+    "va": "Cada eixida, un cim.",
+    "es": "Cada salida, una cima."
+  },
+  "IDX-057": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 56,
+    "va": "Trobades",
+    "es": "Encuentros"
+  },
+  "IDX-058": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 57,
+    "va": "Amb altres grups",
+    "es": "Con otros grupos"
+  },
+  "IDX-059": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 58,
+    "va": "text per redactar",
+    "es": "texto por redactar"
+  },
+  "IDX-060": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 59,
+    "va": "L'escoltisme també és trobar-se.",
+    "es": "El escultismo también es encontrarse."
+  },
+  "IDX-061": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 60,
+    "va": "Qui ho fa possible",
+    "es": "Quién lo hace posible"
+  },
+  "IDX-062": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 61,
+    "va": "Els monitors",
+    "es": "Los monitores"
+  },
+  "IDX-063": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 62,
+    "va": "text per redactar",
+    "es": "texto por redactar"
+  },
+  "IDX-064": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 63,
+    "va": "Tots voluntaris, tots ací per elecció.",
+    "es": "Todos voluntarios, todos aquí por elección."
+  },
+  "IDX-065": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 64,
+    "va": "Primer dia",
+    "es": "Primer día"
+  },
+  "IDX-066": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 65,
+    "va": "Arribada al campament",
+    "es": "Llegada al campamento"
+  },
+  "IDX-067": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 66,
+    "va": "text per redactar",
+    "es": "texto por redactar"
+  },
+  "IDX-068": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 67,
+    "va": "Motxilla al coll i cap allà.",
+    "es": "Mochila al hombro y para allá."
+  },
+  "IDX-069": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 68,
+    "va": "Hui",
+    "es": "Hoy"
+  },
+  "IDX-070": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 69,
+    "va": "I seguim",
+    "es": "Y seguimos"
+  },
+  "IDX-071": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 70,
+    "va": "Més de cinquanta rondes solars després, molts dels xavals d'abans ara ja porten els seus.",
+    "es": "Más de cincuenta rondas solares después, muchos de los chavales de antes ahora ya traen a los suyos."
+  },
+  "IDX-072": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 71,
+    "va": "Cada ratlla, un curs des de 1974.",
+    "es": "Cada raya, un curso desde 1974."
+  },
+  "IDX-073": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 72,
+    "va": "anterior",
+    "es": "anterior"
+  },
+  "IDX-074": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Pàgines del quadern",
+    "es": null
+  },
+  "IDX-075": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 73,
+    "va": "següent",
+    "es": "siguiente"
+  },
+  "IDX-076": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 74,
+    "va": "Què fem",
+    "es": "Qué hacemos"
+  },
+  "IDX-077": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 75,
+    "va": "Notícies del grup",
+    "es": "Noticias del grupo"
+  },
+  "IDX-078": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 76,
+    "va": "Cròniques d'eixides, campaments i avisos per a les famílies.",
+    "es": "Crónicas de salidas, campamentos y avisos para las familias."
+  },
+  "IDX-079": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 77,
+    "va": "data per confirmar",
+    "es": "fecha por confirmar"
+  },
+  "IDX-080": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 78,
+    "va": "Campament d'estiu",
+    "es": "Campamento de verano"
+  },
+  "IDX-081": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 79,
+    "va": "Ací anirà la crònica del campament: on hem anat, què hem fet i alguna anècdota de fogata.",
+    "es": "Aquí irá la crónica del campamento: dónde hemos ido, qué hemos hecho y alguna anécdota de fogata."
+  },
+  "IDX-082": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 80,
+    "va": "data per confirmar",
+    "es": "fecha por confirmar"
+  },
+  "IDX-083": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 81,
+    "va": "Eixida a la Serra",
+    "es": "Salida a la Sierra"
+  },
+  "IDX-084": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 82,
+    "va": "Una eixida d'un dia: la ruta, els xics i les xiques i el bon esmorzar de mig matí.",
+    "es": "Una salida de un día: la ruta, los chicos y las chicas y el buen almuerzo de media mañana."
+  },
+  "IDX-085": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 83,
+    "va": "* Notícies d'exemple. Quan en publiquem de reals, apareixeran ací.",
+    "es": "* Noticias de ejemplo. Cuando publiquemos reales, aparecerán aquí."
+  },
+  "IDX-086": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 84,
+    "va": "Al dia a dia",
+    "es": "El día a día"
+  },
+  "IDX-087": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 85,
+    "va": "Al nostre Instagram",
+    "es": "En nuestro Instagram"
+  },
+  "IDX-088": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 86,
+    "va": "Segueix-nos a ",
+    "es": "Síguenos en "
+  },
+  "IDX-089": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 87,
+    "va": " per a veure-ho tot.",
+    "es": " para verlo todo."
+  },
+  "IDX-090": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 88,
+    "va": "La part important",
+    "es": "La parte importante"
+  },
+  "IDX-091": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 89,
+    "va": "Fer-se scout",
+    "es": "Hacerse scout"
+  },
+  "IDX-092": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 90,
+    "va": "Ens alegra un muntó que t'ho estigues plantejant. Deixa'ns les dades i et cridem per a parlar-ho amb calma.",
+    "es": "Nos alegra un montón que te lo estés planteando. Déjanos los datos y te llamamos para hablarlo con calma."
+  },
+  "IDX-093": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "body",
+    "occurrenceIndex": 91,
+    "va": "Vull apuntar el meu fill/a →",
+    "es": "Quiero apuntar a mi hijo/a →"
+  },
+  "IDX-094": {
+    "type": "html",
+    "kind": "pair",
+    "file": "index.html",
+    "region": "footer",
+    "occurrenceIndex": 95,
+    "va": "adreça del local — per confirmar",
+    "es": "dirección del local — por confirmar"
+  },
+  "COV-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "La Cova del Parpalló · Grup Scout Parpalló",
+    "es": null
+  },
+  "COV-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "La Cova del Parpalló, a 3 km de Barx: milers de gravats de fa 20.000 anys. D'ací ix el nostre nom.",
+    "es": null
+  },
+  "COV-003": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "COV-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "La Cova",
+    "es": "La Cueva"
+  },
+  "COV-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "La Cova del Parpalló",
+    "es": "La Cueva del Parpalló"
+  },
+  "COV-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Fa 20.000 anys, algú va entrar en esta cova.",
+    "es": "Hace 20.000 años, alguien entró en esta cueva."
+  },
+  "COV-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "↓ baixa a poc a poc",
+    "es": "↓ baja despacio"
+  },
+  "COV-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "I es va posar a gravar la pedra.",
+    "es": "Y se puso a grabar la piedra."
+  },
+  "COV-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Milers de plaquetes. Ocre i negre.",
+    "es": "Miles de plaquetas. Ocre y negro."
+  },
+  "COV-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Fetes a mà, una a una.",
+    "es": "Hechas a mano, una a una."
+  },
+  "COV-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Entre elles, una cérvola.",
+    "es": "Entre ellas, una cierva."
+  },
+  "COV-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "La mateixa que hui portem al pit.",
+    "es": "La misma que hoy llevamos en el pecho."
+  },
+  "COV-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Per això ens diem Parpalló.",
+    "es": "Por eso nos llamamos Parpalló."
+  },
+  "COV-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Paratge Natural Parpalló-Borrell · a 3 km de Barx.",
+    "es": "Paraje Natural Parpalló-Borrell · a 3 km de Barx."
+  },
+  "COV-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Fer-se scout",
+    "es": "Hacerse scout"
+  },
+  "COV-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cova.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "← Torna a l'inici",
+    "es": "← Vuelve al inicio"
+  },
+  "EST-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Estol · Grup Scout Parpalló",
+    "es": null
+  },
+  "EST-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "L'Estol del Grup Scout Parpalló: xiquets i xiquetes de 8 a 11 anys.",
+    "es": null
+  },
+  "EST-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "EST-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "EST-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Seccions",
+    "es": "Secciones"
+  },
+  "EST-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "EST-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "anys",
+    "es": "años"
+  },
+  "EST-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "EST-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Als 8 anys, el teu fill o filla entra a l'Estol i comença l'aventura d'El llibre de la selva: jocs, treball en equip i els primers passos per a fer coses per si mateix.",
+    "es": "A los 8 años, tu hijo o hija entra en la Manada y empieza la aventura de El libro de la selva: juegos, trabajo en equipo y los primeros pasos para hacer cosas por sí mismo."
+  },
+  "EST-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Apunta el teu xiquet/a",
+    "es": "Apunta a tu hijo/a"
+  },
+  "EST-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "EST-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "[ foto real de l'Estol ]",
+    "es": "[ foto real de la Manada ]"
+  },
+  "EST-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "L'Estol viu l'aventura d'El llibre de la selva. Cada xiquet i xiqueta té el seu lloc dins del grup, tots cuiden dels altres i, jugant, aprenen a espavilar-se per si mateixos. És l'edat de descobrir la muntanya i de fer els primers amics de veritat.",
+    "es": "La Manada vive la aventura de El libro de la selva. Cada niño y niña tiene su sitio dentro del grupo, todos cuidan de los demás y, jugando, aprenden a espabilarse por sí mismos. Es la edad de descubrir el monte y de hacer los primeros amigos de verdad."
+  },
+  "EST-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Un dissabte",
+    "es": "Un sábado"
+  },
+  "EST-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Un joc gran, un taller o una gimcana i, de tant en tant, una eixida a la muntanya.",
+    "es": "Un juego grande, un taller o una gincana y, de vez en cuando, una salida al monte."
+  },
+  "EST-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Com s'organitzen",
+    "es": "Cómo se organizan"
+  },
+  "EST-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "En seisenes: xicotets grups de sis, cada un amb un responsable que ix d'ells mateixos.",
+    "es": "En seisenas: pequeños grupos de seis, cada uno con un responsable que sale de ellos mismos."
+  },
+  "EST-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Qui la porta",
+    "es": "Quién la lleva"
+  },
+  "EST-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "per confirmar",
+    "es": "por confirmar"
+  },
+  "EST-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Edat",
+    "es": "Edad"
+  },
+  "EST-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "anys",
+    "es": "años"
+  },
+  "EST-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "[Ací contarem una xicoteta anècdota real de l'Estol — un dia de campament, un joc que va eixir bé, alguna cosa que ens va fer riure — per redactar amb un fet real del grup]",
+    "es": "[Aquí contaremos una pequeña anécdota real de la Manada — un día de campamento, un juego que salió bien, algo que nos hizo reír — por redactar con un hecho real del grupo]"
+  },
+  "EST-023": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Altres seccions",
+    "es": null
+  },
+  "EST-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Les altres seccions",
+    "es": "Las otras secciones"
+  },
+  "EST-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "EST-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "Vols provar l'Estol?",
+    "es": "¿Quieres probar la Manada?"
+  },
+  "EST-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Si té entre 8 i 11 anys, este és el seu lloc. Vine un dissabte i que ho prove, sense compromís.",
+    "es": "Si tiene entre 8 y 11 años, este es su sitio. Ven un sábado y que lo pruebe, sin compromiso."
+  },
+  "EST-028": {
+    "type": "html",
+    "kind": "pair",
+    "file": "estol.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "Apunta el teu xiquet/a",
+    "es": "Apunta a tu hijo/a"
+  },
+  "TRO-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Tropa · Grup Scout Parpalló",
+    "es": null
+  },
+  "TRO-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "La Tropa del Grup Scout Parpalló: xiquets i xiquetes de 11 a 14 anys.",
+    "es": null
+  },
+  "TRO-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "TRO-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "TRO-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Seccions",
+    "es": "Secciones"
+  },
+  "TRO-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "anys",
+    "es": "años"
+  },
+  "TRO-007": {
+    "type": "html",
+    "kind": "heading",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Tropa",
+    "es": null
+  },
+  "TRO-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Patrulles, aventura i les primeres responsabilitats de veritat.",
+    "es": "Patrullas, aventura y las primeras responsabilidades de verdad."
+  },
+  "TRO-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Apunta el teu xiquet/a",
+    "es": "Apunta a tu hijo/a"
+  },
+  "TRO-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "[ foto real de la Tropa ]",
+    "es": "[ foto real de la Tropa ]"
+  },
+  "TRO-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "L'edat de l'aventura. A la Tropa es comença a decidir de veritat i a assumir responsabilitats: munten i desmunten el campament ells, s'organitzen en patrulles i tiren avant els seus reptes.",
+    "es": "La edad de la aventura. En la Tropa se empieza a decidir de verdad y a asumir responsabilidades: montan y desmontan el campamento ellos, se organizan en patrullas y sacan adelante sus retos."
+  },
+  "TRO-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Un dissabte",
+    "es": "Un sábado"
+  },
+  "TRO-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Preparar la pròxima acampada, tècniques i molt de joc.",
+    "es": "Preparar la próxima acampada, técnicas y mucho juego."
+  },
+  "TRO-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "Com s'organitzen",
+    "es": "Cómo se organizan"
+  },
+  "TRO-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Per patrulles, que s'organitzen soles amb un cap de patrulla.",
+    "es": "Por patrullas, que se organizan solas con un jefe de patrulla."
+  },
+  "TRO-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Qui la porta",
+    "es": "Quién la lleva"
+  },
+  "TRO-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "per confirmar",
+    "es": "por confirmar"
+  },
+  "TRO-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Edat",
+    "es": "Edad"
+  },
+  "TRO-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "anys",
+    "es": "años"
+  },
+  "TRO-020": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Altres seccions",
+    "es": null
+  },
+  "TRO-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Les altres seccions",
+    "es": "Las otras secciones"
+  },
+  "TRO-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "TRO-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "TRO-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Vols provar la Tropa?",
+    "es": "¿Quieres probar la Tropa?"
+  },
+  "TRO-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Si té entre 11 i 14 anys, ací trobarà aventura i colla. Vine un dissabte i que ho prove, sense compromís.",
+    "es": "Si tiene entre 11 y 14 años, aquí encontrará aventura y pandilla. Ven un sábado y que lo pruebe, sin compromiso."
+  },
+  "TRO-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "tropa.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Apunta el teu xiquet/a",
+    "es": "Apunta a tu hijo/a"
+  },
+  "ESC-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Escoltes · Grup Scout Parpalló",
+    "es": null
+  },
+  "ESC-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Els Escoltes del Grup Scout Parpalló: xics i xiques de 14 a 17 anys.",
+    "es": null
+  },
+  "ESC-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "ESC-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "ESC-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Seccions",
+    "es": "Secciones"
+  },
+  "ESC-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "ESC-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "anys",
+    "es": "años"
+  },
+  "ESC-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "ESC-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Projectes propis i eixides més serioses. Comencen a decidir ells.",
+    "es": "Proyectos propios y salidas más serias. Empiezan a decidir ellos."
+  },
+  "ESC-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Apunta el teu fill/a",
+    "es": "Apunta a tu hijo/a"
+  },
+  "ESC-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "ESC-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "[ foto real dels Escoltes ]",
+    "es": "[ foto real de los Escultas ]"
+  },
+  "ESC-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "Els Escoltes trien els seus propis projectes i els tiren avant. Les monitores acompanyen més que manen. És l'edat de fer-se preguntes grans i d'aprendre a comprometre's amb el que un tria.",
+    "es": "Los Escultas eligen sus propios proyectos y los sacan adelante. Las monitoras acompañan más que mandan. Es la edad de hacerse preguntas grandes y de aprender a comprometerse con lo que uno elige."
+  },
+  "ESC-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Un dissabte",
+    "es": "Un sábado"
+  },
+  "ESC-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Reunió per a decidir i preparar el que han triat fer.",
+    "es": "Reunión para decidir y preparar lo que han elegido hacer."
+  },
+  "ESC-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Com s'organitzen",
+    "es": "Cómo se organizan"
+  },
+  "ESC-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "En unitat, decidint junts en assemblea el que volen fer.",
+    "es": "En unidad, decidiendo juntos en asamblea lo que quieren hacer."
+  },
+  "ESC-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Qui la porta",
+    "es": "Quién la lleva"
+  },
+  "ESC-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "per confirmar",
+    "es": "por confirmar"
+  },
+  "ESC-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Edat",
+    "es": "Edad"
+  },
+  "ESC-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "anys",
+    "es": "años"
+  },
+  "ESC-022": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Altres seccions",
+    "es": null
+  },
+  "ESC-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Les altres seccions",
+    "es": "Las otras secciones"
+  },
+  "ESC-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "ESC-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Vols provar els Escoltes?",
+    "es": "¿Quieres probar los Escultas?"
+  },
+  "ESC-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "Si té entre 14 i 17 anys, ací decidirà i creixerà. Vine un dissabte i que ho prove, sense compromís.",
+    "es": "Si tiene entre 14 y 17 años, aquí decidirá y crecerá. Ven un sábado y que lo pruebe, sin compromiso."
+  },
+  "ESC-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "esculta.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Apunta el teu fill/a",
+    "es": "Apunta a tu hijo/a"
+  },
+  "CLA-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Clan · Grup Scout Parpalló",
+    "es": null
+  },
+  "CLA-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "El Clan del Grup Scout Parpalló: jóvens de 17 a 21 anys.",
+    "es": null
+  },
+  "CLA-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "CLA-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "CLA-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Seccions",
+    "es": "Secciones"
+  },
+  "CLA-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "anys",
+    "es": "años"
+  },
+  "CLA-007": {
+    "type": "html",
+    "kind": "heading",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Clan",
+    "es": null
+  },
+  "CLA-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "El servici i el compromís. Fan la seua ruta i decidixen com ajudar.",
+    "es": "El servicio y el compromiso. Hacen su ruta y deciden cómo ayudar."
+  },
+  "CLA-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Anima't a entrar",
+    "es": "Anímate a entrar"
+  },
+  "CLA-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "[ foto real del Clan ]",
+    "es": "[ foto real del Clan ]"
+  },
+  "CLA-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "El Clan és el pas final. Fan la seua ruta —dies caminant i convivint— i decidixen com volen servir als altres. Molts acaben sent monitores del grup: ací l'escoltisme es torna una manera de mirar el món.",
+    "es": "El Clan es el paso final. Hacen su ruta —días caminando y conviviendo— y deciden cómo quieren servir a los demás. Muchos acaban siendo monitoras del grupo: aquí el escultismo se vuelve una manera de mirar el mundo."
+  },
+  "CLA-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Un dissabte",
+    "es": "Un sábado"
+  },
+  "CLA-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Trobades per a preparar la ruta i els projectes de servici.",
+    "es": "Encuentros para preparar la ruta y los proyectos de servicio."
+  },
+  "CLA-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "Com s'organitzen",
+    "es": "Cómo se organizan"
+  },
+  "CLA-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Com a clan, decidint entre tots i amb molta autonomia.",
+    "es": "Como clan, decidiendo entre todos y con mucha autonomía."
+  },
+  "CLA-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Qui el porta",
+    "es": "Quién lo lleva"
+  },
+  "CLA-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "per confirmar",
+    "es": "por confirmar"
+  },
+  "CLA-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Edat",
+    "es": "Edad"
+  },
+  "CLA-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "anys",
+    "es": "años"
+  },
+  "CLA-020": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Altres seccions",
+    "es": null
+  },
+  "CLA-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Les altres seccions",
+    "es": "Las otras secciones"
+  },
+  "CLA-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Estol",
+    "es": "Manada"
+  },
+  "CLA-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "Escoltes",
+    "es": "Escultas"
+  },
+  "CLA-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "T'animes al Clan?",
+    "es": "¿Te animas al Clan?"
+  },
+  "CLA-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Si tens entre 17 i 21 anys, este és el teu moment. Vine i coneix el Clan, sense compromís.",
+    "es": "Si tienes entre 17 y 21 años, este es tu momento. Ven y conoce el Clan, sin compromiso."
+  },
+  "CLA-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "clan.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Anima't a entrar",
+    "es": "Anímate a entrar"
+  },
+  "FER-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Fer-se scout · Grup Scout Parpalló",
+    "es": null
+  },
+  "FER-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Apunta el teu fill o filla al Grup Scout Parpalló de Gandia.",
+    "es": null
+  },
+  "FER-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "FER-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "FER-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Fer-se scout",
+    "es": "Hacerse scout"
+  },
+  "FER-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "La part important",
+    "es": "La parte importante"
+  },
+  "FER-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Fer-se scout",
+    "es": "Hacerse scout"
+  },
+  "FER-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Ens alegra un munt&#243; que t'ho estigues plantejant. Deixa'ns les dades i et cridem per a parlar-ho amb calma.",
+    "es": "Nos alegra un mont&#243;n que te lo est&#233;s planteando. D&#233;janos los datos y te llamamos para hablarlo con calma."
+  },
+  "FER-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Deixes les dades del xiquet/a en esta fitxa.",
+    "es": "Dejas los datos del ni&#241;o/a en esta ficha."
+  },
+  "FER-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Et cridem per a con&#233;ixer-vos i resoldre dubtes.",
+    "es": "Te llamamos para conoceros y resolver dudas."
+  },
+  "FER-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Primer dissabte de prova, sense cap comprom&#237;s.",
+    "es": "Primer s&#225;bado de prueba, sin ning&#250;n compromiso."
+  },
+  "FER-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Segons l'edat pot haver-hi llista d'espera. Deixa'ns el contacte igualment i t'avisem.",
+    "es": "Seg&#250;n la edad puede haber lista de espera. D&#233;janos el contacto igualmente y te avisamos."
+  },
+  "FER-013": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Sol·licitud de plaça",
+    "es": null
+  },
+  "FER-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "El xiquet o xiqueta",
+    "es": "El niño o niña"
+  },
+  "FER-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Nom",
+    "es": "Nombre"
+  },
+  "FER-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Cognoms",
+    "es": "Apellidos"
+  },
+  "FER-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Data de naixement",
+    "es": "Fecha de nacimiento"
+  },
+  "FER-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Secció",
+    "es": "Sección"
+  },
+  "FER-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "t'ajudem per l'edat",
+    "es": "te ayudamos por la edad"
+  },
+  "FER-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Al·lèrgies, necessitats o coses que hem de saber",
+    "es": "Alergias, necesidades o cosas que debemos saber"
+  },
+  "FER-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Qui l'apunta (mare, pare o tutor/a)",
+    "es": "Quién lo apunta (madre, padre o tutor/a)"
+  },
+  "FER-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "Nom i cognoms",
+    "es": "Nombre y apellidos"
+  },
+  "FER-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Telèfon",
+    "es": "Teléfono"
+  },
+  "FER-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Com ens has conegut?",
+    "es": "¿Cómo nos has conocido?"
+  },
+  "FER-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Permisos",
+    "es": "Permisos"
+  },
+  "FER-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "He llegit i accepte la <a href=\"privacitat.html\">política de protecció de dades de menors</a>.",
+    "es": "He leído y acepto la <a href=\"privacitat.html\">política de protección de datos de menores</a>."
+  },
+  "FER-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Vull que em contacteu per a parlar de la plaça.",
+    "es": "Quiero que me contactéis para hablar de la plaza."
+  },
+  "FER-028": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "Envia la sol·licitud",
+    "es": "Enviar la solicitud"
+  },
+  "FER-029": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 32,
+    "va": "I què passa el primer dia?",
+    "es": "¿Y qué pasa el primer día?"
+  },
+  "FER-030": {
+    "type": "html",
+    "kind": "pair",
+    "file": "fersescout.html",
+    "region": "body",
+    "occurrenceIndex": 33,
+    "va": "Véns al local a l'hora de la reunió, preguntes per <span class=\"pend\">responsable — per confirmar</span>, i el teu fill se'n va a jugar amb la seua secció. Tu et quedes el que faça falta. No cal portar res, només ganes.",
+    "es": "Vienes al local a la hora de la reunión, preguntas por <span class=\"pend\">responsable — por confirmar</span>, y tu hijo se va a jugar con su sección. Tú te quedas lo que haga falta. No hace falta traer nada, solo ganas."
+  },
+  "BOT-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Botiga del grup · Grup Scout Parpalló",
+    "es": null
+  },
+  "BOT-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Sudadera, polar, pañoleta i insígnies del Grup Scout Parpalló de Gandia. Reserva-ho i t'ho preparem per a un dissabte.",
+    "es": null
+  },
+  "BOT-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "BOT-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "BOT-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Botiga",
+    "es": "Tienda"
+  },
+  "BOT-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Roba i insígnies del grup",
+    "es": "Ropa e insignias del grupo"
+  },
+  "BOT-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "La botiga del grup",
+    "es": "La tienda del grupo"
+  },
+  "BOT-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "La sudadera, el polar, la pañoleta i les insígnies del Parpalló. Tria el que vulgues, envia'ns la reserva i quedem un dissabte per a arreplegar-ho al local.",
+    "es": "La sudadera, el polar, la pañoleta y las insignias del Parpalló. Elige lo que quieras, envíanos la reserva y quedamos un sábado para recogerlo en el local."
+  },
+  "BOT-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "No es paga res per la web: es paga en arreplegar-ho.",
+    "es": "No se paga nada por la web: se paga al recogerlo."
+  },
+  "BOT-010": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 5,
+    "va": "Reserva de la botiga",
+    "es": null
+  },
+  "BOT-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Vestimenta scout",
+    "es": "Vestimenta scout"
+  },
+  "BOT-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Sudadera",
+    "es": "Sudadera"
+  },
+  "BOT-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Amb el logo de la flor de lis a la part frontal, el disseny propi del grup a l'esquena i el nom del grup a les mànegues.",
+    "es": "Con el logo de la flor de lis en la parte frontal, el diseño propio del grupo en la espalda y el nombre del grupo en las mangas."
+  },
+  "BOT-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-015": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 6,
+    "va": "Llevar una unitat de Sudadera",
+    "es": null
+  },
+  "BOT-016": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 7,
+    "va": "Afegir una unitat de Sudadera",
+    "es": null
+  },
+  "BOT-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Polar",
+    "es": "Polar"
+  },
+  "BOT-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Polar del Grup Scout Parpalló amb la cérvola serigrafiada a l'esquena. Peça còmoda que evita la pèrdua de calor, amb cremallera central.",
+    "es": "Polar del Grup Scout Parpalló con la cierva serigrafiada en la espalda. Prenda cómoda que evita la pérdida de calor, con cremallera central."
+  },
+  "BOT-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-020": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Llevar una unitat de Polar",
+    "es": null
+  },
+  "BOT-021": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Afegir una unitat de Polar",
+    "es": null
+  },
+  "BOT-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Camiseta morada",
+    "es": "Camiseta morada"
+  },
+  "BOT-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Camiseta de màniga curta amb el color morat del grup i la cérvola serigrafiada en blanc.",
+    "es": "Camiseta de manga corta con el color morado del grupo y la cierva serigrafiada en blanco."
+  },
+  "BOT-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-025": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Llevar una unitat de Camiseta morada",
+    "es": null
+  },
+  "BOT-026": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Afegir una unitat de Camiseta morada",
+    "es": null
+  },
+  "BOT-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Polo de màniga curta, llis",
+    "es": "Polo de manga corta, liso"
+  },
+  "BOT-028": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "Polo de màniga curta sense cap logotip. Peça còmoda i lleugera per als mesos de calor.",
+    "es": "Polo de manga corta sin ningún logotipo. Prenda cómoda y ligera para los meses de calor."
+  },
+  "BOT-029": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-030": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Llevar una unitat de Polo llis",
+    "es": null
+  },
+  "BOT-031": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Afegir una unitat de Polo llis",
+    "es": null
+  },
+  "BOT-032": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Polo de màniga curta amb insígnia",
+    "es": "Polo de manga corta con insignia"
+  },
+  "BOT-033": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Polo de màniga curta amb la flor de lis. Peça còmoda i lleugera per als mesos de calor.",
+    "es": "Polo de manga corta con la flor de lis. Prenda cómoda y ligera para los meses de calor."
+  },
+  "BOT-034": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-035": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Llevar una unitat de Polo amb insígnia",
+    "es": null
+  },
+  "BOT-036": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Afegir una unitat de Polo amb insígnia",
+    "es": null
+  },
+  "BOT-037": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Complements",
+    "es": "Complementos"
+  },
+  "BOT-038": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "Pañoleta del Parpalló",
+    "es": "Pañoleta del Parpalló"
+  },
+  "BOT-039": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 32,
+    "va": "Pañoleta groga amb el logo i el text en morat, la del Grup Scout Parpalló de Gandia.",
+    "es": "Pañoleta amarilla con el logo y el texto en morado, la del Grup Scout Parpalló de Gandia."
+  },
+  "BOT-040": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 33,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-041": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Llevar una unitat de Pañoleta",
+    "es": null
+  },
+  "BOT-042": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "Afegir una unitat de Pañoleta",
+    "es": null
+  },
+  "BOT-043": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 34,
+    "va": "Bossa motxilla",
+    "es": "Bolsa mochila"
+  },
+  "BOT-044": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 35,
+    "va": "Còmoda bossa-motxilla per a portar objectes menuts.",
+    "es": "Cómoda bolsa-mochila para llevar objetos pequeños."
+  },
+  "BOT-045": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 36,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-046": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Llevar una unitat de Bossa motxilla",
+    "es": null
+  },
+  "BOT-047": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Afegir una unitat de Bossa motxilla",
+    "es": null
+  },
+  "BOT-048": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 37,
+    "va": "Insígnies",
+    "es": "Insignias"
+  },
+  "BOT-049": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 38,
+    "va": "Insígnia de la cérvola",
+    "es": "Insignia de la cierva"
+  },
+  "BOT-050": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 39,
+    "va": "La insígnia del Grup Scout Parpalló de Gandia: la cérvola sobre fons roig i verd.",
+    "es": "La insignia del Grup Scout Parpalló de Gandia: la cierva sobre fondo rojo y verde."
+  },
+  "BOT-051": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 40,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-052": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Llevar una unitat d'Insígnia de la cérvola",
+    "es": null
+  },
+  "BOT-053": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Afegir una unitat d'Insígnia de la cérvola",
+    "es": null
+  },
+  "BOT-054": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 41,
+    "va": "Insígnia flor de lis SSVV",
+    "es": "Insignia flor de lis SSVV"
+  },
+  "BOT-055": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 42,
+    "va": "La flor de lis brodada sobre fons morat, logotip de Scouts Valencians.",
+    "es": "La flor de lis bordada sobre fondo morado, logotipo de Scouts Valencians."
+  },
+  "BOT-056": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 43,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-057": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Llevar una unitat d'Insígnia flor de lis",
+    "es": null
+  },
+  "BOT-058": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Afegir una unitat d'Insígnia flor de lis",
+    "es": null
+  },
+  "BOT-059": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 44,
+    "va": "Insígnia de la Tropa",
+    "es": "Insignia de la Tropa"
+  },
+  "BOT-060": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 45,
+    "va": "El nus margarida: el llaç amb els companys i companyes de patrulla, que acaba sent part del mateix element.",
+    "es": "El nudo margarita: el lazo con los compañeros y compañeras de patrulla, que acaba siendo parte del mismo elemento."
+  },
+  "BOT-061": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 46,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-062": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Llevar una unitat d'Insígnia de la Tropa",
+    "es": null
+  },
+  "BOT-063": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "Afegir una unitat d'Insígnia de la Tropa",
+    "es": null
+  },
+  "BOT-064": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 47,
+    "va": "Insígnia de l'Estol",
+    "es": "Insignia de la Manada"
+  },
+  "BOT-065": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 48,
+    "va": "El llobató segueix la petjada del llop més expert: Akela l'introduirà en la selva i n'anirà descobrint les normes i els valors.",
+    "es": "El lobato sigue la huella del lobo más experto: Akela lo introducirá en la selva y así irá descubriendo sus normas y sus valores."
+  },
+  "BOT-066": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 49,
+    "va": "Unitats",
+    "es": "Unidades"
+  },
+  "BOT-067": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Llevar una unitat d'Insígnia de l'Estol",
+    "es": null
+  },
+  "BOT-068": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Afegir una unitat d'Insígnia de l'Estol",
+    "es": null
+  },
+  "BOT-069": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 50,
+    "va": "Encara no has triat res.",
+    "es": "Todavía no has elegido nada."
+  },
+  "BOT-070": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 51,
+    "va": "Anar a les dades →",
+    "es": "Ir a los datos →"
+  },
+  "BOT-071": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 52,
+    "va": "Últim pas",
+    "es": "Último paso"
+  },
+  "BOT-072": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 53,
+    "va": "Les teues dades",
+    "es": "Tus datos"
+  },
+  "BOT-073": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 54,
+    "va": "Amb això ja podem apartar-t'ho. Et contestem per correu per a confirmar-te la disponibilitat i quedar un dissabte.",
+    "es": "Con esto ya podemos apartártelo. Te contestamos por correo para confirmarte la disponibilidad y quedar un sábado."
+  },
+  "BOT-074": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 55,
+    "va": "La teua reserva",
+    "es": "Tu reserva"
+  },
+  "BOT-075": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 56,
+    "va": "Puja i tria les unitats que vulgues de cada article.",
+    "es": "Sube y elige las unidades que quieras de cada artículo."
+  },
+  "BOT-076": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 57,
+    "va": "Total",
+    "es": "Total"
+  },
+  "BOT-077": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 58,
+    "va": "Qui fa la reserva",
+    "es": "Quién hace la reserva"
+  },
+  "BOT-078": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 59,
+    "va": "Nom",
+    "es": "Nombre"
+  },
+  "BOT-079": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 60,
+    "va": "Cognoms",
+    "es": "Apellidos"
+  },
+  "BOT-080": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 61,
+    "va": "Telèfon",
+    "es": "Teléfono"
+  },
+  "BOT-081": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 62,
+    "va": "opcional",
+    "es": "opcional"
+  },
+  "BOT-082": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 63,
+    "va": "Talles o qualsevol cosa que hem de saber",
+    "es": "Tallas o cualquier cosa que debamos saber"
+  },
+  "BOT-083": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 64,
+    "va": "Permisos",
+    "es": "Permisos"
+  },
+  "BOT-084": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 65,
+    "va": "He llegit i accepte la <a href=\"privacitat.html\">política de protecció de dades</a>.",
+    "es": "He leído y acepto la <a href=\"privacitat.html\">política de protección de datos</a>."
+  },
+  "BOT-085": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 66,
+    "va": "Envia la reserva",
+    "es": "Enviar la reserva"
+  },
+  "BOT-086": {
+    "type": "html",
+    "kind": "pair",
+    "file": "merchandising.html",
+    "region": "body",
+    "occurrenceIndex": 67,
+    "va": "Reservar no és comprar: no es cobra res ara. Et confirmem disponibilitat i pagues en arreplegar-ho al local.",
+    "es": "Reservar no es comprar: no se cobra nada ahora. Te confirmamos disponibilidad y pagas al recogerlo en el local."
+  },
+  "LEG-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Avís legal · Grup Scout Parpalló",
+    "es": null
+  },
+  "LEG-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Dades del titular d'esta web i condicions d'ús del lloc del Grup Scout Parpalló.",
+    "es": null
+  },
+  "LEG-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "LEG-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "LEG-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Avís legal",
+    "es": "Aviso legal"
+  },
+  "LEG-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Avís legal",
+    "es": "Aviso legal"
+  },
+  "LEG-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Qui publica esta web i en quines condicions es pot fer servir.",
+    "es": "Quién publica esta web y en qué condiciones se puede usar."
+  },
+  "LEG-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Estes són les condicions d'ús d'esta web i les dades de qui la publica.",
+    "es": "Estas son las condiciones de uso de esta web y los datos de quien la publica."
+  },
+  "LEG-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Qui publica esta web",
+    "es": "Quién publica esta web"
+  },
+  "LEG-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Denominació: ",
+    "es": "Denominación: "
+  },
+  "LEG-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "Domicili: ",
+    "es": "Domicilio: "
+  },
+  "LEG-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Inscripció registral: ",
+    "es": "Inscripción registral: "
+  },
+  "LEG-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Correu de contacte: ",
+    "es": "Correo de contacto: "
+  },
+  "LEG-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Per a què serveix esta web",
+    "es": "Para qué sirve esta web"
+  },
+  "LEG-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Esta web és informativa: conta qui som, què fem i com apuntar-se al grup. No és una botiga ni cobra res per cap servei.",
+    "es": "Esta web es informativa: cuenta quiénes somos, qué hacemos y cómo apuntarse al grupo. No es una tienda ni cobra nada por ningún servicio."
+  },
+  "LEG-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Condicions d'ús",
+    "es": "Condiciones de uso"
+  },
+  "LEG-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "En navegar per esta web acceptes usar-la de bona fe i no fer-la servir per a res que puga danyar-la o impedir que altres la puguen utilitzar. El formulari de sol·licitud de plaça s'ha d'omplir amb dades certes i només per qui té la pàtria potestat o la tutela del menor.",
+    "es": "Al navegar por esta web aceptas usarla de buena fe y no utilizarla para nada que pueda dañarla o impedir que otras personas la puedan usar. El formulario de solicitud de plaza se debe rellenar con datos ciertos y solo por quien tiene la patria potestad o la tutela del menor."
+  },
+  "LEG-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Continguts, textos i fotografies",
+    "es": "Contenidos, textos y fotografías"
+  },
+  "LEG-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "Titularitat i condicions d'ús dels continguts: ",
+    "es": "Titularidad y condiciones de uso de los contenidos: "
+  },
+  "LEG-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "Enllaços a altres webs",
+    "es": "Enlaces a otras webs"
+  },
+  "LEG-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Esta web pot enllaçar a llocs d'altres organitzacions, com la federació. No controlem el que publiquen ni ens en fem responsables: quan ixques d'esta web, valen les seues condicions i la seua política de privacitat.",
+    "es": "Esta web puede enlazar a sitios de otras organizaciones, como la federación. No controlamos lo que publican ni nos hacemos responsables de ello: cuando salgas de esta web, valen sus condiciones y su política de privacidad."
+  },
+  "LEG-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "Protecció de dades",
+    "es": "Protección de datos"
+  },
+  "LEG-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 32,
+    "va": "Tot el que té a veure amb les dades personals, i en especial amb les dades de menors, s'explica a la ",
+    "es": "Todo lo que tiene que ver con los datos personales, y en especial con los datos de menores, se explica en la "
+  },
+  "LEG-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 33,
+    "va": "política de privacitat",
+    "es": "política de privacidad"
+  },
+  "LEG-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 34,
+    "va": "Legislació aplicable",
+    "es": "Legislación aplicable"
+  },
+  "PRI-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Política de privacitat · Grup Scout Parpalló",
+    "es": null
+  },
+  "PRI-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Com tracta el Grup Scout Parpalló les dades personals del formulari de sol·licitud de plaça, amb un apartat específic sobre dades de menors.",
+    "es": null
+  },
+  "PRI-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "PRI-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "PRI-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Política de privacitat",
+    "es": "Política de privacidad"
+  },
+  "PRI-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Política de privacitat",
+    "es": "Política de privacidad"
+  },
+  "PRI-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Quines dades demanem, per a què les fem servir i com les protegim.",
+    "es": "Qué datos pedimos, para qué los usamos y cómo los protegemos."
+  },
+  "PRI-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Ací expliquem quines dades demanem al formulari de sol·licitud de plaça, per a què les fem servir i què pots fer per a controlar-les. Hi ha un apartat específic sobre les dades dels menors, perquè és el cas que més ens importa cuidar.",
+    "es": "Aquí explicamos qué datos pedimos en el formulario de solicitud de plaza, para qué los usamos y qué puedes hacer para controlarlos. Hay un apartado específico sobre los datos de los menores, porque es el caso que más nos importa cuidar."
+  },
+  "PRI-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Qui és el responsable de les teues dades",
+    "es": "Quién es el responsable de tus datos"
+  },
+  "PRI-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "El responsable del tractament és:",
+    "es": "El responsable del tratamiento es:"
+  },
+  "PRI-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Denominació: ",
+    "es": "Denominación: "
+  },
+  "PRI-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Domicili: ",
+    "es": "Domicilio: "
+  },
+  "PRI-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "Correu de contacte: ",
+    "es": "Correo de contacto: "
+  },
+  "PRI-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Quines dades recollim",
+    "es": "Qué datos recogemos"
+  },
+  "PRI-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "Només les de dos formularis: el de «Fer-se scout» i el de reserva de la botiga. No recollim res més ni per cap altra via.",
+    "es": "Solo los de dos formularios: el de «Hacerse scout» y el de reserva de la tienda. No recogemos nada más ni por ninguna otra vía."
+  },
+  "PRI-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Del formulari de «Fer-se scout»:",
+    "es": "Del formulario de «Hacerse scout»:"
+  },
+  "PRI-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Del xiquet o xiqueta: nom, cognoms i data de naixement.",
+    "es": "Del niño o niña: nombre, apellidos y fecha de nacimiento."
+  },
+  "PRI-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "La secció que li correspondria, si l'heu indicada.",
+    "es": "La sección que le correspondería, si la habéis indicado."
+  },
+  "PRI-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Al·lèrgies, necessitats o qualsevol cosa que ens vulgueu contar en el camp obert. Esta informació pot incloure dades de salut, i per això la tractem amb un cuidado especial.",
+    "es": "Alergias, necesidades o cualquier cosa que nos queráis contar en el campo abierto. Esta información puede incluir datos de salud, y por eso la tratamos con un cuidado especial."
+  },
+  "PRI-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "De la mare, pare o tutor/a: nom i cognoms, telèfon i correu electrònic.",
+    "es": "De la madre, padre o tutor/a: nombre y apellidos, teléfono y correo electrónico."
+  },
+  "PRI-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "Com ens heu conegut, si ho voleu contar. És opcional.",
+    "es": "Cómo nos habéis conocido, si lo queréis contar. Es opcional."
+  },
+  "PRI-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "Del formulari de reserva de la botiga:",
+    "es": "Del formulario de reserva de la tienda:"
+  },
+  "PRI-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "De qui fa la reserva: nom i cognoms, correu electrònic i, si el voleu deixar, telèfon.",
+    "es": "De quien hace la reserva: nombre y apellidos, correo electrónico y, si lo queréis dejar, teléfono."
+  },
+  "PRI-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "Els articles i les unitats que voleu reservar, i el que ens vulgueu dir sobre talles.",
+    "es": "Los artículos y las unidades que queréis reservar, y lo que nos queráis decir sobre tallas."
+  },
+  "PRI-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 32,
+    "va": "Ací no es demana cap dada de menors ni cap dada de salut: és una reserva de roba, i el formulari no té cap camp per a això. La botiga tampoc no cobra res per la web, així que no es demana ni es guarda cap dada bancària.",
+    "es": "Aquí no se pide ningún dato de menores ni ningún dato de salud: es una reserva de ropa, y el formulario no tiene ningún campo para eso. La tienda tampoco cobra nada por la web, así que no se pide ni se guarda ningún dato bancario."
+  },
+  "PRI-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 33,
+    "va": "A més, quan s'envia qualsevol dels dos formularis el servidor fa servir l'adreça IP de manera temporal i només en memòria, per a evitar que els robots els inunden amb enviaments automàtics. Eixa adreça no es guarda ni s'associa a l'enviament.",
+    "es": "Además, cuando se envía cualquiera de los dos formularios el servidor usa la dirección IP de manera temporal y solo en memoria, para evitar que los robots los inunden con envíos automáticos. Esa dirección no se guarda ni se asocia al envío."
+  },
+  "PRI-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 34,
+    "va": "Per a què les fem servir",
+    "es": "Para qué los usamos"
+  },
+  "PRI-028": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 35,
+    "va": "Per a una cosa i prou:",
+    "es": "Para una cosa y nada más:"
+  },
+  "PRI-029": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 36,
+    "va": "Posar-nos en contacte amb la família, resoldre els dubtes que tingueu i gestionar la sol·licitud de plaça o la llista d'espera.",
+    "es": "Ponernos en contacto con la familia, resolver las dudas que tengáis y gestionar la solicitud de plaza o la lista de espera."
+  },
+  "PRI-030": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 37,
+    "va": "Preparar-vos la reserva de la botiga, confirmar-vos la disponibilitat i quedar per a arreplegar-la. Res més: eixes dades no s'afigen a cap llista d'enviaments.",
+    "es": "Prepararos la reserva de la tienda, confirmaros la disponibilidad y quedar para recogerla. Nada más: esos datos no se añaden a ninguna lista de envíos."
+  },
+  "PRI-031": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 38,
+    "va": "Base legal del tractament: ",
+    "es": "Base legal del tratamiento: "
+  },
+  "PRI-032": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 40,
+    "va": "Dades de menors d'edat",
+    "es": "Datos de menores de edad"
+  },
+  "PRI-033": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 41,
+    "va": "Este formulari està pensat per a que l'òmpliga sempre la mare, el pare o el tutor o tutora legal, mai el xiquet o la xiqueta pel seu compte. En enviar-lo confirmeu que teniu la pàtria potestat o la tutela del menor i que autoritzeu que ens posem en contacte amb vosaltres.",
+    "es": "Este formulario está pensado para que lo rellene siempre la madre, el padre o el tutor o tutora legal, nunca el niño o la niña por su cuenta. Al enviarlo confirmáis que tenéis la patria potestad o la tutela del menor y que autorizáis que nos pongamos en contacto con vosotros."
+  },
+  "PRI-034": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 42,
+    "va": "Criteri d'edat aplicat: ",
+    "es": "Criterio de edad aplicado: "
+  },
+  "PRI-035": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 44,
+    "va": "La informació sobre al·lèrgies i necessitats només s'utilitza per a la seguretat del xiquet o xiqueta a les activitats. No s'usa per a res més, no es publica mai i no es comparteix fora del grup.",
+    "es": "La información sobre alergias y necesidades solo se utiliza para la seguridad del niño o niña en las actividades. No se usa para nada más, no se publica nunca y no se comparte fuera del grupo."
+  },
+  "PRI-036": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 45,
+    "va": "Dins del grup, hi tenen accés: ",
+    "es": "Dentro del grupo, tienen acceso: "
+  },
+  "PRI-037": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 47,
+    "va": "Quant de temps les guardem",
+    "es": "Cuánto tiempo los guardamos"
+  },
+  "PRI-038": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 48,
+    "va": "Els terminis de conservació són:",
+    "es": "Los plazos de conservación son:"
+  },
+  "PRI-039": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 49,
+    "va": "Si finalment no us apunteu: ",
+    "es": "Si finalmente no os apuntáis: "
+  },
+  "PRI-040": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 51,
+    "va": "Si us apunteu: ",
+    "es": "Si os apuntáis: "
+  },
+  "PRI-041": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 53,
+    "va": "Reserves de la botiga: ",
+    "es": "Reservas de la tienda: "
+  },
+  "PRI-042": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 55,
+    "va": "Qui més pot veure estes dades",
+    "es": "Quién más puede ver estos datos"
+  },
+  "PRI-043": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 56,
+    "va": "No venem ni cedim les dades a ningú amb finalitats comercials. Per a poder funcionar, però, la web s'apoia en estos serveis:",
+    "es": "No vendemos ni cedemos los datos a nadie con fines comerciales. Para poder funcionar, eso sí, la web se apoya en estos servicios:"
+  },
+  "PRI-044": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 57,
+    "va": "Google (Sheets i Apps Script), on es guarden les fitxes de sol·licitud i on s'executa el script que les rep. És una empresa dels Estats Units. ",
+    "es": "Google (Sheets y Apps Script), donde se guardan las fichas de solicitud y donde se ejecuta el script que las recibe. Es una empresa de los Estados Unidos. "
+  },
+  "PRI-045": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 59,
+    "va": "El proveïdor que allotja la web: ",
+    "es": "El proveedor que aloja la web: "
+  },
+  "PRI-046": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 61,
+    "va": "Google Fonts, que serveix les tipografies de la web. En carregar qualsevol pàgina, el navegador demana eixes tipografies a Google i això li fa arribar l'adreça IP. Ho expliquem amb detall a la ",
+    "es": "Google Fonts, que sirve las tipografías de la web. Al cargar cualquier página, el navegador pide esas tipografías a Google y eso le hace llegar la dirección IP. Lo explicamos con detalle en la "
+  },
+  "PRI-047": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 62,
+    "va": "política de cookies",
+    "es": "política de cookies"
+  },
+  "PRI-048": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 63,
+    "va": "Google Maps, que s'ofereix a la pàgina de La Cova per a mostrar la ubicació. <strong>El mapa NO es carrega automàticament</strong>: cal prémer un botó. Fins que no es prem, no es fa cap petició a Google. Si es prem, Google rep l'adreça IP de qui visita la pàgina. Google és una empresa dels Estats Units.",
+    "es": "Google Maps, que se ofrece en la página de La Cueva para mostrar la ubicación. <strong>El mapa NO se carga automáticamente</strong>: hay que pulsar un botón. Hasta que no se pulsa, no se hace ninguna petición a Google. Si se pulsa, Google recibe la dirección IP de quien visita la página. Google es una empresa de los Estados Unidos."
+  },
+  "PRI-049": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 64,
+    "va": "També podríem haver de comunicar dades si ens ho exigira una obligació legal.",
+    "es": "También podríamos tener que comunicar datos si nos lo exigiera una obligación legal."
+  },
+  "PRI-050": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 65,
+    "va": "Els teus drets",
+    "es": "Tus derechos"
+  },
+  "PRI-051": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 66,
+    "va": "Sobre les dades del teu fill o filla i sobre les teues, pots exercir en qualsevol moment estos drets:",
+    "es": "Sobre los datos de tu hijo o hija y sobre los tuyos, puedes ejercer en cualquier momento estos derechos:"
+  },
+  "PRI-052": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 67,
+    "va": "Accedir a les dades que tenim.",
+    "es": "Acceder a los datos que tenemos."
+  },
+  "PRI-053": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 68,
+    "va": "Rectificar el que estiga mal.",
+    "es": "Rectificar lo que esté mal."
+  },
+  "PRI-054": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 69,
+    "va": "Demanar que les esborrem.",
+    "es": "Pedir que los borremos."
+  },
+  "PRI-055": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 70,
+    "va": "Oposar-te al tractament o demanar que el limitem.",
+    "es": "Oponerte al tratamiento o pedir que lo limitemos."
+  },
+  "PRI-056": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 71,
+    "va": "Retirar el consentiment que vas donar, sense que això afecte el que ja s'havia fet abans.",
+    "es": "Retirar el consentimiento que diste, sin que eso afecte a lo que ya se había hecho antes."
+  },
+  "PRI-057": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 72,
+    "va": "Per a exercir-los, escriu-nos a ",
+    "es": "Para ejercerlos, escríbenos a "
+  },
+  "PRI-058": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 74,
+    "va": "Si consideres que no hem fet les coses bé, pots presentar una reclamació davant l'Agència Espanyola de Protecció de Dades (",
+    "es": "Si consideras que no hemos hecho las cosas bien, puedes presentar una reclamación ante la Agencia Española de Protección de Datos ("
+  },
+  "PRI-059": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 75,
+    "va": "Com protegim estes dades",
+    "es": "Cómo protegemos estos datos"
+  },
+  "PRI-060": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 76,
+    "va": "La web es serveix sempre per connexió xifrada (HTTPS). El formulari es comprova al servidor i no només al navegador, i les claus d'accés al sistema on es guarden les fitxes no estan mai dins de la pàgina web: viuen només al servidor. Als registres tècnics no s'escriu mai el contingut del que heu omplit.",
+    "es": "La web se sirve siempre por conexión cifrada (HTTPS). El formulario se comprueba en el servidor y no solo en el navegador, y las claves de acceso al sistema donde se guardan las fichas no están nunca dentro de la página web: viven solo en el servidor. En los registros técnicos no se escribe nunca el contenido de lo que habéis rellenado."
+  },
+  "PRI-061": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 77,
+    "va": "Canvis en esta política",
+    "es": "Cambios en esta política"
+  },
+  "PRI-062": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 78,
+    "va": "Última actualització: ",
+    "es": "Última actualización: "
+  },
+  "COO-001": {
+    "type": "html",
+    "kind": "title",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Política de cookies · Grup Scout Parpalló",
+    "es": null
+  },
+  "COO-002": {
+    "type": "html",
+    "kind": "meta-description",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 1,
+    "va": "Què desa esta web al teu navegador: cap cookie pròpia; Instagram, a l'inici, és l'única excepció de tercers.",
+    "es": null
+  },
+  "COO-003": {
+    "type": "html",
+    "kind": "aria-label",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 4,
+    "va": "Molla de pa",
+    "es": null
+  },
+  "COO-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 8,
+    "va": "Inici",
+    "es": "Inicio"
+  },
+  "COO-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 9,
+    "va": "Política de cookies",
+    "es": "Política de cookies"
+  },
+  "COO-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 10,
+    "va": "Política de cookies",
+    "es": "Política de cookies"
+  },
+  "COO-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 11,
+    "va": "Què desa esta web al teu navegador i què no.",
+    "es": "Qué guarda esta web en tu navegador y qué no."
+  },
+  "COO-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 12,
+    "va": "Esta pàgina explica què desa esta web al teu navegador. La resposta curta és: pràcticament res.",
+    "es": "Esta página explica qué guarda esta web en tu navegador. La respuesta corta es: prácticamente nada."
+  },
+  "COO-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 13,
+    "va": "Què és una cookie",
+    "es": "Qué es una cookie"
+  },
+  "COO-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 14,
+    "va": "Una cookie és un fitxeret que una web deixa al teu navegador per a recordar alguna cosa entre visites. N'hi ha de tècniques, imprescindibles per a que la web funcione, i n'hi ha d'altres que serveixen per a mesurar el que fas o per a mostrar-te publicitat.",
+    "es": "Una cookie es un ficherito que una web deja en tu navegador para recordar algo entre visitas. Las hay técnicas, imprescindibles para que la web funcione, y las hay que sirven para medir lo que haces o para mostrarte publicidad."
+  },
+  "COO-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "Quines cookies fa servir esta web",
+    "es": "Qué cookies usa esta web"
+  },
+  "COO-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "Cap de pròpia. Esta web no instal·la cap cookie pròpia ni fa servir cap eina d'analítica, de mesura d'audiència ni de publicitat. L'única excepció és Instagram, que expliquem més avall: en carregar-se pot instal·lar les seues pròpies cookies.",
+    "es": "Ninguna propia. Esta web no instala ninguna cookie propia ni usa ninguna herramienta de analítica, de medición de audiencia ni de publicidad. La única excepción es Instagram, que explicamos más abajo: al cargarse puede instalar sus propias cookies."
+  },
+  "COO-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "L'única cosa que desem al teu navegador és l'idioma que tries amb el botó de dalt (valencià o castellà), perquè no l'hages de tornar a triar en cada pàgina. Es guarda amb el nom «parpallo-lang», es queda al teu dispositiu, no viatja a cap servidor i no serveix per a identificar-te.",
+    "es": "Lo único que guardamos en tu navegador es el idioma que eliges con el botón de arriba (valenciano o castellano), para que no lo tengas que volver a elegir en cada página. Se guarda con el nombre «parpallo-lang», se queda en tu dispositivo, no viaja a ningún servidor y no sirve para identificarte."
+  },
+  "COO-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "Recursos que es carreguen de fora",
+    "es": "Recursos que se cargan de fuera"
+  },
+  "COO-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "Les tipografies d'esta web es carreguen des de Google Fonts. Això vol dir que, en obrir qualsevol pàgina, el teu navegador demana eixos fitxers als servidors de Google i, en fer-ho, li arriba la teua adreça IP. No hi ha cookies pel mig, però és una connexió a un tercer i preferim contar-ho.",
+    "es": "Las tipografías de esta web se cargan desde Google Fonts. Eso significa que, al abrir cualquier página, tu navegador pide esos ficheros a los servidores de Google y, al hacerlo, le llega tu dirección IP. No hay cookies de por medio, pero es una conexión a un tercero y preferimos contarlo."
+  },
+  "COO-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 21,
+    "va": "Google Maps a la pàgina de la Cova",
+    "es": "Google Maps en la página de la Cueva"
+  },
+  "COO-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 22,
+    "va": "A la pàgina de La Cova hi ha un mapa que enllaça amb Google Maps. <strong>Per defecte no es carrega res de Google.</strong> Només quan prems el botó «Mostra el mapa», el mapa es carrega des dels servidors de Google, que en eixe moment reben la teua adreça IP i poden instal·lar cookies pròpies. Fins que no prems, no ix cap petició a Google.",
+    "es": "En la página de La Cueva hay un mapa que enlaza con Google Maps. <strong>Por defecto no se carga nada de Google.</strong> Solo cuando pulsas el botón «Mostrar el mapa», el mapa se carga desde los servidores de Google, que en ese momento reciben tu dirección IP y pueden instalar cookies propias. Hasta que no pulsas, no sale ninguna petición a Google."
+  },
+  "COO-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 23,
+    "va": "Google és una empresa dels Estats Units. Al carregar el mapa acceptes eixa transferència. Si prefereixes no fer-ho, tens l'adreça i el nom del paratge en text a la mateixa pàgina.",
+    "es": "Google es una empresa de los Estados Unidos. Al cargar el mapa aceptas esa transferencia. Si prefieres no hacerlo, tienes la dirección y el nombre del paraje en texto en la misma página."
+  },
+  "COO-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 24,
+    "va": "Instagram a la pàgina d'inici",
+    "es": "Instagram en la página de inicio"
+  },
+  "COO-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 25,
+    "va": "A l'inici mostrem algunes de les nostres publicacions d'Instagram amb el reproductor oficial d'Instagram. Este es carrega sempre en obrir la pàgina d'inici, igual que les tipografies de Google Fonts: el teu navegador demana el contingut als servidors d'Instagram (Meta), que reben la teua adreça IP i poden instal·lar les seues pròpies cookies.",
+    "es": "En el inicio mostramos algunas de nuestras publicaciones de Instagram con el reproductor oficial de Instagram. Este se carga siempre al abrir la página de inicio, igual que las tipografías de Google Fonts: tu navegador pide el contenido a los servidores de Instagram (Meta), que reciben tu dirección IP y pueden instalar sus propias cookies."
+  },
+  "COO-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 26,
+    "va": "Instagram (Meta Platforms) és una empresa dels Estats Units. Si prefereixes no carregar-ho, pots visitar el nostre perfil directament a ",
+    "es": "Instagram (Meta Platforms) es una empresa de los Estados Unidos. Si prefieres no cargarlo, puedes visitar nuestro perfil directamente en "
+  },
+  "COO-022": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 27,
+    "va": "I el formulari?",
+    "es": "¿Y el formulario?"
+  },
+  "COO-023": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "El formulari de sol·licitud de plaça no fa servir cookies. El que hi escrius s'envia només quan li dones al botó, i el que passa després s'explica a la ",
+    "es": "El formulario de solicitud de plaza no usa cookies. Lo que escribes en él se envía solo cuando le das al botón, y lo que pasa después se explica en la "
+  },
+  "COO-024": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 29,
+    "va": "política de privacitat",
+    "es": "política de privacidad"
+  },
+  "COO-025": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 30,
+    "va": "Com esborrar el que s'ha guardat",
+    "es": "Cómo borrar lo que se ha guardado"
+  },
+  "COO-026": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 31,
+    "va": "Pots esborrar l'idioma guardat en qualsevol moment des de les opcions del teu navegador, on diga esborrar dades de navegació o dades de llocs web. Si ho fas, la web tornarà a mostrar-se en valencià, que és l'idioma per defecte.",
+    "es": "Puedes borrar el idioma guardado en cualquier momento desde las opciones de tu navegador, donde diga borrar datos de navegación o datos de sitios web. Si lo haces, la web volverá a mostrarse en valenciano, que es el idioma por defecto."
+  },
+  "COO-027": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 32,
+    "va": "Canvis en esta política",
+    "es": "Cambios en esta política"
+  },
+  "COO-028": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 33,
+    "va": "Si algun dia afegim alguna eina de mesura o qualsevol cosa que instal·le cookies, actualitzarem esta pàgina abans d'activar-la. Última actualització: ",
+    "es": "Si algún día añadimos alguna herramienta de medición o cualquier cosa que instale cookies, actualizaremos esta página antes de activarla. Última actualización: "
+  },
+  "JUR-001": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 15,
+    "va": "[PENDENT: nom jurídic complet del titular de la web]",
+    "es": "[PENDIENTE: nombre jurídico completo del titular de la web]"
+  },
+  "JUR-002": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "[PENDENT: NIF del titular]",
+    "es": "[PENDIENTE: NIF del titular]"
+  },
+  "JUR-003": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 18,
+    "va": "[PENDENT: domicili a efectes de notificacions]",
+    "es": "[PENDIENTE: domicilio a efectos de notificaciones]"
+  },
+  "JUR-004": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "[PENDENT: registre d'associacions i número d'inscripció, si escau]",
+    "es": "[PENDIENTE: registro de asociaciones y número de inscripción, si procede]"
+  },
+  "JUR-005": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 28,
+    "va": "[PENDENT: de qui són els textos i les fotografies i amb quina autorització es publiquen, especialment si hi apareixen menors]",
+    "es": "[PENDIENTE: de quién son los textos y las fotografías y con qué autorización se publican, especialmente si aparecen menores]"
+  },
+  "JUR-006": {
+    "type": "html",
+    "kind": "pair",
+    "file": "avis-legal.html",
+    "region": "body",
+    "occurrenceIndex": 35,
+    "va": "[PENDENT: legislació aplicable i jurisdicció competent en cas de conflicte]",
+    "es": "[PENDIENTE: legislación aplicable y jurisdicción competente en caso de conflicto]"
+  },
+  "JUR-007": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 16,
+    "va": "[PENDENT: nom jurídic complet de l'entitat responsable]",
+    "es": "[PENDIENTE: nombre jurídico completo de la entidad responsable]"
+  },
+  "JUR-008": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 17,
+    "va": "[PENDENT: NIF de l'entitat]",
+    "es": "[PENDIENTE: NIF de la entidad]"
+  },
+  "JUR-009": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 19,
+    "va": "[PENDENT: domicili social a efectes de notificacions]",
+    "es": "[PENDIENTE: domicilio social a efectos de notificaciones]"
+  },
+  "JUR-010": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 39,
+    "va": "[PENDENT: base legal aplicable segons l'art. 6 del RGPD per a cada un dels dos formularis i, per a les dades de salut de la sol·licitud de plaça, l'excepció aplicable de l'art. 9]",
+    "es": "[PENDIENTE: base legal aplicable según el art. 6 del RGPD para cada uno de los dos formularios y, para los datos de salud de la solicitud de plaza, la excepción aplicable del art. 9]"
+  },
+  "JUR-011": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 43,
+    "va": "[PENDENT: edat mínima i criteri de consentiment aplicable als menors]",
+    "es": "[PENDIENTE: edad mínima y criterio de consentimiento aplicable a los menores]"
+  },
+  "JUR-012": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 46,
+    "va": "[PENDENT: quines persones del grup tenen accés a les fitxes i com es controla eixe accés]",
+    "es": "[PENDIENTE: qué personas del grupo tienen acceso a las fichas y cómo se controla ese acceso]"
+  },
+  "JUR-013": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 50,
+    "va": "[PENDENT: termini de conservació d'una sol·licitud que no acaba en alta]",
+    "es": "[PENDIENTE: plazo de conservación de una solicitud que no acaba en alta]"
+  },
+  "JUR-014": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 52,
+    "va": "[PENDENT: termini de conservació de les dades una vegada la persona és membre del grup]",
+    "es": "[PENDIENTE: plazo de conservación de los datos una vez la persona es miembro del grupo]"
+  },
+  "JUR-015": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 54,
+    "va": "[PENDENT: termini de conservació d'una reserva, ja s'arreplegue o no]",
+    "es": "[PENDIENTE: plazo de conservación de una reserva, se recoja o no]"
+  },
+  "JUR-016": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 58,
+    "va": "[PENDENT: confirmar el contracte d'encarregat del tractament amb Google (Workspace) i les garanties de transferència internacional]",
+    "es": "[PENDIENTE: confirmar el contrato de encargado del tratamiento con Google (Workspace) y las garantías de transferencia internacional]"
+  },
+  "JUR-017": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 60,
+    "va": "[PENDENT: proveïdor de hosting, quan estiga decidit, i el seu contracte d'encarregat]",
+    "es": "[PENDIENTE: proveedor de hosting, cuando esté decidido, y su contrato de encargado]"
+  },
+  "JUR-018": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 73,
+    "va": "[PENDENT: termini de resposta i procediment intern per a atendre estes sol·licituds]",
+    "es": "[PENDIENTE: plazo de respuesta y procedimiento interno para atender estas solicitudes]"
+  },
+  "JUR-019": {
+    "type": "html",
+    "kind": "pair",
+    "file": "privacitat.html",
+    "region": "body",
+    "occurrenceIndex": 79,
+    "va": "[PENDENT: data de publicació d'esta versió]",
+    "es": "[PENDIENTE: fecha de publicación de esta versión]"
+  },
+  "JUR-020": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 20,
+    "va": "[PENDENT: decidir si es mantenen les tipografies a Google Fonts o s'allotgen al propi servidor per a evitar eixa connexió]",
+    "es": "[PENDIENTE: decidir si se mantienen las tipografías en Google Fonts o se alojan en el propio servidor para evitar esa conexión]"
+  },
+  "JUR-021": {
+    "type": "html",
+    "kind": "pair",
+    "file": "cookies.html",
+    "region": "body",
+    "occurrenceIndex": 34,
+    "va": "[PENDENT: data de publicació d'esta versió]",
+    "es": "[PENDIENTE: fecha de publicación de esta versión]"
+  },
+  "SYS-001": {
+    "type": "js",
+    "file": "form.js",
+    "key": "enviant",
+    "va": "Enviant…",
+    "es": "Enviando…"
+  },
+  "SYS-002": {
+    "type": "js",
+    "file": "form.js",
+    "key": "xarxa",
+    "va": "No hem pogut connectar. Comprova la connexió i torna a provar; les teues dades segueixen ací.",
+    "es": "No hemos podido conectar. Comprueba la conexión e inténtalo de nuevo; tus datos siguen aquí."
+  },
+  "SYS-003": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "nom",
+    "va": "Falta el nom del xiquet o xiqueta.",
+    "es": "Falta el nombre del niño o niña."
+  },
+  "SYS-004": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "cognoms",
+    "va": "Falten els cognoms.",
+    "es": "Faltan los apellidos."
+  },
+  "SYS-005": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "naixement",
+    "va": "La data de naixement no és vàlida.",
+    "es": "La fecha de nacimiento no es válida."
+  },
+  "SYS-006": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "seccio",
+    "va": "Eixa secció no existix.",
+    "es": "Esa sección no existe."
+  },
+  "SYS-007": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "notes",
+    "va": "El text és massa llarg.",
+    "es": "El texto es demasiado largo."
+  },
+  "SYS-008": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "tutor",
+    "va": "Falta el nom de la mare, pare o tutor/a.",
+    "es": "Falta el nombre de la madre, padre o tutor/a."
+  },
+  "SYS-009": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "telefon",
+    "va": "El telèfon no és vàlid.",
+    "es": "El teléfono no es válido."
+  },
+  "SYS-010": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "email",
+    "va": "L'email no és vàlid.",
+    "es": "El email no es válido."
+  },
+  "SYS-011": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "conegut",
+    "va": "El text és massa llarg.",
+    "es": "El texto es demasiado largo."
+  },
+  "SYS-012": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "dades",
+    "va": "Cal acceptar la política de protecció de dades.",
+    "es": "Hay que aceptar la política de protección de datos."
+  },
+  "SYS-013": {
+    "type": "js",
+    "file": "api/_lib/validate.js",
+    "key": "contacte",
+    "va": "Cal acceptar que us contactem.",
+    "es": "Hay que aceptar que os contactemos."
+  },
+  "SYS-014": {
+    "type": "js",
+    "file": "api/_lib/handler.js",
+    "key": "ok",
+    "va": "Rebut! Ens posarem en contacte amb tu per a parlar-ho amb calma.",
+    "es": "¡Recibido! Nos pondremos en contacto contigo para hablarlo con calma."
+  },
+  "SYS-015": {
+    "type": "js",
+    "file": "api/_lib/handler.js",
+    "key": "invalid",
+    "va": "Revisa les dades marcades i torna a provar.",
+    "es": "Revisa los datos marcados e inténtalo de nuevo."
+  },
+  "SYS-016": {
+    "type": "js",
+    "file": "api/_lib/handler.js",
+    "key": "rate",
+    "va": "Has enviat massa sol·licituds seguides. Prova d'ací a una estona o escriu-nos per correu.",
+    "es": "Has enviado demasiadas solicitudes seguidas. Inténtalo dentro de un rato o escríbenos por correo."
+  },
+  "SYS-017": {
+    "type": "js",
+    "file": "api/_lib/handler.js",
+    "key": "server",
+    "va": "No hem pogut registrar la sol·licitud. Les teues dades segueixen ací: torna a provar o escriu-nos a gsparpallo@scoutsvalencians.org.",
+    "es": "No hemos podido registrar la solicitud. Tus datos siguen aquí: inténtalo de nuevo o escríbenos a gsparpallo@scoutsvalencians.org."
+  },
+  "SYS-018": {
+    "type": "js",
+    "file": "api/_lib/handler.js",
+    "key": "method",
+    "va": "Mètode no permès.",
+    "es": "Método no permitido."
+  },
+  "SYS-019": {
+    "type": "js-literal",
+    "file": "api/_lib/handler.js",
+    "pattern": "tornar-volver",
+    "va": "Tornar / Volver",
+    "es": null
+  },
+  "SYS-020": {
+    "type": "js",
+    "file": "merch.js",
+    "key": "enviant",
+    "va": "Enviant…",
+    "es": "Enviando…"
+  },
+  "SYS-021": {
+    "type": "js",
+    "file": "merch.js",
+    "key": "xarxa",
+    "va": "No hem pogut connectar. Comprova la connexió i torna a provar; el que has triat segueix ací.",
+    "es": "No hemos podido conectar. Comprueba la conexión e inténtalo de nuevo; lo que has elegido sigue aquí."
+  },
+  "SYS-022": {
+    "type": "js",
+    "file": "merch.js",
+    "key": "buit",
+    "va": "Encara no has triat res.",
+    "es": "Todavía no has elegido nada."
+  },
+  "SYS-023": {
+    "type": "js",
+    "file": "merch.js",
+    "key": "article",
+    "va": "article",
+    "es": "artículo"
+  },
+  "SYS-024": {
+    "type": "js",
+    "file": "merch.js",
+    "key": "articles",
+    "va": "articles",
+    "es": "artículos"
+  },
+  "SYS-025": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "nom",
+    "va": "Falta el teu nom.",
+    "es": "Falta tu nombre."
+  },
+  "SYS-026": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "cognoms",
+    "va": "Falten els cognoms.",
+    "es": "Faltan los apellidos."
+  },
+  "SYS-027": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "telefon",
+    "va": "El telèfon no és vàlid.",
+    "es": "El teléfono no es válido."
+  },
+  "SYS-028": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "email",
+    "va": "L'email no és vàlid.",
+    "es": "El email no es válido."
+  },
+  "SYS-029": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "notes",
+    "va": "El text és massa llarg.",
+    "es": "El texto es demasiado largo."
+  },
+  "SYS-030": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "articles",
+    "va": "Tria almenys un article abans d'enviar la reserva.",
+    "es": "Elige al menos un artículo antes de enviar la reserva."
+  },
+  "SYS-031": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "articlesInvalids",
+    "va": "Hi ha algun article que no és de la botiga. Torna a provar.",
+    "es": "Hay algún artículo que no es de la tienda. Inténtalo de nuevo."
+  },
+  "SYS-032": {
+    "type": "js",
+    "file": "api/_lib/reserva.js",
+    "key": "dades",
+    "va": "Cal acceptar la política de protecció de dades.",
+    "es": "Hay que aceptar la política de protección de datos."
+  },
+  "SYS-033": {
+    "type": "js",
+    "file": "api/_lib/handler-reserva.js",
+    "key": "ok",
+    "va": "Reserva rebuda! Et confirmarem la disponibilitat i quedem un dissabte per a arreplegar-ho.",
+    "es": "¡Reserva recibida! Te confirmaremos la disponibilidad y quedamos un sábado para recogerlo."
+  },
+  "SYS-034": {
+    "type": "js",
+    "file": "api/_lib/handler-reserva.js",
+    "key": "invalid",
+    "va": "Revisa les dades marcades i torna a provar.",
+    "es": "Revisa los datos marcados e inténtalo de nuevo."
+  },
+  "SYS-035": {
+    "type": "js",
+    "file": "api/_lib/handler-reserva.js",
+    "key": "rate",
+    "va": "Has enviat massa reserves seguides. Prova d'ací a una estona o escriu-nos per correu.",
+    "es": "Has enviado demasiadas reservas seguidas. Inténtalo dentro de un rato o escríbenos por correo."
+  },
+  "SYS-036": {
+    "type": "js",
+    "file": "api/_lib/handler-reserva.js",
+    "key": "server",
+    "va": "No hem pogut registrar la reserva. Torna a provar o escriu-nos a gsparpallo@scoutsvalencians.org.",
+    "es": "No hemos podido registrar la reserva. Inténtalo de nuevo o escríbenos a gsparpallo@scoutsvalencians.org."
+  },
+  "SYS-037": {
+    "type": "js",
+    "file": "api/_lib/handler-reserva.js",
+    "key": "method",
+    "va": "Mètode no permès.",
+    "es": "Método no permitido."
+  }
+}

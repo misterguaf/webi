@@ -18,12 +18,13 @@ styles.css, script.js          estils i JS compartits de tot el lloc
 form.css, form.js              NOMÉS el formulari d'alta (afegits, no substituïxen res)
 api/_lib/validate.js           validació de servidor + filtre anti-spam
 api/_lib/ratelimit.js          límit de peticions
-api/_lib/notion.js             escriptura a l'API de Notion
+api/_lib/sheets.js             escriptura a Google Sheets via Apps Script
 api/_lib/handler.js            nucli de l'endpoint, independent de la plataforma
 api/alta.js                    adaptador Vercel
 netlify/functions/alta.js      adaptador Netlify
 worker.js                      adaptador Cloudflare Workers
 scripts/dev.js                 servidor local de proves
+scripts/google-apps-script.gs  script per a enganxar al projecte d'Apps Script
 test/alta.test.js              proves automàtiques
 ```
 
@@ -38,42 +39,59 @@ opcions la ruta pública és la mateixa: `POST /api/alta`.
 
 | Variable | Obligatòria | Què és |
 |---|---|---|
-| `NOTION_TOKEN` | Sí | Token de la integració interna de Notion. Es crea a <https://www.notion.so/my-integrations>. |
-| `NOTION_DATABASE_ID` | Sí | ID (32 caràcters) de la base de dades on s'escriuen les sol·licituds. |
+| `SHEETS_WEBHOOK_URL` | Sí | URL del desplegament d'Apps Script que escriu a la Google Sheet. Es genera un sol cop en desplegar el script (vegeu la secció de sota). |
+| `SHEETS_SHARED_SECRET` | Sí | Cadena llarga i aleatòria. Ha de coincidir amb la propietat `SHARED_SECRET` guardada dins del projecte d'Apps Script. Sense secret ningú extern pot escriure a la fulla, encara que descobrisca la URL. |
 | `ALLOWED_ORIGIN` | Recomanada | Domini públic del lloc, sense barra final. Rebutja els enviaments que vinguen d'un altre origen. Buit = no es comprova. |
 
 `.env.example` té la plantilla. Per a proves locals, copia'l a `.env`.
 
 **El `.env` real no es puja mai al repositori** (està al `.gitignore`). En
 producció els valors es configuren al panell del hosting, mai en un fitxer del
-repositori. La clau de Notion no apareix en cap moment a l'HTML ni al JS que
-rep el navegador: només l'usa la funció de servidor.
-
-Dona a la integració de Notion accés **només** a la base de dades d'altes, a
-cap altra pàgina del workspace.
+repositori. Ni la URL ni el secret apareixen en cap moment a l'HTML ni al JS
+que rep el navegador: només els usa la funció de servidor.
 
 ---
 
-## La base de dades de Notion
+## La Google Sheet i el seu Apps Script
 
-Ha de tindre estes propietats, amb estos noms exactes (accents inclosos). Si
-en canvies algun a Notion, canvia'l també a `PROPS` dins de `api/_lib/notion.js`.
+Tot el flux és:
 
-| Propietat | Tipus |
-|---|---|
-| `Nom` | Title |
-| `Cognoms` | Text |
-| `Data de naixement` | Date |
-| `Secció` | Select — opcions: `Manada (8-11)`, `Tropa (11-14)`, `Escoltes (14-17)`, `Clan Ontos (17-21)` |
-| `Notes` | Text |
-| `Tutor/a` | Text |
-| `Telèfon` | Phone |
-| `Email` | Email |
-| `Com ens ha conegut` | Text |
-| `Estat` | Select — ha d'incloure l'opció `Nova` |
+```
+Formulari (fersescout.html) → /api/alta (funció serverless)
+    → Apps Script (dins del compte de Google propietari de la fulla)
+    → una fila nova a la fulla "Sol·licituds"
+```
 
-Les opcions de `Secció` són una llista tancada també al servidor: no s'hi pot
-colar cap valor arbitrari.
+No usem l'API oficial de Google Sheets a propòsit: exigeix un compte de
+servei amb una clau JSON, cosa desproporcionada per a este cas d'ús.
+Amb Apps Script tota l'autorització queda dins del compte Google que és
+propietari de la fulla; nosaltres només guardem una URL i un secret.
+
+**Passos per a preparar-ho (una sola vegada):**
+
+1. Crea la Google Sheet on vols veure les sol·licituds. No cal preparar
+   capçaleres: el script les crea la primera vegada.
+2. A la Sheet: menú **Extensions → Apps Script**.
+3. Esborra l'exemple que apareix i enganxa **tot** `scripts/google-apps-script.gs`.
+4. Menú de l'engranatge (**Configuració del projecte**) → **Propietats de l'script**
+   → afig una propietat amb nom `SHARED_SECRET` i valor una cadena llarga i
+   aleatòria (32+ caràcters).
+5. **Desplega → Nou desplegament → Tipus: Aplicació web**.
+   - *Executar com*: **Jo** (el teu compte)
+   - *Qui té accés*: **Qualsevol**
+6. Autoritza els permisos que demane i copia la **URL de l'aplicació web**.
+7. Al panell del hosting posa:
+   - `SHEETS_WEBHOOK_URL` = eixa URL
+   - `SHEETS_SHARED_SECRET` = el mateix valor que has posat a `SHARED_SECRET`
+
+**Si edites el script més endavant:** ves a *Desplega → Gestiona desplegaments*
+→ edita el desplegament existent (llapis) → *Versió: Nova* → *Desplega*. Així
+la URL no canvia. Si crees un desplegament nou en compte d'editar l'existent,
+la URL canvia i has d'actualitzar `SHEETS_WEBHOOK_URL` al hosting.
+
+**Les seccions vàlides** (`Manada (8-11)`, `Tropa (11-14)`, `Escoltes (14-17)`,
+`Clan Ontos (17-21)`) són una llista tancada al servidor: no s'hi pot colar
+cap valor arbitrari.
 
 ---
 
@@ -83,12 +101,12 @@ colar cap valor arbitrari.
 node scripts/dev.js --fals
 ```
 
-Obri <http://localhost:4000/fersescout.html>. En mode `--fals` Notion està
-simulat: pots provar tot el circuit (validació, errors, missatges, lector de
-pantalla) **sense crear cap fitxa real ni tractar dades de ningú**. És el mode
-recomanat per a provar.
+Obri <http://localhost:4000/fersescout.html>. En mode `--fals` Google Sheets
+està simulat: pots provar tot el circuit (validació, errors, missatges, lector
+de pantalla) **sense crear cap fila real ni tractar dades de ningú**. És el
+mode recomanat per a provar.
 
-Sense `--fals` llig el `.env` i escriu a Notion de veritat.
+Sense `--fals` llig el `.env` i escriu a la Google Sheet de veritat.
 
 Proves automàtiques:
 
@@ -108,7 +126,7 @@ gestionat; cal a més activar la redirecció de HTTP a HTTPS i deixar-la activad
 ### Vercel
 
 1. Importa el repositori. No cal cap comanda de build: el lloc és estàtic.
-2. *Settings → Environment Variables*: afig `NOTION_TOKEN`, `NOTION_DATABASE_ID` i `ALLOWED_ORIGIN`.
+2. *Settings → Environment Variables*: afig `SHEETS_WEBHOOK_URL`, `SHEETS_SHARED_SECRET` i `ALLOWED_ORIGIN`.
 3. Desplega. L'endpoint queda a `/api/alta`.
 
 ### Netlify
@@ -124,7 +142,8 @@ gestionat; cal a més activar la redirecció de HTTP a HTTPS i deixar-la activad
 3. Els secrets es carreguen una sola vegada, no van al repositori:
 
 ```bash
-npx wrangler secret put NOTION_TOKEN
+npx wrangler secret put SHEETS_WEBHOOK_URL
+npx wrangler secret put SHEETS_SHARED_SECRET
 ```
 
 4. `ALLOWED_ORIGIN` es pot deixar a `[vars]` del `wrangler.toml` (no és secret).
@@ -143,8 +162,8 @@ npx wrangler secret put NOTION_TOKEN
    del hosting.
 5. Validació completa al servidor. El `required` de l'HTML no compta: qualsevol
    pot enviar un POST saltant-se el navegador.
-6. Escriptura a Notion. Si falla, la família rep un missatge clar i **no perd
-   res del que ha escrit**.
+6. Escriptura a Google Sheets (via l'Apps Script). Si falla, la família rep
+   un missatge clar i **no perd res del que ha escrit**.
 
 Als registres del servidor no s'escriu mai el contingut dels camps: només
 quins camps han fallat la validació. Les respostes amb dades personals van amb
@@ -194,4 +213,4 @@ Si algun dia es vol veure o gestionar les sol·licituds des de la mateixa web,
 necessita autenticació de veritat (usuaris, contrasenyes ben guardades, sessions,
 tancament de sessió), no una URL secreta ni un formulari amb una contrasenya
 única al codi. Mentre no hi haja eixa conversa, la manera segura de consultar les
-fitxes és entrar a Notion amb el compte de cadascú.
+fitxes és obrir la Google Sheet amb el compte de Google de cadascú.

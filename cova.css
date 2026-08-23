@@ -1,0 +1,211 @@
+/* Grup Scout Parpalló — mode presentació per a "La Cova del Parpalló".
+ *
+ * Les 4 primeres escenes van com diapositives amb cross-fade dins d'un
+ * "escenari" sticky. L'escena final NO forma part de la presentació: apareix
+ * amb scroll natural després, i el text i el mapa entren proporcionals al
+ * scroll (variable CSS --pres, l'omple cova.js).
+ *
+ * Fitxer a banda i càrrega només a cova.html: styles.css NO es toca. Les
+ * regles d'ací afigen la classe `.pres` a `.cova-immersio` per a guanyar
+ * especificitat i sobreescriure sense `!important`.
+ */
+
+.cova-immersio.pres { position: relative; }
+
+/* Contenidor de la presentació: dins seu, l'escenari sticky té 4 × 100vh de
+   marge per a moure's, un per cada diapositiva. */
+.cova-immersio.pres .pres-wrap {
+  position: relative;
+  height: 400vh;
+}
+
+/* L'escenari es queda pegat al viewport mentres passen les diapositives. */
+.cova-immersio.pres .escenari {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+/* Dins de l'escenari totes les escenes ocupen el mateix hueco (absolute inset 0)
+   i el cross-fade decidix quina es veu. Escoltes de la presentació,
+   la final s'exclou explícitament: està fora del escenari, però la regla
+   :not() protegix per si algun dia canviara el DOM. */
+.cova-immersio.pres .escenari .escena {
+  position: absolute;
+  inset: 0;
+  min-height: 0;
+  height: 100%;
+  margin: 0;
+  transition: opacity 1s cubic-bezier(.4,0,.2,1);
+  opacity: 0;
+}
+.cova-immersio.pres .escenari .escena.on { opacity: 1; }
+
+/* El zoom lent del fons perd sentit en mode presentació. */
+.js .cova-immersio.pres .escenari .foto { transform: none; transition: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  .cova-immersio.pres .escenari .escena { transition: none; }
+}
+
+/* Crumb sempre visible i clicable durant la presentació. cova.js el mou al
+   escenari sticky, i ací se li posa un z-index per damunt de les escenes. */
+.cova-immersio.pres .escenari > .crumb {
+  z-index: 5;
+  pointer-events: auto;
+}
+
+/* Escena de la cérvola gravada (penúltima en el DOM del escenari): el text
+   puja al capdamunt i la silueta ocre baixa a l'angle inferior dret.
+   Com que la final ja no és germana del escenari, la cérvola és la última
+   (:last-child) dins del escenari. */
+.cova-immersio.pres .escenari .escena:last-child {
+  align-items: flex-start;
+  padding-top: 12vh;
+}
+.cova-immersio.pres .escenari .escena:last-child .txt {
+  position: static;
+  max-width: 34ch;
+  text-align: center;
+}
+.cova-immersio.pres .escenari .escena:last-child .cervola-big {
+  position: absolute;
+  right: 5%;
+  bottom: 6%;
+  width: min(28%, 170px);
+  margin: 0;
+}
+
+/* -------------------------------------------------------------------------
+   Escena final: NO és una diapositiva. És una secció normal que apareix amb
+   scroll natural sota de la presentació.
+   El text i el mapa entren en funció d'una variable CSS --pres (0 → 1) que
+   cova.js actualitza segons la posició de la escena en el viewport, així la
+   animació és sedosa mentres el scroll continua avançant.
+   ------------------------------------------------------------------------- */
+.cova-immersio.pres .escena-final {
+  position: relative;
+  inset: auto;
+  min-height: 100vh;
+  height: auto;
+  opacity: 1;
+  transition: none;
+  display: flex;
+  align-items: center;
+  padding: 8vh 1.2rem;
+  --pres: 0;
+}
+
+/* La imatge (o el rètol de pendent) segueix ocupant tot el fons de la escena. */
+.cova-immersio.pres .escena-final .foto {
+  position: absolute;
+  inset: 0;
+  background: #2a1f14 center/cover no-repeat;
+}
+.cova-immersio.pres .escena-final .foto::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(10,8,5,.4), rgba(10,8,5,.8));
+}
+
+/* Text: puja des d'un desplaçament cap a la dreta fins a la posició final,
+   proporcional al scroll. calc((1 - --pres) × 28px) → 28px quan encara no ha
+   entrat i 0px quan la variable arriba a 1. */
+.cova-immersio.pres .escena-final .txt {
+  position: relative;
+  z-index: 1;
+  max-width: 24ch;
+  opacity: var(--pres);
+  transform: translateX(calc((1 - var(--pres)) * 28px));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cova-immersio.pres .escena-final .txt { opacity: 1; transform: none; }
+}
+
+/* Mapa "click-to-load" */
+.cova-immersio.pres .escena-final .mapa {
+  height: min(50vh, 300px);
+  background: rgba(0,0,0,.28);
+  border: 1.5px solid var(--ocre);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.mapa-prev {
+  position: relative;
+  width: 100%; height: 100%;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .7rem; padding: 1rem;
+  text-align: center;
+}
+.mapa-prev svg {
+  position: absolute; inset: 8%;
+  width: auto; height: auto; max-width: 84%; max-height: 84%;
+  opacity: .55;
+}
+.mapa-carrega {
+  position: relative; z-index: 1;
+  font-family: inherit; font-weight: 700; font-size: .95rem;
+  color: var(--negre); background: var(--ocre-clar);
+  border: 2px solid var(--ocre); border-radius: 8px 6px 9px 5px;
+  padding: .7em 1.2em;
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease;
+}
+.mapa-carrega:hover, .mapa-carrega:focus-visible {
+  background: var(--ocre);
+  transform: translateY(-1px);
+  outline: 3px solid var(--ocre-clar);
+  outline-offset: 3px;
+}
+.mapa-avis {
+  position: relative; z-index: 1;
+  font-size: .78rem; line-height: 1.4;
+  color: var(--calcaria-3);
+  max-width: 30ch; margin: 0;
+}
+.cova-immersio.pres .escena-final .mapa.mapa-obert { background: transparent; }
+.cova-immersio.pres .escena-final .mapa iframe {
+  width: 100%; height: 100%; border: 0; display: block;
+}
+
+/* Layout desktop: text a l'esquerra, mapa a la dreta. En mòbil el text va
+   centrat i el mapa desapareix (no cap al costat). */
+@media (min-width: 720px) {
+  .cova-immersio.pres .escena-final {
+    padding: 8vh 6vw;
+  }
+  .cova-immersio.pres .escena-final .txt {
+    position: absolute;
+    left: 7%;
+    top: 48%;
+    max-width: 40%;
+    text-align: left;
+    /* Sobreescriu la transformació per a compondre X + Y (centrat vertical). */
+    transform: translate(calc((1 - var(--pres)) * 28px), -50%);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cova-immersio.pres .escena-final .txt { transform: translate(0, -50%); }
+  }
+
+  .cova-immersio.pres .escena-final .mapa {
+    position: absolute;
+    right: 6%;
+    top: 55%;
+    width: min(34%, 340px);
+    color: var(--ocre-clar);
+    opacity: var(--pres);
+    transform: translate(calc((1 - var(--pres)) * 40px), -50%);
+    transition: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .cova-immersio.pres .escena-final .mapa { opacity: 1; transform: translate(0, -50%); }
+  }
+}
+
+@media (max-width: 719.98px) {
+  .cova-immersio.pres .escena-final .mapa { display: none; }
+}

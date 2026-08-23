@@ -10,8 +10,12 @@
   -webkit-mask:url("img/cierva.png") center/contain no-repeat;
   mask:url("img/cierva.png") center/contain no-repeat}
 :root{
+  /* escala unificada de verds */
+  --verd-nit:#1F3529;    /* fons profund, seccions fosques, footer */
   --verd:#2C4636;        /* Verd Pañoleta  — marca */
-  --verd-fosc:#20342A;
+  --verd-fulla:#3E6B4A;  /* verd clar, acent, secció Tropa */
+  --verd-boira:#6A8571;  /* verd grisós, hints */
+
   --roig:#A93A2C;        /* Roig Pañoleta  — acció */
   --roig-fosc:#8C2E22;
   --ocre:#C0862F;        /* Ocre Parpalló  — el traç */
@@ -20,12 +24,10 @@
   --calcaria:#E6E0D2;    /* Calcària       — fons */
   --calcaria-2:#EFEADF;  /* plaqueta clara */
   --calcaria-3:#DBD3C2;  /* vora de pedra  */
-  --cova:#37312A;        /* Cova           — fons fosc 2 */
 
   /* colors PROVISIONALS de secció (model estàndard — per confirmar) */
-  --s-castors:#B4632B;
   --s-manada:#C79A2E;
-  --s-tropa:#3E6B4A;
+  --s-tropa:var(--verd-fulla);
   --s-escoltes:#9C3B30;
   --s-clan:#6B3550;
 
@@ -39,7 +41,10 @@ html{scroll-behavior:smooth}
 
 body{
   margin:0;
-  background:var(--verd);
+  /* un sol descens de verd per tota la pàgina: de la pañoleta cap a la cova */
+  background:var(--verd-nit);
+  background-image:linear-gradient(180deg,var(--verd) 0%,var(--verd-nit) 100%);
+  background-repeat:no-repeat;
   color:var(--calcaria);
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   font-size:clamp(1.02rem,0.98rem + 0.3vw,1.14rem);
@@ -78,10 +83,11 @@ a:hover,a:focus-visible{
 .wrap{max-width:var(--max);margin-inline:auto;padding-inline:clamp(1.1rem,4vw,2.2rem)}
 section{padding-block:var(--pas)}
 
-/* ---- el traç: divisor incís reutilitzable ---- */
-.ratlla{height:26px;margin:0;border:0;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='26' viewBox='0 0 160 26'%3E%3Cg fill='none' stroke='%23C9463A' stroke-width='2.8' stroke-linecap='round'%3E%3Cpath d='M8 22 Q11 7 10 4'/%3E%3Cpath d='M26 23 Q27 8 31 5'/%3E%3Cpath d='M45 21 Q49 8 46 4'/%3E%3Cpath d='M65 23 Q65 7 68 5'/%3E%3Cpath d='M86 22 Q90 7 86 4'/%3E%3Cpath d='M106 23 Q106 8 109 5'/%3E%3Cpath d='M126 21 Q130 7 127 4'/%3E%3Cpath d='M148 23 Q148 8 151 5'/%3E%3C/g%3E%3C/svg%3E");
-  background-repeat:repeat-x;background-position:center;background-size:auto 26px;opacity:.9}
+/* ---- el traç: divisor amb "sempre a punt" en morse ---- */
+/* codi morse: ...  .  --  .--.  .-.  .   /   .-   /   .--.  ..-  -.  -  */
+.ratlla{height:24px;margin:0;border:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='424' height='24' viewBox='0 0 424 24'%3E%3Cg fill='%23C9463A'%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='20' cy='12' r='2'/%3E%3Ccircle cx='28' cy='12' r='2'/%3E%3Ccircle cx='44' cy='12' r='2'/%3E%3Crect x='58' y='10' width='12' height='4' rx='2'/%3E%3Crect x='74' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='100' cy='12' r='2'/%3E%3Crect x='106' y='10' width='12' height='4' rx='2'/%3E%3Crect x='122' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='140' cy='12' r='2'/%3E%3Ccircle cx='156' cy='12' r='2'/%3E%3Crect x='162' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='180' cy='12' r='2'/%3E%3Ccircle cx='196' cy='12' r='2'/%3E%3Ccircle cx='228' cy='12' r='2'/%3E%3Crect x='234' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='276' cy='12' r='2'/%3E%3Crect x='282' y='10' width='12' height='4' rx='2'/%3E%3Crect x='298' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='316' cy='12' r='2'/%3E%3Ccircle cx='332' cy='12' r='2'/%3E%3Ccircle cx='340' cy='12' r='2'/%3E%3Crect x='346' y='10' width='12' height='4' rx='2'/%3E%3Crect x='370' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='388' cy='12' r='2'/%3E%3Crect x='402' y='10' width='12' height='4' rx='2'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;background-size:min(100%,424px) auto;opacity:.9}
 
 /* ---- botons ---- */
 .btn{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:1.02rem;white-space:nowrap;
@@ -96,7 +102,11 @@ section{padding-block:var(--pas)}
 .skip{position:absolute;left:-999px;top:0;background:var(--verd);color:#fff;padding:.7em 1em;z-index:99;border-radius:0 0 8px 0}
 .skip:focus{left:0}
 header.top{position:sticky;top:0;z-index:40;background:var(--calcaria);
-  border-bottom:2px solid var(--roig)}
+  border-bottom:2px solid var(--roig);
+  transform:translateY(-100%);opacity:0;pointer-events:none;
+  transition:transform .35s cubic-bezier(.2,.7,.2,1),opacity .3s ease,box-shadow .3s ease}
+header.top.revelat{transform:none;opacity:1;pointer-events:auto}
+@media (prefers-reduced-motion:reduce){header.top{transition:none}}
 .top .wrap{display:flex;align-items:center;gap:.55rem;padding-block:.6rem}
 @media (max-width:520px){.brand small{display:none}.top .btn-alta{padding:.55em .75em;font-size:.86rem}}
 .brand{display:flex;align-items:center;gap:.55rem;font-family:"Cinzel",serif;font-weight:700;
@@ -127,6 +137,9 @@ nav.inline a{color:var(--negre);font-weight:600;font-size:.98rem}
 .fact{display:flex;gap:.7rem;align-items:baseline;padding:.35rem 0}
 .fact b{font-family:"Bricolage Grotesque",sans-serif;color:var(--ocre-clar);font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;min-width:5.5rem;flex:none}
 .pend{background:color-mix(in srgb,var(--ocre) 22%,var(--calcaria));border-bottom:2px dashed var(--ocre);
+  /* El fons del marcador és clar. Sense color propi heretava el text clar del
+     cos i sobre les seccions fosques quedava invisible (contrast 1.19:1). */
+  color:var(--negre);
   padding:0 .25em;border-radius:3px;font-weight:600;white-space:nowrap}
 .hero-art{position:relative;min-height:230px;display:flex;align-items:center;justify-content:center}
 .hero-art .cervola{width:min(78%,320px);color:var(--verd);opacity:.92}
@@ -143,10 +156,15 @@ nav.inline a{color:var(--negre);font-weight:600;font-size:.98rem}
 }
 
 /* ---- portada: nom + cérvola darrere, verd i roig ---- */
+/* fons en degradat: cel profund (verd-nit) → terra pañoleta (verd),
+   perquè quan acabe la portada empalme sense salt amb el body */
 .portada{position:relative;min-height:100svh;display:grid;place-items:center;text-align:center;
-  background:var(--verd);color:var(--calcaria);overflow:hidden;padding:14vh 1.2rem 8vh}
-.portada::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.09;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E")}
+  background:transparent;color:var(--calcaria);overflow:hidden;padding:14vh 1.2rem 8vh}
+/* la portada ja no porta gra propi: el de body::before la travessa i,
+   si en posàvem un altre a sobre, es veia un escaló on començava i acabava */
+.portada-photo{position:absolute;inset:0;
+  background-image:linear-gradient(180deg,rgba(12,20,15,.72) 0%,rgba(12,20,15,.48) 45%,rgba(12,20,15,.88) 100%),url("img/historia-portada.webp");
+  background-size:cover;background-position:center 30%}
 .portada-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
 .portada-art svg{width:min(128%,980px);color:var(--ocre);opacity:.28}
 .portada-art img{width:min(122%,940px);height:auto;object-fit:contain;opacity:.55}
@@ -182,11 +200,15 @@ nav.inline a{color:var(--negre);font-weight:600;font-size:.98rem}
 .fed-strip img{width:min(210px,62%);height:auto;border-radius:6px;display:block}
 
 /* ---- blocs foscos ---- */
-.dark{background:var(--verd);color:var(--calcaria-2)}
+/* les bandes fosques comencen amb un fos suau des de --verd fins a --verd-nit,
+   perquè no hi haja un tall recte quan es passa d'una secció clara a una fosca */
+/* les bandes "fosques" no pinten cap fons: el degradat del body ja
+   fa la feina, i així no hi ha cap costura enlloc. Només canvien el text. */
+.dark{background:transparent;color:var(--calcaria-2)}
 .dark h2,.dark h3{color:#fff}
 .dark .ocre{color:var(--ocre-clar)}
 .dark a{color:var(--ocre-clar)}
-.cova-bg{background:var(--verd);color:var(--calcaria-2)}
+.cova-bg{background:transparent;color:var(--calcaria-2)}
 .cova-bg h2{color:#fff}
 
 /* ---- "en un minut" ---- */
@@ -205,7 +227,7 @@ nav.inline a{color:var(--negre);font-weight:600;font-size:.98rem}
 .plaqueta .edat{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--sc,var(--verd));font-size:.9rem}
 .plaqueta h3{margin:.1rem 0 .35rem;color:var(--negre)}
 .plaqueta p{font-size:.98rem;margin:0 0 .7rem}
-.castors{--sc:var(--s-castors)} .manada{--sc:var(--s-manada)} .tropa{--sc:var(--s-tropa)}
+.manada{--sc:var(--s-manada)} .tropa{--sc:var(--s-tropa)}
 .escoltes{--sc:var(--s-escoltes)} .clan{--sc:var(--s-clan)}
 .selfloc{font-family:"Caveat",cursive;font-size:1.4rem;color:var(--ocre-clar);transform:rotate(-1.5deg);margin-top:.6rem}
 /* targeta de secció com a enllaç a la seua pàgina */
@@ -256,7 +278,8 @@ a.plaqueta:hover .entrar .arr,a.plaqueta:focus-visible .entrar .arr{transform:tr
 .full p{margin:0 0 .7rem}
 .full .foto-scrap{aspect-ratio:4/3;background:var(--calcaria-3);border:7px solid #fff;box-shadow:0 5px 14px rgba(0,0,0,.18);
   transform:rotate(-1.6deg);display:flex;align-items:flex-end;justify-content:center;padding:.6rem;margin:.9rem 0 1.1rem;
-  font-family:"Caveat",cursive;color:var(--verd);font-size:1.15rem;text-align:center}
+  font-family:"Caveat",cursive;color:var(--verd);font-size:1.15rem;text-align:center;overflow:hidden}
+.full .foto-scrap img{width:100%;height:100%;object-fit:cover;display:block;padding:0}
 .full .nota{font-family:"Caveat",cursive;font-size:1.35rem;color:var(--verd);transform:rotate(-1deg);margin:.4rem 0 0}
 .full .retall{margin:.6rem 0 0;background:#ece5d6;border:1px dashed #b7ab92;padding:1rem 1.1rem;
   font-family:Georgia,"Times New Roman",serif;font-size:1.12rem;line-height:1.4;color:#2a2620;
@@ -269,7 +292,7 @@ a.plaqueta:hover .entrar .arr,a.plaqueta:focus-visible .entrar .arr{transform:tr
 .js .quadern-nav{margin-top:1rem}
 .qbtn{background:transparent;border:2px solid var(--ocre-clar);color:var(--ocre-clar);border-radius:9px;
   padding:.5em .9em;font-family:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
-.qbtn:hover:not(:disabled),.qbtn:focus-visible{background:var(--ocre-clar);color:var(--cova);background-image:none}
+.qbtn:hover:not(:disabled),.qbtn:focus-visible{background:var(--ocre-clar);color:var(--verd-nit);background-image:none}
 .qbtn:disabled{opacity:.35;cursor:default}
 .dots{display:flex;gap:.55rem}
 .dots button{width:12px;height:12px;border-radius:50%;border:2px solid var(--ocre-clar);background:transparent;cursor:pointer;padding:0}
@@ -282,19 +305,19 @@ a.plaqueta:hover .entrar .arr,a.plaqueta:focus-visible .entrar .arr{transform:tr
 }
 
 /* ---- la cova: banda teaser (home) ---- */
-.cova-teaser{background:var(--verd);color:#fff;position:relative;overflow:hidden;text-align:center}
+.cova-teaser{background:transparent;color:#fff;position:relative;overflow:hidden;text-align:center}
 .cova-teaser .cervola-big{width:min(38%,140px);color:var(--ocre-clar);margin:0 auto 1rem;display:block}
 .cova-teaser .kick{font-family:"Caveat",cursive;font-size:1.6rem;color:var(--ocre-clar);margin:0 0 .3rem}
 .cova-teaser h2{color:#fff}
 .cova-teaser p{margin:0 auto 1.4rem;color:var(--calcaria-3);max-width:46ch}
 .cova-teaser .btn-ghost{color:#fff;border-color:var(--ocre-clar)}
-.cova-teaser .btn-ghost:hover,.cova-teaser .btn-ghost:focus-visible{background:var(--ocre-clar);color:#141009}
+.cova-teaser .btn-ghost:hover,.cova-teaser .btn-ghost:focus-visible{background:var(--ocre-clar);color:var(--verd-nit)}
 
 /* ---- la cova: immersió estil Apple (pàgina cova.html) ---- */
-.cova-immersio{background:#141009;color:#fff;position:relative}
+.cova-immersio{background:var(--verd-nit);color:#fff;position:relative}
 .cova-immersio .escena{position:relative;min-height:100svh;display:flex;align-items:center;justify-content:center;
   padding:clamp(1.5rem,6vw,4rem);text-align:center;overflow:hidden}
-.cova-immersio .foto{position:absolute;inset:0;z-index:0;background:#1b150d center/cover no-repeat}
+.cova-immersio .foto{position:absolute;inset:0;z-index:0;background:#2a1f14 center/cover no-repeat}
 .cova-immersio .foto::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,8,5,.35),rgba(10,8,5,.8))}
 .cova-immersio .foto::after{content:attr(data-label);position:absolute;bottom:1.1rem;left:0;right:0;text-align:center;
   font-family:"Caveat",cursive;font-size:1.25rem;color:rgba(214,162,78,.65)}
@@ -350,7 +373,7 @@ a.plaqueta:hover .entrar .arr,a.plaqueta:focus-visible .entrar .arr{transform:tr
 
 /* ---- alta ---- */
 .passos{display:grid;gap:1rem;grid-template-columns:1fr;margin:1.4rem 0}
-.pas{display:flex;gap:.9rem;align-items:flex-start;background:color-mix(in srgb,var(--verd) 84%,#000);
+.pas{display:flex;gap:.9rem;align-items:flex-start;background:color-mix(in srgb,var(--verd-nit) 88%,#000);
   border-radius:12px;padding:1rem 1.1rem}
 .pas .n{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1.5rem;color:var(--ocre-clar);flex:none;line-height:1}
 .pas p{margin:0;color:var(--calcaria-2)}
@@ -394,13 +417,15 @@ form.alta legend{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;co
 @media (min-width:680px){.galeria{grid-template-columns:repeat(4,1fr)}}
 
 /* ---- peu ---- */
-footer{background:var(--verd);color:var(--calcaria-2)}
+footer{background:transparent;color:var(--calcaria-2)}
 footer .wrap{padding-block:var(--pas)}
 footer a{color:var(--ocre-clar)}
 .foot-grid{display:grid;gap:1.6rem;grid-template-columns:1fr}
 .foot-grid h3{color:#fff}
 .contacte a{display:block;margin-bottom:.4rem}
 .made{font-family:"Caveat",cursive;font-size:1.3rem;color:var(--ocre-clar);margin-top:1.4rem}
+/* el morse tanca la pàgina, just abans de la línia legal */
+footer .ratlla{margin:2.4rem 0 1.6rem;opacity:.75}
 .legal{font-size:.82rem;opacity:.7;margin-top:1.4rem;display:flex;flex-wrap:wrap;gap:.4rem 1rem}
 .legal a{opacity:.85}
 @media (min-width:720px){.foot-grid{grid-template-columns:1.3fr 1fr 1fr}}
@@ -415,8 +440,7 @@ footer a{color:var(--ocre-clar)}
 main section[id]{scroll-margin-top:88px}
 .progress-bar{position:fixed;top:0;left:0;height:3px;width:0;background:var(--roig);z-index:60;pointer-events:none;
   transition:width .08s linear}
-header.top{transition:box-shadow .3s ease}
-header.top.scrolled{box-shadow:0 8px 26px rgba(18,14,8,.22)}
+header.top.revelat{box-shadow:0 8px 26px rgba(18,14,8,.22)}
 .to-top{position:fixed;right:1.1rem;bottom:1.1rem;z-index:55;width:64px;height:64px;
   border:0;background:transparent;padding:0;cursor:pointer;
   background-image:url("img/cierva-parche.png");background-size:contain;
@@ -435,3 +459,25 @@ a.plaqueta:hover .glyph,a.plaqueta:focus-visible .glyph{scale:1.06}
   .reveal.in{opacity:1;translate:0 0}
 }
 
+
+/* ---- notícies (home) ---- */
+.noticies-llista{display:grid;gap:1.1rem;grid-template-columns:1fr;margin:1.4rem 0 1.2rem}
+.noticia{background:color-mix(in srgb,#fff 7%,transparent);
+  border:1px solid color-mix(in srgb,var(--ocre-clar) 28%,transparent);
+  border-left:6px solid var(--ocre-clar);border-radius:14px 8px 16px 10px;padding:1.1rem 1.2rem}
+.noticia .data{font-family:"Caveat",cursive;font-size:1.2rem;color:var(--ocre-clar);margin:0 0 .2rem}
+.noticia h3{color:#fff;margin:0 0 .4rem}
+.noticia p{margin:0;color:var(--calcaria-2);font-size:1rem}
+@media (min-width:760px){.noticies-llista{grid-template-columns:1fr 1fr}}
+
+.ig-header{margin-top:2.2rem}
+.ig-header h3{color:#fff;margin:.1rem 0 0}
+.ig-wrap{margin:1rem auto 1.2rem;max-width:540px}
+/* Abans que embed.js el transforme en la graella real del perfil, el
+   blockquote es veu com un enllaç de reserva senzill. */
+.instagram-media{background:color-mix(in srgb,#fff 7%,transparent);
+  border:1px dashed color-mix(in srgb,var(--ocre-clar) 45%,transparent);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  min-height:8rem;padding:1.4rem 1.2rem;margin:0;width:100%!important}
+.instagram-media a{color:var(--ocre-clar);text-decoration:none;font-family:"Caveat",cursive;font-size:1.15rem}
+.instagram-media a:hover,.instagram-media a:focus-visible{text-decoration:underline}

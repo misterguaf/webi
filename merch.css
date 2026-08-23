@@ -1,0 +1,95 @@
+/* Grup Scout Parpalló — botiga del grup (merchandising.html).
+ *
+ * Fitxer a banda, com form.css i legal.css: styles.css no es toca.
+ * El disseny és el de les plaquetes de seccions (targeta de calcària amb
+ * cantonades irregulars) més el selector de quantitat i la barra de total.
+ */
+
+/* Les seccions del catàleg volen tot l'ample del .wrap (1120px) per a poder
+   posar tres productes en fila. Per això NO fan servir .sec-content, que
+   limita l'ample a 760px per a que un text llarg siga còmode de llegir. */
+.merch-seccio{padding-block:var(--pas)}
+.merch-seccio + .merch-seccio{padding-top:0}
+
+/* Targeta clara del bloc de dades. És l'equivalent de form.alta de styles.css,
+   però com a div: ací el <form> embolcalla tota la pàgina, no només estes
+   dades, i no volem que tot el catàleg herete el fons i el topall d'ample. */
+.fitxa-dades{background:var(--calcaria-2);color:var(--negre);border:2px solid var(--calcaria-3);
+  border-radius:16px;padding:clamp(1.1rem,3vw,2rem);max-width:720px}
+.fitxa-dades fieldset{border:0;border-top:2px solid var(--calcaria-3);margin:0 0 1.4rem;padding:1.2rem 0 0}
+.fitxa-dades fieldset:last-of-type{margin-bottom:0}
+.fitxa-dades legend{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--verd);font-size:1.15rem;padding:0}
+
+/* ---- graella de productes ---- */
+.merch-grid{display:grid;gap:1.2rem;grid-template-columns:1fr;margin:1.4rem 0 0}
+@media(min-width:620px){.merch-grid{grid-template-columns:1fr 1fr}}
+@media(min-width:920px){.merch-grid{grid-template-columns:repeat(3,1fr)}}
+
+.prod{position:relative;background:var(--calcaria-2);color:var(--negre);
+  border:2px solid var(--calcaria-3);border-radius:16px 10px 18px 12px;
+  padding:0 0 1rem;display:flex;flex-direction:column;overflow:hidden}
+/* Quan té unitats triades es marca amb el roig de l'acció, per a que es veja
+   d'un colp d'ull què s'ha posat a la reserva. */
+.prod.te-unitats{border-color:var(--roig);box-shadow:0 0 0 3px color-mix(in srgb,var(--roig) 22%,transparent)}
+
+.prod .foto{aspect-ratio:4/3;background:#fff;display:block;overflow:hidden;border-bottom:1px solid var(--calcaria-3)}
+.prod .foto img{width:100%;height:100%;object-fit:contain;display:block;padding:.6rem}
+
+.prod .cos{padding:.85rem 1.05rem 0;display:flex;flex-direction:column;flex:1}
+.prod h3{margin:0 0 .3rem;color:var(--negre);font-size:1.1rem;line-height:1.25;padding-right:3.6rem}
+.prod .desc{font-size:.94rem;margin:0 0 .9rem;color:#4a4136}
+
+.preu{position:absolute;top:.7rem;right:.7rem;background:var(--roig);color:#fff;
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1rem;
+  padding:.28em .7em;border-radius:999px;box-shadow:0 2px 0 var(--roig-fosc)}
+
+/* ---- selector de quantitat ---- */
+.qt{margin-top:auto;display:flex;align-items:center;gap:.45rem}
+.qt .et{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;font-size:.86rem;
+  text-transform:uppercase;letter-spacing:.05em;color:var(--verd);margin-right:auto}
+.qt button{width:36px;height:36px;border-radius:9px;border:2px solid var(--verd);
+  background:transparent;color:var(--verd);font-weight:800;font-size:1.15rem;line-height:1;
+  cursor:pointer;flex:none}
+.qt button:hover,.qt button:focus-visible{background:var(--verd);color:var(--calcaria-2)}
+.qt input{width:52px;height:36px;text-align:center;border:2px solid var(--calcaria-3);
+  border-radius:9px;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;
+  font-size:1rem;background:#fff;color:var(--negre)}
+/* Les fletxetes natives del number no fan falta: ja hi ha els botons. */
+.qt input::-webkit-outer-spin-button,.qt input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.qt input[type=number]{-moz-appearance:textfield}
+
+/* ---- barra de total ---- */
+.resum{position:sticky;bottom:0;z-index:5;margin-top:1.6rem;
+  background:var(--verd-nit);color:#fff;border:2px solid var(--ocre);
+  border-radius:14px;padding:.95rem 1.2rem;
+  display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;
+  box-shadow:0 10px 26px rgba(0,0,0,.28)}
+.resum .compte{font-family:"Caveat",cursive;font-size:1.5rem;color:var(--ocre-clar);line-height:1.2}
+.resum .compte b{font-family:"Bricolage Grotesque",sans-serif;font-size:1.15rem;color:#fff;font-weight:800}
+/* Sense res triat la barra no crida l'atenció ni convida a enviar-la buida. */
+.resum.buida{opacity:.75}
+.resum.buida .btn-alta{pointer-events:none;opacity:.5}
+
+/* ---- resum de la comanda dins del formulari ---- */
+.comanda{background:color-mix(in srgb,#fff 7%,transparent);
+  border:1px solid color-mix(in srgb,var(--ocre-clar) 30%,transparent);
+  border-radius:12px;padding:1rem 1.15rem;margin:0 0 1.3rem}
+.comanda h3{color:#fff;margin:0 0 .6rem;font-size:1.05rem}
+.comanda ul{list-style:none;margin:0;padding:0}
+.comanda li{display:flex;justify-content:space-between;gap:1rem;padding:.3rem 0;
+  border-bottom:1px dashed color-mix(in srgb,var(--ocre-clar) 25%,transparent);
+  color:var(--calcaria-2);font-size:.98rem}
+.comanda li:last-child{border-bottom:0}
+.comanda li .imp{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--ocre-clar);white-space:nowrap}
+.comanda .cap-res{display:flex;justify-content:space-between;gap:1rem;margin-top:.7rem;
+  padding-top:.7rem;border-top:2px solid color-mix(in srgb,var(--ocre-clar) 45%,transparent);
+  font-family:"Bricolage Grotesque",sans-serif;font-weight:800;color:#fff}
+.comanda .buit{color:var(--calcaria-3);font-style:italic;font-size:.96rem;margin:0}
+
+/* ---- avisos ---- */
+.merch-nota{font-family:"Caveat",cursive;font-size:1.2rem;color:var(--ocre-clar);margin:.2rem 0 0}
+
+/* Sense JavaScript no hi ha barra de total ni suma en viu: s'amaguen les
+   parts que menten i el formulari natiu segueix funcionant igual. */
+html:not(.js) .resum,
+html:not(.js) .comanda .cap-res{display:none}

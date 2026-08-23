@@ -89,19 +89,37 @@
   });
 
   // ===== experiència premium =====
-  // barra de progrés + botó "tornar a dalt" (parche del grup) + elevació de la capçalera
+  // barra de progrés + botó "tornar a dalt" (parche del grup) + capçalera revelada
   var pbar=document.createElement("div"); pbar.className="progress-bar"; document.body.appendChild(pbar);
   var totop=document.createElement("button"); totop.className="to-top"; totop.type="button";
   totop.setAttribute("aria-label","Torna a dalt");
   document.body.appendChild(totop);
   totop.addEventListener("click",function(){ window.scrollTo({top:0,behavior:"smooth"}); });
   var hdr=document.querySelector("header.top");
+  var portada=document.querySelector(".portada, .cova-immersio .escena-intro");
+
+  // la capçalera només apareix quan la primera "pàgina" (portada) surt de la vista
+  if(hdr){
+    if(portada && "IntersectionObserver" in window){
+      var hio=new IntersectionObserver(function(entries){
+        entries.forEach(function(e){ hdr.classList.toggle("revelat", !e.isIntersecting); });
+      },{threshold:.15});
+      hio.observe(portada);
+    } else {
+      // pàgines sense portada de pantalla completa: apareix a partir de 40px
+      var onHdr=function(){
+        var s=window.pageYOffset||document.documentElement.scrollTop||0;
+        hdr.classList.toggle("revelat", s>40);
+      };
+      window.addEventListener("scroll",onHdr,{passive:true});
+      onHdr();
+    }
+  }
 
   function onScroll(){
     var st=window.pageYOffset||document.documentElement.scrollTop||0;
     var max=document.documentElement.scrollHeight-window.innerHeight;
     pbar.style.width=(max>0?(st/max*100):0)+"%";
-    if(hdr) hdr.classList.toggle("scrolled", st>8);
     totop.classList.toggle("show", st>window.innerHeight*0.6);
   }
   window.addEventListener("scroll",onScroll,{passive:true});

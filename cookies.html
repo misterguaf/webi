@@ -4,7 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Política de cookies · Grup Scout Parpalló</title>
-<meta name="description" content="Què desa esta web al teu navegador: ara mateix, cap cookie pròpia ni de tercers.">
+<meta name="description" content="Què desa esta web al teu navegador: cap cookie pròpia; Instagram, a l'inici, és l'única excepció de tercers.">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/favicon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
@@ -39,6 +41,7 @@
       <a href="index.html#seccions"><span class="va">Seccions</span><span class="es">Secciones</span></a>
       <a href="index.html#noticies"><span class="va">Not&#237;cies</span><span class="es">Noticias</span></a>
       <a href="cova.html"><span class="va">La Cova</span><span class="es">La Cueva</span></a>
+      <a href="merchandising.html"><span class="va">Botiga</span><span class="es">Tienda</span></a>
       <a href="index.html#historia"><span class="va">Història</span><span class="es">Historia</span></a>
     </nav>
     <button class="lang" id="lang-toggle" type="button" aria-label="Canvia a castellà"><span class="lbl">cas</span></button>
@@ -51,9 +54,11 @@
   DECISIONS QUE HA DE CONFIRMAR EL GRUP ABANS DE PUBLICAR
   ============================================================================
   1. El que diu esta pàgina és, ara mateix, cert i comprovable al codi: la web
-     NO instal·la cap cookie, ni pròpia ni de tercers. L'única cosa que desa al
-     navegador és l'idioma triat (localStorage "parpallo-lang", vegeu
-     script.js), que és emmagatzematge tècnic imprescindible.
+     NO instal·la cap cookie pròpia. L'única cosa que desa al navegador per si
+     mateixa és l'idioma triat (localStorage "parpallo-lang", vegeu script.js),
+     que és emmagatzematge tècnic imprescindible. L'ÚNICA excepció és
+     l'incrustament d'Instagram a l'inici (#noticies): es carrega sempre, sense
+     botó, i pot instal·lar cookies de tercers d'Instagram/Meta.
 
   2. GOOGLE FONTS. Les tipografies es carreguen des de servidors de Google, la
      qual cosa li fa arribar l'adreça IP de qui visita la web. Decisió a
@@ -67,8 +72,11 @@
      d'activar cap eina de mesura sense passar primer per ací.
 
   4. Confirmar amb assessorament si, tal com està la web hui, cal o no cal
-     banner de cookies. Amb el que hi ha ara no s'instal·la res que en
-     necessite, però la decisió final és del grup.
+     banner de cookies. IMPORTANT: des que s'ha afegit l'incrustament
+     d'Instagram a l'inici (que es carrega sempre, no rere un botó), açò ja
+     NO és tan clar com quan només hi havia Google Fonts — Instagram sí pot
+     instal·lar cookies de tercers per defecte. Cal revisar-ho abans de
+     publicar; la decisió final és del grup.
   ============================================================================
 -->
 <main id="main">
@@ -87,12 +95,20 @@
     <p><span class="va">Una cookie és un fitxeret que una web deixa al teu navegador per a recordar alguna cosa entre visites. N'hi ha de tècniques, imprescindibles per a que la web funcione, i n'hi ha d'altres que serveixen per a mesurar el que fas o per a mostrar-te publicitat.</span><span class="es">Una cookie es un ficherito que una web deja en tu navegador para recordar algo entre visitas. Las hay técnicas, imprescindibles para que la web funcione, y las hay que sirven para medir lo que haces o para mostrarte publicidad.</span></p>
 
     <h2><span class="va">Quines cookies fa servir esta web</span><span class="es">Qué cookies usa esta web</span></h2>
-    <p><span class="va">Cap. Esta web no instal·la cookies pròpies ni de tercers, i no fa servir cap eina d'analítica, de mesura d'audiència ni de publicitat.</span><span class="es">Ninguna. Esta web no instala cookies propias ni de terceros, y no usa ninguna herramienta de analítica, de medición de audiencia ni de publicidad.</span></p>
+    <p><span class="va">Cap de pròpia. Esta web no instal·la cap cookie pròpia ni fa servir cap eina d'analítica, de mesura d'audiència ni de publicitat. L'única excepció és Instagram, que expliquem més avall: en carregar-se pot instal·lar les seues pròpies cookies.</span><span class="es">Ninguna propia. Esta web no instala ninguna cookie propia ni usa ninguna herramienta de analítica, de medición de audiencia ni de publicidad. La única excepción es Instagram, que explicamos más abajo: al cargarse puede instalar sus propias cookies.</span></p>
     <p><span class="va">L'única cosa que desem al teu navegador és l'idioma que tries amb el botó de dalt (valencià o castellà), perquè no l'hages de tornar a triar en cada pàgina. Es guarda amb el nom «parpallo-lang», es queda al teu dispositiu, no viatja a cap servidor i no serveix per a identificar-te.</span><span class="es">Lo único que guardamos en tu navegador es el idioma que eliges con el botón de arriba (valenciano o castellano), para que no lo tengas que volver a elegir en cada página. Se guarda con el nombre «parpallo-lang», se queda en tu dispositivo, no viaja a ningún servidor y no sirve para identificarte.</span></p>
 
     <h2><span class="va">Recursos que es carreguen de fora</span><span class="es">Recursos que se cargan de fuera</span></h2>
     <p><span class="va">Les tipografies d'esta web es carreguen des de Google Fonts. Això vol dir que, en obrir qualsevol pàgina, el teu navegador demana eixos fitxers als servidors de Google i, en fer-ho, li arriba la teua adreça IP. No hi ha cookies pel mig, però és una connexió a un tercer i preferim contar-ho.</span><span class="es">Las tipografías de esta web se cargan desde Google Fonts. Eso significa que, al abrir cualquier página, tu navegador pide esos ficheros a los servidores de Google y, al hacerlo, le llega tu dirección IP. No hay cookies de por medio, pero es una conexión a un tercero y preferimos contarlo.</span></p>
     <p><span class="legal-pend"><span class="va">[PENDENT: decidir si es mantenen les tipografies a Google Fonts o s'allotgen al propi servidor per a evitar eixa connexió]</span><span class="es">[PENDIENTE: decidir si se mantienen las tipografías en Google Fonts o se alojan en el propio servidor para evitar esa conexión]</span></span></p>
+
+    <h2><span class="va">Google Maps a la pàgina de la Cova</span><span class="es">Google Maps en la página de la Cueva</span></h2>
+    <p><span class="va">A la pàgina de La Cova hi ha un mapa que enllaça amb Google Maps. <strong>Per defecte no es carrega res de Google.</strong> Només quan prems el botó «Mostra el mapa», el mapa es carrega des dels servidors de Google, que en eixe moment reben la teua adreça IP i poden instal·lar cookies pròpies. Fins que no prems, no ix cap petició a Google.</span><span class="es">En la página de La Cueva hay un mapa que enlaza con Google Maps. <strong>Por defecto no se carga nada de Google.</strong> Solo cuando pulsas el botón «Mostrar el mapa», el mapa se carga desde los servidores de Google, que en ese momento reciben tu dirección IP y pueden instalar cookies propias. Hasta que no pulsas, no sale ninguna petición a Google.</span></p>
+    <p><span class="va">Google és una empresa dels Estats Units. Al carregar el mapa acceptes eixa transferència. Si prefereixes no fer-ho, tens l'adreça i el nom del paratge en text a la mateixa pàgina.</span><span class="es">Google es una empresa de los Estados Unidos. Al cargar el mapa aceptas esa transferencia. Si prefieres no hacerlo, tienes la dirección y el nombre del paraje en texto en la misma página.</span></p>
+
+    <h2><span class="va">Instagram a la pàgina d'inici</span><span class="es">Instagram en la página de inicio</span></h2>
+    <p><span class="va">A l'inici mostrem algunes de les nostres publicacions d'Instagram amb el reproductor oficial d'Instagram. Este es carrega sempre en obrir la pàgina d'inici, igual que les tipografies de Google Fonts: el teu navegador demana el contingut als servidors d'Instagram (Meta), que reben la teua adreça IP i poden instal·lar les seues pròpies cookies.</span><span class="es">En el inicio mostramos algunas de nuestras publicaciones de Instagram con el reproductor oficial de Instagram. Este se carga siempre al abrir la página de inicio, igual que las tipografías de Google Fonts: tu navegador pide el contenido a los servidores de Instagram (Meta), que reciben tu dirección IP y pueden instalar sus propias cookies.</span></p>
+    <p><span class="va">Instagram (Meta Platforms) és una empresa dels Estats Units. Si prefereixes no carregar-ho, pots visitar el nostre perfil directament a </span><span class="es">Instagram (Meta Platforms) es una empresa de los Estados Unidos. Si prefieres no cargarlo, puedes visitar nuestro perfil directamente en </span><a href="https://www.instagram.com/grupscoutparpallo" rel="noopener noreferrer" target="_blank">instagram.com/grupscoutparpallo</a>.</p>
 
     <h2><span class="va">I el formulari?</span><span class="es">¿Y el formulario?</span></h2>
     <p><span class="va">El formulari de sol·licitud de plaça no fa servir cookies. El que hi escrius s'envia només quan li dones al botó, i el que passa després s'explica a la </span><span class="es">El formulario de solicitud de plaza no usa cookies. Lo que escribes en él se envía solo cuando le das al botón, y lo que pasa después se explica en la </span><a href="privacitat.html"><span class="va">política de privacitat</span><span class="es">política de privacidad</span></a>.</p>
@@ -119,12 +135,13 @@
       <div class="contacte">
         <h3><span class="va">Contacte</span><span class="es">Contacto</span></h3>
         <a href="mailto:gsparpallo@scoutsvalencians.org">gsparpallo@scoutsvalencians.org</a>
-        <a href="#" data-pend>Instagram</a><a href="#" data-pend>Facebook</a>
+        <a href="https://www.instagram.com/grupscoutparpallo" rel="noopener noreferrer" target="_blank">Instagram</a><a href="#" data-pend>Facebook</a>
       </div>
       <div>
         <h3><span class="va">Anar a…</span><span class="es">Ir a…</span></h3>
         <a href="index.html#seccions"><span class="va">Seccions</span><span class="es">Secciones</span></a>
         <a href="cova.html"><span class="va">La Cova</span><span class="es">La Cueva</span></a>
+        <a href="merchandising.html"><span class="va">Botiga</span><span class="es">Tienda</span></a>
         <a href="fersescout.html"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
       </div>
     </div>

@@ -5,11 +5,18 @@
  * això el nucli les rep sempre com a paràmetre en compte de llegir-les tot sol.
  */
 import { handleAlta } from "./api/_lib/handler.js";
+import { handleReserva } from "./api/_lib/handler-reserva.js";
+
+const RUTES = {
+  "/api/alta": handleAlta,
+  "/api/reserva": handleReserva,
+};
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.pathname !== "/api/alta") {
+    const nucli = RUTES[url.pathname];
+    if (!nucli) {
       return new Response("Not found", { status: 404 });
     }
 
@@ -17,7 +24,7 @@ export default {
     for (const [k, v] of request.headers) headers[k.toLowerCase()] = v;
 
     const rawBody = await request.text();
-    const r = await handleAlta({
+    const r = await nucli({
       method: request.method,
       headers,
       rawBody,

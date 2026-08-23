@@ -4,8 +4,8 @@
 # Cloudflare Pages (o el hosting estàtic que es trie).
 #
 # Els secrets NO es posen ací. Es carreguen una vegada amb:
-#   npx wrangler secret put NOTION_TOKEN
-#   npx wrangler secret put NOTION_DATABASE_ID
+#   npx wrangler secret put SHEETS_WEBHOOK_URL
+#   npx wrangler secret put SHEETS_SHARED_SECRET
 
 name = "parpallo-alta"
 main = "worker.js"

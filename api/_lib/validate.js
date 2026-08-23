@@ -11,10 +11,10 @@
  */
 
 const SECCIONS = [
-  "Manada (8-11)",
+  "Estol (8-11)",
   "Tropa (11-14)",
   "Escoltes (14-17)",
-  "Clan Ontos (17-21)",
+  "Clan (17-21)",
 ];
 
 const LIMITS = {

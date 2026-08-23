@@ -4,17 +4,23 @@
  * Serveix els fitxers estàtics de l'arrel i atén POST /api/alta amb el mateix
  * nucli que s'executarà desplegat, així el que proves ací és el de veritat.
  *
- *   node scripts/dev.js              -> escriu a Notion de veritat (llig .env)
- *   node scripts/dev.js --fals       -> simula Notion, no envia res enlloc
+ *   node scripts/dev.js              -> escriu a Google Sheets de veritat (llig .env)
+ *   node scripts/dev.js --fals       -> simula Sheets, no envia res enlloc
  *
  * El mode --fals permet provar tot el circuit (validació, errors, missatges,
- * lector de pantalla) sense crear cap fitxa real ni tocar dades de menors.
+ * lector de pantalla) sense crear cap fila real ni tocar dades de menors.
  */
 import http from "node:http";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { handleAlta } from "../api/_lib/handler.js";
+import { handleReserva } from "../api/_lib/handler-reserva.js";
+
+const RUTES = {
+  "/api/alta": handleAlta,
+  "/api/reserva": handleReserva,
+};
 
 const ARREL = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const PORT = process.env.PORT || 4000;
@@ -33,15 +39,16 @@ carregaEnv();
 
 if (FALS) {
   const real = globalThis.fetch;
+  const FALSA = "https://script.google.com/macros/s/FALS/exec";
   globalThis.fetch = async (url, opts) => {
-    if (String(url).includes("api.notion.com")) {
-      console.log("  [fals] s'hauria escrit una fitxa a Notion (no s'ha enviat res)");
-      return { ok: true, status: 200, json: async () => ({ id: "fitxa-falsa" }) };
+    if (String(url).startsWith("https://script.google.com/") || String(url) === FALSA) {
+      console.log("  [fals] s'hauria escrit una fila a Google Sheets (no s'ha enviat res)");
+      return { ok: true, status: 200, json: async () => ({ ok: true }) };
     }
     return real(url, opts);
   };
-  process.env.NOTION_TOKEN = process.env.NOTION_TOKEN || "fals";
-  process.env.NOTION_DATABASE_ID = process.env.NOTION_DATABASE_ID || "0".repeat(32);
+  process.env.SHEETS_WEBHOOK_URL = process.env.SHEETS_WEBHOOK_URL || FALSA;
+  process.env.SHEETS_SHARED_SECRET = process.env.SHEETS_SHARED_SECRET || "fals";
 }
 
 const TIPUS = {
@@ -59,11 +66,12 @@ http
   .createServer(async (req, res) => {
     const url = new URL(req.url, "http://localhost");
 
-    if (url.pathname === "/api/alta") {
+    const nucli = RUTES[url.pathname];
+    if (nucli) {
       let cos = "";
       req.on("data", (c) => (cos += c));
       req.on("end", async () => {
-        const r = await handleAlta({
+        const r = await nucli({
           method: req.method,
           headers: req.headers,
           rawBody: cos,
@@ -88,5 +96,5 @@ http
   })
   .listen(PORT, () => {
     console.log(`Parpalló en desenvolupament: http://localhost:${PORT}/fersescout.html`);
-    console.log(FALS ? "Mode FALS: Notion simulat, no s'envia cap dada." : "Notion REAL: les fitxes s'escriuran de veritat.");
+    console.log(FALS ? "Mode FALS: Google Sheets simulat, no s'envia cap dada." : "Google Sheets REAL: les fitxes s'escriuran de veritat.");
   });

@@ -1,5 +1,5 @@
 /* Proves de l'endpoint d'alta. S'executen amb `npm test` (Node 18+).
- * No toquen Notion de veritat: es substituïx `fetch` per un doble de prova.
+ * No toquen Google Sheets de veritat: es substituïx `fetch` per un doble de prova.
  *
  * Les dades d'exemple són inventades i no corresponen a cap persona real.
  */
@@ -14,7 +14,7 @@ const VALID = {
   nom: "Aina",
   cognoms: "Exemple Prova",
   naixement: "2015-04-12",
-  seccio: "Manada (8-11)",
+  seccio: "Estol (8-11)",
   notes: "Al·lèrgia als fruits secs",
   tutor: "Marta Exemple",
   telefon: "600 12 34 56",
@@ -24,16 +24,22 @@ const VALID = {
   contacte: "on",
 };
 
-const ENV = { NOTION_TOKEN: "ntn_fals", NOTION_DATABASE_ID: "0".repeat(32) };
+const ENV = {
+  SHEETS_WEBHOOK_URL: "https://script.google.com/macros/s/AKfals/exec",
+  SHEETS_SHARED_SECRET: "secret-fals",
+};
 
 let peticions = [];
-function mockFetch(resposta = { ok: true, status: 200 }) {
+function mockFetch(resposta = { ok: true, status: 200, body: { ok: true } }) {
   globalThis.fetch = async (url, opts) => {
     peticions.push({ url, opts });
     return {
       ok: resposta.ok,
       status: resposta.status,
-      json: async () => resposta.body || {},
+      json: async () => {
+        if (resposta.throwJson) throw new Error("no és JSON");
+        return resposta.body || {};
+      },
     };
   };
 }
@@ -114,21 +120,22 @@ test("un enviament instantani es considera automàtic", () => {
 
 /* ---------- handler ---------- */
 
-test("un enviament correcte escriu a Notion i confirma", async () => {
+test("un enviament correcte escriu a Sheets i confirma", async () => {
   const r = await post(VALID);
   assert.equal(r.status, 200);
   assert.equal(JSON.parse(r.body).ok, true);
   assert.equal(peticions.length, 1);
-  assert.match(peticions[0].url, /api\.notion\.com/);
+  assert.match(peticions[0].url, /script\.google\.com/);
 });
 
-test("el token de Notion viatja només a Notion, mai a la resposta", async () => {
+test("el secret compartit viatja al webhook, mai a la resposta", async () => {
   const r = await post(VALID);
-  assert.ok(!r.body.includes("ntn_fals"));
-  assert.match(peticions[0].opts.headers.Authorization, /^Bearer ntn_fals$/);
+  assert.ok(!r.body.includes("secret-fals"));
+  const enviat = JSON.parse(peticions[0].opts.body);
+  assert.equal(enviat.secret, "secret-fals");
 });
 
-test("les dades invàlides no arriben mai a Notion", async () => {
+test("les dades invàlides no arriben mai a Sheets", async () => {
   const r = await post({ ...VALID, email: "trencat" });
   assert.equal(r.status, 400);
   assert.ok(JSON.parse(r.body).errors.email);
@@ -139,7 +146,7 @@ test("al bot se li respon que tot va bé, però no s'escriu res", async () => {
   const r = await post({ ...VALID, malnom: "compra-viagra" });
   assert.equal(r.status, 200);
   assert.equal(JSON.parse(r.body).ok, true);
-  assert.equal(peticions.length, 0, "no s'ha d'escriure a Notion");
+  assert.equal(peticions.length, 0, "no s'ha d'escriure a Sheets");
 });
 
 test("només s'accepta POST", async () => {
@@ -166,8 +173,8 @@ test("el límit de peticions atura l'abús des d'una mateixa IP", async () => {
   assert.ok(r.headers["Retry-After"]);
 });
 
-test("si Notion falla, s'avisa la família i no es perd res pel camí", async () => {
-  mockFetch({ ok: false, status: 500, body: { code: "internal_error", message: "boom" } });
+test("si Sheets torna un error, s'avisa la família i no es perd res pel camí", async () => {
+  mockFetch({ ok: true, status: 200, body: { ok: false, error: "boom" } });
   const r = await post(VALID);
   assert.equal(r.status, 502);
   const b = JSON.parse(r.body);
@@ -175,7 +182,14 @@ test("si Notion falla, s'avisa la família i no es perd res pel camí", async ()
   assert.ok(b.message.va.length > 0);
 });
 
-test("sense configuració de Notion no es promet un èxit fals", async () => {
+test("si Sheets respon HTML (script trencat), es tracta com a error", async () => {
+  mockFetch({ ok: true, status: 200, throwJson: true });
+  const r = await post(VALID);
+  assert.equal(r.status, 502);
+  assert.equal(JSON.parse(r.body).ok, false);
+});
+
+test("sense configuració de Sheets no es promet un èxit fals", async () => {
   const r = await post(VALID, { env: {} });
   assert.equal(r.status, 502);
   assert.equal(JSON.parse(r.body).ok, false);

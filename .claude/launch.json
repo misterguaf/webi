@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "parpallo-dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev.js", "--fals"],
+      "port": 4000,
+      "autoPort": true
+    }
+  ]
+}

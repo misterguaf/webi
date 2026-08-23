@@ -5,10 +5,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Grup Scout Parpalló · Gandia</title>
 <meta name="description" content="Escoltisme a Gandia des de 1974. Xiquets i xiquetes de 6 a 21 anys. Els dissabtes de vesprada, a la Safor.">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/favicon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=105">
+
+<!-- Dades estructurades (schema.org). Només s'hi posa informació que ja diu
+     la web: el nom, l'any de fundació, el correu públic del peu, la ciutat i
+     la federació. NO s'hi afig adreça postal ni telèfon perquè encara estan
+     marcats com a pendents al lloc.
+     PENDENT: quan hi haja domini definitiu, afegir-hi "url" i "logo", i
+     l'adreça del local quan estiga confirmada. -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "Grup Scout Parpalló",
+  "description": "Escoltisme a Gandia des de 1974. Xiquets i xiquetes de 6 a 21 anys.",
+  "foundingDate": "1974",
+  "email": "gsparpallo@scoutsvalencians.org",
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Gandia",
+    "addressCountry": "ES"
+  },
+  "memberOf": {
+    "@type": "Organization",
+    "name": "Scouts Valencians — ASDE"
+  }
+}
+</script>
 </head>
 <body>
 
@@ -47,12 +75,13 @@
     <nav class="inline" aria-label="Principal">
       <a href="#seccions"><span class="va">Seccions</span><span class="es">Secciones</span></a>
       <a href="cova.html"><span class="va">La Cova</span><span class="es">La Cueva</span></a>
+      <a href="merchandising.html"><span class="va">Botiga</span><span class="es">Tienda</span></a>
       <a href="#historia"><span class="va">Història</span><span class="es">Historia</span></a>
     </nav>
     <button class="lang" id="lang-toggle" type="button" aria-label="Canvia a castellà">
       <span class="lbl">cas</span>
     </button>
-    <a class="btn btn-alta" href="#alta"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
+    <a class="btn btn-alta" href="fersescout.html"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
   </div>
 </header>
 
@@ -61,6 +90,7 @@
 
 <!-- ===================== PORTADA ===================== -->
 <section class="portada" aria-labelledby="p-title">
+  <div class="portada-photo" aria-hidden="true"></div>
   <div class="portada-art" aria-hidden="true"><img src="img/cierva.png" alt="" onerror="this.style.display='none'"></div>
   <div class="portada-inner">
     <h1 id="p-title">Grup Scout<br>Parpalló</h1>
@@ -70,10 +100,18 @@
   <a class="scroll-cue" href="#comenca"><span class="va">↓ baixa i mira-ho</span><span class="es">↓ baja y míralo</span></a>
 </section>
 
-<!-- ===================== INTRO (comença la informació) ===================== -->
+<!-- ===================== QUI SOM ===================== -->
 <section id="comenca" class="intro" aria-labelledby="h-intro">
   <div class="wrap">
-    <h2 id="h-intro"><span class="va">Els dissabtes de vesprada, ací, a la Safor.</span><span class="es">Los sábados por la tarde, aquí, en La Safor.</span></h2>
+    <p class="eyebrow"><span class="va">Qui som</span><span class="es">Quiénes somos</span></p>
+    <h2 id="h-intro"><span class="va">Un grup scout de Gandia, des de 1974.</span><span class="es">Un grupo scout de Gandia, desde 1974.</span></h2>
+
+    <p class="lede"><span class="va">Un grup scout és molt més que una activitat de dissabte: és un lloc on el teu fill o filla aprendrà a decidir, a cuidar dels altres i a estimar la muntanya, sempre acompanyat per un equip de monitors voluntaris.</span><span class="es">Un grupo scout es mucho más que una actividad de sábado: es un lugar donde tu hijo o hija aprenderá a decidir, a cuidar de los demás y a querer la montaña, siempre acompañado por un equipo de monitores voluntarios.</span></p>
+
+    <p><span class="va">Som un grup d'escoltisme de Gandia, a la Safor. L'escoltisme és un moviment educatiu juvenil, voluntari i sense ànim de lucre, que va nàixer fa més de cent anys i que hui està present en tot el món. Ací el fem a la nostra manera: eixint a la muntanya, jugant i aprenent a decidir entre tots.</span><span class="es">Somos un grupo de escultismo de Gandia, en La Safor. El escultismo es un movimiento educativo juvenil, voluntario y sin ánimo de lucro, que nació hace más de cien años y que hoy está presente en todo el mundo. Aquí lo hacemos a nuestra manera: saliendo al monte, jugando y aprendiendo a decidir entre todos.</span></p>
+
+    <p><span class="va">Ens reunim els dissabtes de vesprada al nostre local i cada estiu pugem de campament. Els monitors som voluntaris i la majoria hem crescut ací dins. Venim de <span class="pend">l'any 1974</span>, quan un grapat de famílies de Gandia va muntar el grup per als seus fills, i encara seguim.</span><span class="es">Nos reunimos los sábados por la tarde en nuestro local y cada verano subimos de campamento. Los monitores somos voluntarios y la mayoría hemos crecido aquí dentro. Venimos de <span class="pend">el año 1974</span>, cuando un puñado de familias de Gandia montó el grupo para sus hijos, y todavía seguimos.</span></p>
+
     <p class="fed-strip"><span class="lbl"><span class="va">Federats en</span><span class="es">Federados en</span></span> <img src="img/asde.webp" alt="ASDE — Scouts Valencians"></p>
   </div>
 </section>
@@ -85,20 +123,12 @@
     <p class="lede"><span class="va">Cada edat té la seua secció, el seu color i el seu animal. Entra en la que li toque al teu fill.</span><span class="es">Cada edad tiene su sección, su color y su animal. Entra en la que le toque a tu hijo.</span></p>
     <div class="grid">
 
-      <a class="plaqueta castors" href="castors.html">
-        <svg class="glyph" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 40 C14 30 20 20 32 20 C44 20 50 30 46 40 C44 46 38 48 32 48 C26 48 20 46 18 40Z"/><path d="M32 20 L32 14"/><path d="M46 42 C54 44 58 50 56 54 C52 52 46 50 44 46"/><path d="M26 34h.02M38 34h.02"/></svg>
-        <p class="edat">6 – 8 <span class="va">anys</span><span class="es">años</span></p>
-        <h3>Castors</h3>
-        <p><span class="va">Els menuts. Descobrixen el món jugant i sempre acompanyats.</span><span class="es">Los peques. Descubren el mundo jugando y siempre acompañados.</span></p>
-        <span class="entrar"><span class="va">Entra als Castors</span><span class="es">Entra en los Castores</span> <span class="arr" aria-hidden="true">→</span></span>
-      </a>
-
-      <a class="plaqueta manada" href="manada.html">
+      <a class="plaqueta manada" href="estol.html">
         <svg class="glyph" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 20 L20 30 L16 42 C22 50 42 50 48 42 L44 30 L50 20 L42 28 C36 24 28 24 22 28Z"/><path d="M26 34h.02M38 34h.02"/><path d="M32 40 L30 44M32 40 L34 44"/></svg>
         <p class="edat">8 – 11 <span class="va">anys</span><span class="es">años</span></p>
-        <h3>Manada</h3>
+        <h3><span class="va">Estol</span><span class="es">Manada</span></h3>
         <p><span class="va">La selva d'en Kipling. Viuen en manada i comencen a fer coses sols.</span><span class="es">La selva de Kipling. Viven en manada y empiezan a hacer cosas solos.</span></p>
-        <span class="entrar"><span class="va">Entra a la Manada</span><span class="es">Entra en la Manada</span> <span class="arr" aria-hidden="true">→</span></span>
+        <span class="entrar"><span class="va">Entra a l'Estol</span><span class="es">Entra en la Manada</span> <span class="arr" aria-hidden="true">→</span></span>
       </a>
 
       <a class="plaqueta tropa" href="tropa.html">
@@ -120,7 +150,7 @@
       <a class="plaqueta clan" href="clan.html">
         <svg class="glyph" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 50 C22 44 18 34 28 30 C38 26 34 18 44 14"/><path d="M44 14 L38 15M44 14 L43 20"/><circle cx="14" cy="50" r="2.4" fill="currentColor" stroke="none"/></svg>
         <p class="edat">17 – 21 <span class="va">anys</span><span class="es">años</span></p>
-        <h3>Clan Ontos</h3>
+        <h3>Clan</h3>
         <p><span class="va">El servici i el compromís. Fan la seua ruta i decidixen com ajudar.</span><span class="es">El servicio y el compromiso. Hacen su ruta y deciden cómo ayudar.</span></p>
         <span class="entrar"><span class="va">Entra al Clan</span><span class="es">Entra en el Clan</span> <span class="arr" aria-hidden="true">→</span></span>
       </a>
@@ -153,7 +183,7 @@
         <article class="full">
           <p class="pagina"><span class="va">Ronda solar 1974-75</span><span class="es">Ronda solar 1974-75</span></p>
           <h3><span class="va">El principi</span><span class="es">El principio</span></h3>
-          <div class="foto-scrap">[ <span class="va">foto dels primers anys</span><span class="es">foto de los primeros años</span> ]</div>
+          <div class="foto-scrap"><img src="img/historia-lliteres.webp" alt="" loading="lazy"></div>
           <p><span class="va">Tot va començar el 1974. Un grapat de famílies de Gandia va muntar un grup scout per als seus fills. I encara dura.</span><span class="es">Todo empezó en 1974. Un puñado de familias de Gandia montó un grupo scout para sus hijos. Y todavía dura.</span></p>
           <p class="nota"><span class="va">La primera ronda solar.</span><span class="es">La primera ronda solar.</span></p>
         </article>
@@ -173,9 +203,41 @@
         <article class="full">
           <p class="pagina"><span class="va">Cada estiu</span><span class="es">Cada verano</span></p>
           <h3><span class="va">Els campaments</span><span class="es">Los campamentos</span></h3>
-          <div class="foto-scrap">[ <span class="va">foto d'un campament</span><span class="es">foto de un campamento</span> ]</div>
+          <div class="foto-scrap"><img src="img/historia-campament.webp" alt="" loading="lazy"></div>
           <p><span class="va">Cada estiu, la motxilla al coll i cap a la muntanya. El fang, el foc de nit i els amics de per vida.</span><span class="es">Cada verano, la mochila al hombro y hacia el monte. El barro, el fuego de noche y los amigos de por vida.</span></p>
           <p class="nota"><span class="va">Açò no s'oblida.</span><span class="es">Esto no se olvida.</span></p>
+        </article>
+
+        <article class="full">
+          <p class="pagina"><span class="va">Excursions</span><span class="es">Excursiones</span></p>
+          <h3><span class="va">Cims i muntanya</span><span class="es">Cimas y monte</span></h3>
+          <div class="foto-scrap"><img src="img/historia-cim.webp" alt="" loading="lazy"></div>
+          <p><span class="pend"><span class="va">text per redactar</span><span class="es">texto por redactar</span></span></p>
+          <p class="nota"><span class="va">Cada eixida, un cim.</span><span class="es">Cada salida, una cima.</span></p>
+        </article>
+
+        <article class="full">
+          <p class="pagina"><span class="va">Trobades</span><span class="es">Encuentros</span></p>
+          <h3><span class="va">Amb altres grups</span><span class="es">Con otros grupos</span></h3>
+          <div class="foto-scrap"><img src="img/historia-trobada.webp" alt="" loading="lazy"></div>
+          <p><span class="pend"><span class="va">text per redactar</span><span class="es">texto por redactar</span></span></p>
+          <p class="nota"><span class="va">L'escoltisme també és trobar-se.</span><span class="es">El escultismo también es encontrarse.</span></p>
+        </article>
+
+        <article class="full">
+          <p class="pagina"><span class="va">Qui ho fa possible</span><span class="es">Quién lo hace posible</span></p>
+          <h3><span class="va">Els monitors</span><span class="es">Los monitores</span></h3>
+          <div class="foto-scrap"><img src="img/historia-monitors.webp" alt="" loading="lazy"></div>
+          <p><span class="pend"><span class="va">text per redactar</span><span class="es">texto por redactar</span></span></p>
+          <p class="nota"><span class="va">Tots voluntaris, tots ací per elecció.</span><span class="es">Todos voluntarios, todos aquí por elección.</span></p>
+        </article>
+
+        <article class="full">
+          <p class="pagina"><span class="va">Primer dia</span><span class="es">Primer día</span></p>
+          <h3><span class="va">Arribada al campament</span><span class="es">Llegada al campamento</span></h3>
+          <div class="foto-scrap"><img src="img/historia-entrada.webp" alt="" loading="lazy"></div>
+          <p><span class="pend"><span class="va">text per redactar</span><span class="es">texto por redactar</span></span></p>
+          <p class="nota"><span class="va">Motxilla al coll i cap allà.</span><span class="es">Mochila al hombro y para allá.</span></p>
         </article>
 
         <article class="full">
@@ -196,69 +258,60 @@
   </div>
 </section>
 
-<div class="wrap"><hr class="ratlla" aria-hidden="true"></div>
 
-<!-- ===================== FER-SE SCOUT / ALTA ===================== -->
-<section id="alta" class="dark" aria-labelledby="h-alta">
+<!-- ===================== NOTÍCIES ===================== -->
+<section id="noticies" class="dark" aria-labelledby="h-not">
+  <div class="wrap">
+    <p class="eyebrow"><span class="va">Què fem</span><span class="es">Qué hacemos</span></p>
+    <h2 id="h-not"><span class="va">Notícies del grup</span><span class="es">Noticias del grupo</span></h2>
+    <p class="lede"><span class="va">Cròniques d'eixides, campaments i avisos per a les famílies.</span><span class="es">Crónicas de salidas, campamentos y avisos para las familias.</span></p>
+
+    <!-- Per a afegir una notícia nova: copia un <article class="noticia"> sencer
+         (amb la seua etiqueta de tancament) i enganxa'l abans o després dels que
+         ja hi ha. Canvia la data, el títol i el text en els dos idiomes. -->
+    <div class="noticies-llista">
+      <article class="noticia">
+        <p class="data"><span class="pend"><span class="va">data per confirmar</span><span class="es">fecha por confirmar</span></span></p>
+        <h3><span class="va">Campament d'estiu</span><span class="es">Campamento de verano</span></h3>
+        <p><span class="va">Ací anirà la crònica del campament: on hem anat, què hem fet i alguna anècdota de fogata.</span><span class="es">Aquí irá la crónica del campamento: dónde hemos ido, qué hemos hecho y alguna anécdota de fogata.</span></p>
+      </article>
+      <article class="noticia">
+        <p class="data"><span class="pend"><span class="va">data per confirmar</span><span class="es">fecha por confirmar</span></span></p>
+        <h3><span class="va">Eixida a la Serra</span><span class="es">Salida a la Sierra</span></h3>
+        <p><span class="va">Una eixida d'un dia: la ruta, els xics i les xiques i el bon esmorzar de mig matí.</span><span class="es">Una salida de un día: la ruta, los chicos y las chicas y el buen almuerzo de media mañana.</span></p>
+      </article>
+    </div>
+    <p class="hand" style="font-size:1.15rem;color:var(--ocre-clar)"><span class="va">* Notícies d'exemple. Quan en publiquem de reals, apareixeran ací.</span><span class="es">* Noticias de ejemplo. Cuando publiquemos reales, aparecerán aquí.</span></p>
+
+    <!-- ===== Instagram: incrustació oficial del perfil (embed.js) =====
+         Amb el permalink del PERFIL (no d'una publicació), Instagram mostra sol
+         una graella amb les publicacions més recents del compte — es manté al
+         dia soles, sense token ni aplicació de desenvolupador. Si algun dia
+         voleu destacar una publicació concreta en compte del perfil sencer,
+         es pot canviar data-instgrm-permalink per l'enllaç d'eixa publicació
+         (acaba en /p/CODI/); l'script ja fa la resta. -->
+    <div class="ig-header">
+      <p class="eyebrow"><span class="va">Al dia a dia</span><span class="es">El día a día</span></p>
+      <h3><span class="va">Al nostre Instagram</span><span class="es">En nuestro Instagram</span></h3>
+    </div>
+    <div class="ig-wrap">
+      <blockquote class="instagram-media" data-instgrm-permalink="https://www.instagram.com/grupscoutparpallo/" data-instgrm-version="14">
+        <a href="https://www.instagram.com/grupscoutparpallo/" target="_blank" rel="noopener noreferrer">@grupscoutparpallo</a>
+      </blockquote>
+    </div>
+    <p class="hand" style="font-size:1.15rem;color:var(--ocre-clar)"><span class="va">Segueix-nos a </span><span class="es">Síguenos en </span><a href="https://www.instagram.com/grupscoutparpallo" rel="noopener noreferrer" target="_blank">@grupscoutparpallo</a><span class="va"> per a veure-ho tot.</span><span class="es"> para verlo todo.</span></p>
+  </div>
+</section>
+
+<!-- ===================== FER-SE SCOUT (porta a la subpàgina) ===================== -->
+<section id="alta" class="dark sec-cta" aria-labelledby="h-alta">
   <div class="wrap">
     <p class="eyebrow"><span class="va">La part important</span><span class="es">La parte importante</span></p>
     <h2 id="h-alta"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></h2>
-    <p class="lede"><span class="va">Ens alegra un muntó que t'ho estigues plantejant. Deixa'ns les dades i et cridem per a parlar-ho amb calma.</span><span class="es">Nos alegra un montón que te lo estés planteando. Déjanos los datos y te llamamos para hablarlo con calma.</span></p>
-
-    <div class="passos">
-      <div class="pas"><span class="n">1</span><p><span class="va">Deixes les dades del xiquet/a en esta fitxa.</span><span class="es">Dejas los datos del niño/a en esta ficha.</span></p></div>
-      <div class="pas"><span class="n">2</span><p><span class="va">Et cridem per a conéixer-vos i resoldre dubtes.</span><span class="es">Te llamamos para conoceros y resolver dudas.</span></p></div>
-      <div class="pas"><span class="n">3</span><p><span class="va">Primer dissabte de prova, sense cap compromís.</span><span class="es">Primer sábado de prueba, sin ningún compromiso.</span></p></div>
-    </div>
-
-    <p class="hand" style="font-size:1.2rem;color:var(--ocre-clar);margin-bottom:1rem"><span class="va">Segons l'edat pot haver-hi llista d'espera. Deixa'ns el contacte igualment i t'avisem.</span><span class="es">Según la edad puede haber lista de espera. Déjanos el contacto igualmente y te avisamos.</span></p>
-
-    <form class="alta" action="#" method="post" novalidate aria-label="Sol·licitud de plaça">
-      <p class="hand" style="font-size:1.1rem;color:var(--roig)"><span class="va">* El formulari encara no envia: falta connectar-lo amb el sistema del grup.</span><span class="es">* El formulario aún no envía: falta conectarlo con el sistema del grupo.</span></p>
-
-      <fieldset>
-        <legend><span class="va">El xiquet o xiqueta</span><span class="es">El niño o niña</span></legend>
-        <div class="two">
-          <div class="field"><label for="nom"><span class="va">Nom</span><span class="es">Nombre</span> <span class="req">*</span></label><input id="nom" name="nom" type="text" autocomplete="given-name" required></div>
-          <div class="field"><label for="cognoms"><span class="va">Cognoms</span><span class="es">Apellidos</span> <span class="req">*</span></label><input id="cognoms" name="cognoms" type="text" autocomplete="family-name" required></div>
-        </div>
-        <div class="two">
-          <div class="field"><label for="naix"><span class="va">Data de naixement</span><span class="es">Fecha de nacimiento</span> <span class="req">*</span></label><input id="naix" name="naixement" type="date" required></div>
-          <div class="field"><label for="seccio"><span class="va">Secció</span><span class="es">Sección</span> <span class="help">(<span class="va">t'ajudem per l'edat</span><span class="es">te ayudamos por la edad</span>)</span></label>
-            <select id="seccio" name="seccio">
-              <option value="">—</option>
-              <option>Castors (6-8)</option><option>Manada (8-11)</option><option>Tropa (11-14)</option>
-              <option>Escoltes (14-17)</option><option>Clan Ontos (17-21)</option>
-            </select></div>
-        </div>
-        <div class="field"><label for="notes"><span class="va">Al·lèrgies, necessitats o coses que hem de saber</span><span class="es">Alergias, necesidades o cosas que debemos saber</span></label><textarea id="notes" name="notes" rows="2"></textarea></div>
-      </fieldset>
-
-      <fieldset>
-        <legend><span class="va">Qui l'apunta (mare, pare o tutor/a)</span><span class="es">Quién lo apunta (madre, padre o tutor/a)</span></legend>
-        <div class="two">
-          <div class="field"><label for="tutor"><span class="va">Nom i cognoms</span><span class="es">Nombre y apellidos</span> <span class="req">*</span></label><input id="tutor" name="tutor" type="text" autocomplete="name" required></div>
-          <div class="field"><label for="tel"><span class="va">Telèfon</span><span class="es">Teléfono</span> <span class="req">*</span></label><input id="tel" name="telefon" type="tel" autocomplete="tel" required></div>
-        </div>
-        <div class="two">
-          <div class="field"><label for="email">Email <span class="req">*</span></label><input id="email" name="email" type="email" autocomplete="email" required></div>
-          <div class="field"><label for="conegut"><span class="va">Com ens has conegut?</span><span class="es">¿Cómo nos has conocido?</span></label><input id="conegut" name="conegut" type="text"></div>
-        </div>
-      </fieldset>
-
-      <fieldset>
-        <legend><span class="va">Permisos</span><span class="es">Permisos</span></legend>
-        <label class="check"><input type="checkbox" name="dades" required><span><span class="va">He llegit i accepte la <a href="#" data-pend>política de protecció de dades de menors</a>.</span><span class="es">He leído y acepto la <a href="#" data-pend>política de protección de datos de menores</a>.</span> <span class="req">*</span></span></label>
-        <label class="check"><input type="checkbox" name="contacte" required><span><span class="va">Vull que em contacteu per a parlar de la plaça.</span><span class="es">Quiero que me contactéis para hablar de la plaza.</span> <span class="req">*</span></span></label>
-        <div style="margin-top:1rem"><button class="btn btn-alta" type="submit"><span class="va">Envia la sol·licitud</span><span class="es">Enviar la solicitud</span></button></div>
-      </fieldset>
-    </form>
-
-    <div class="primerdia">
-      <h3><span class="va">I què passa el primer dia?</span><span class="es">¿Y qué pasa el primer día?</span></h3>
-      <p style="color:var(--calcaria-2)"><span class="va">Véns al local a l'hora de la reunió, preguntes per <span class="pend">responsable — per confirmar</span>, i el teu fill se'n va a jugar amb la seua secció. Tu et quedes el que faça falta. No cal portar res, només ganes.</span><span class="es">Vienes al local a la hora de la reunión, preguntas por <span class="pend">responsable — por confirmar</span>, y tu hijo se va a jugar con su sección. Tú te quedas lo que haga falta. No hace falta traer nada, solo ganas.</span></p>
-    </div>
+    <p><span class="va">Ens alegra un muntó que t'ho estigues plantejant. Deixa'ns les dades i et cridem per a parlar-ho amb calma.</span><span class="es">Nos alegra un montón que te lo estés planteando. Déjanos los datos y te llamamos para hablarlo con calma.</span></p>
+    <a class="btn btn-alta" href="fersescout.html"><span class="va">Vull apuntar el meu fill/a →</span><span class="es">Quiero apuntar a mi hijo/a →</span></a>
   </div>
+</section>
 </section>
 
 </main>
@@ -278,7 +331,7 @@
       <div class="contacte">
         <h3><span class="va">Contacte</span><span class="es">Contacto</span></h3>
         <a href="mailto:gsparpallo@scoutsvalencians.org">gsparpallo@scoutsvalencians.org</a>
-        <a href="#" data-pend>Instagram</a>
+        <a href="https://www.instagram.com/grupscoutparpallo" rel="noopener noreferrer" target="_blank">Instagram</a>
         <a href="#" data-pend>Facebook</a>
         <p style="margin-top:.6rem"><span class="pend"><span class="va">adreça del local — per confirmar</span><span class="es">dirección del local — por confirmar</span></span></p>
       </div>
@@ -286,19 +339,23 @@
         <h3><span class="va">Anar a…</span><span class="es">Ir a…</span></h3>
         <a href="#seccions"><span class="va">Seccions</span><span class="es">Secciones</span></a>
         <a href="cova.html"><span class="va">La Cova</span><span class="es">La Cueva</span></a>
+        <a href="merchandising.html"><span class="va">Botiga</span><span class="es">Tienda</span></a>
         <a href="#historia"><span class="va">Història</span><span class="es">Historia</span></a>
-        <a href="#alta"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
+        <a href="fersescout.html"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
       </div>
     </div>
+    <hr class="ratlla" aria-hidden="true">
     <div class="legal">
-      <a href="#" data-pend><span class="va">Avís legal</span><span class="es">Aviso legal</span></a>
-      <a href="#" data-pend><span class="va">Privacitat</span><span class="es">Privacidad</span></a>
-      <a href="#" data-pend>Cookies</a>
+      <a href="avis-legal.html"><span class="va">Avís legal</span><span class="es">Aviso legal</span></a>
+      <a href="privacitat.html"><span class="va">Privacitat</span><span class="es">Privacidad</span></a>
+      <a href="cookies.html">Cookies</a>
       <span>© <span id="year">2026</span> Grup Scout Parpalló</span>
     </div>
   </div>
 </footer>
 
 <script src="script.js?v=105" defer></script>
+<script src="portada.js?v=1" defer></script>
+<script async src="https://www.instagram.com/embed.js"></script>
 </body>
 </html>

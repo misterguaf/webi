@@ -1,16 +1,19 @@
 <!doctype html>
-<html lang="ca-ES-valencia" data-lang="va">
+<html lang="ca-ES-valencia" data-lang="va" style="background:#0F1B14">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>La Cova del Parpalló · Grup Scout Parpalló</title>
 <meta name="description" content="La Cova del Parpalló, a 3 km de Barx: milers de gravats de fa 20.000 anys. D'ací ix el nostre nom.">
+<link rel="icon" type="image/png" sizes="32x32" href="img/favicon-32.png">
+<link rel="apple-touch-icon" sizes="180x180" href="img/favicon-180.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css?v=105">
+<link rel="stylesheet" href="cova.css?v=5">
 </head>
-<body>
+<body style="background:#0F1B14;background-image:none">
 
 <a class="skip" href="#main"><span class="va">Salta al contingut</span><span class="es">Saltar al contenido</span></a>
 
@@ -44,13 +47,15 @@
     <div class="spacer"></div>
     <nav class="inline" aria-label="Principal">
       <a href="index.html#seccions"><span class="va">Seccions</span><span class="es">Secciones</span></a>
+      <a href="index.html#noticies"><span class="va">Not&#237;cies</span><span class="es">Noticias</span></a>
       <a href="cova.html"><span class="va">La Cova</span><span class="es">La Cueva</span></a>
+      <a href="merchandising.html"><span class="va">Botiga</span><span class="es">Tienda</span></a>
       <a href="index.html#historia"><span class="va">Història</span><span class="es">Historia</span></a>
     </nav>
     <button class="lang" id="lang-toggle" type="button" aria-label="Canvia a castellà">
       <span class="lbl">cas</span>
     </button>
-    <a class="btn btn-alta" href="index.html#alta"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
+    <a class="btn btn-alta" href="fersescout.html"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
   </div>
 </header>
 
@@ -58,7 +63,7 @@
 <section id="cova" class="cova-immersio" aria-labelledby="h-cova">
 
   <div class="escena escena-intro">
-    <div class="foto" data-label="[ l'entrada de la cova ]" aria-hidden="true"></div>
+    <div class="foto" style="background-image:linear-gradient(180deg,rgba(10,8,5,.55),rgba(10,8,5,.15)),url('img/cova-entrada.webp')" aria-hidden="true"></div>
     <p class="crumb"><a href="index.html"><span class="va">Inici</span><span class="es">Inicio</span></a> / <span class="va">La Cova</span><span class="es">La Cueva</span></p>
     <div class="txt">
       <p class="kick"><span class="va">La Cova del Parpalló</span><span class="es">La Cueva del Parpalló</span></p>
@@ -68,12 +73,12 @@
   </div>
 
   <div class="escena">
-    <div class="foto" data-label="[ gravats a la paret ]" aria-hidden="true"></div>
+    <div class="foto" style="background-image:url('img/cova-gravat.webp')" aria-hidden="true"></div>
     <div class="txt"><p class="big"><span class="va">I es va posar a gravar la pedra.</span><span class="es">Y se puso a grabar la piedra.</span></p></div>
   </div>
 
   <div class="escena">
-    <div class="foto" data-label="[ plaquetes de pedra ]" aria-hidden="true"></div>
+    <div class="foto" style="background-image:url('img/cova-plaquetes.webp')" aria-hidden="true"></div>
     <div class="txt">
       <p class="big"><span class="va">Milers de plaquetes. Ocre i negre.</span><span class="es">Miles de plaquetas. Ocre y negro.</span></p>
       <p class="sub"><span class="va">Fetes a mà, una a una.</span><span class="es">Hechas a mano, una a una.</span></p>
@@ -81,7 +86,7 @@
   </div>
 
   <div class="escena">
-    <div class="foto" data-label="[ el gravat de la cérvola ]" aria-hidden="true"></div>
+    <div class="foto" style="background-image:url('img/cova-cervola.webp')" aria-hidden="true"></div>
     <div class="txt">
       <span class="cervola-big cierva" aria-hidden="true"></span>
       <p class="big"><span class="va">Entre elles, una cérvola.</span><span class="es">Entre ellas, una cierva.</span></p>
@@ -90,11 +95,11 @@
   </div>
 
   <div class="escena escena-final">
-    <div class="foto" data-label="[ el paratge, la muntanya de Barx ]" aria-hidden="true"></div>
+    <div class="foto" aria-hidden="true"></div>
     <div class="txt">
       <p class="big"><span class="va">Per això ens diem Parpalló.</span><span class="es">Por eso nos llamamos Parpalló.</span></p>
       <p class="sub"><span class="va">Paratge Natural Parpalló-Borrell · a 3 km de Barx.</span><span class="es">Paraje Natural Parpalló-Borrell · a 3 km de Barx.</span></p>
-      <a class="btn btn-alta" href="index.html#alta"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
+      <a class="btn btn-alta" href="fersescout.html"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
       <a class="tornar" href="index.html"><span class="va">← Torna a l'inici</span><span class="es">← Vuelve al inicio</span></a>
     </div>
   </div>
@@ -116,26 +121,29 @@
       <div class="contacte">
         <h3><span class="va">Contacte</span><span class="es">Contacto</span></h3>
         <a href="mailto:gsparpallo@scoutsvalencians.org">gsparpallo@scoutsvalencians.org</a>
-        <a href="#" data-pend>Instagram</a>
+        <a href="https://www.instagram.com/grupscoutparpallo" rel="noopener noreferrer" target="_blank">Instagram</a>
         <a href="#" data-pend>Facebook</a>
       </div>
       <div>
         <h3><span class="va">Anar a…</span><span class="es">Ir a…</span></h3>
         <a href="index.html#seccions"><span class="va">Seccions</span><span class="es">Secciones</span></a>
         <a href="cova.html"><span class="va">La Cova</span><span class="es">La Cueva</span></a>
+        <a href="merchandising.html"><span class="va">Botiga</span><span class="es">Tienda</span></a>
         <a href="index.html#historia"><span class="va">Història</span><span class="es">Historia</span></a>
-        <a href="index.html#alta"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
+        <a href="fersescout.html"><span class="va">Fer-se scout</span><span class="es">Hacerse scout</span></a>
       </div>
     </div>
+    <hr class="ratlla" aria-hidden="true">
     <div class="legal">
-      <a href="#" data-pend><span class="va">Avís legal</span><span class="es">Aviso legal</span></a>
-      <a href="#" data-pend><span class="va">Privacitat</span><span class="es">Privacidad</span></a>
-      <a href="#" data-pend>Cookies</a>
+      <a href="avis-legal.html"><span class="va">Avís legal</span><span class="es">Aviso legal</span></a>
+      <a href="privacitat.html"><span class="va">Privacitat</span><span class="es">Privacidad</span></a>
+      <a href="cookies.html">Cookies</a>
       <span>© <span id="year">2026</span> Grup Scout Parpalló</span>
     </div>
   </div>
 </footer>
 
 <script src="script.js?v=105" defer></script>
+<script src="cova.js?v=5" defer></script>
 </body>
 </html>

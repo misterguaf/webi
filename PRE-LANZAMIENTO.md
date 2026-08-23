@@ -20,14 +20,20 @@ un menor: hasta que no esté esto resuelto, no hay base legal para guardarlo.
       si procede, número de registro de asociaciones.
 - [ ] Rellenar esos datos en los `[PENDENT]` de `privacitat.html` y `avis-legal.html`.
 - [ ] **Base legal (art. 6 RGPD)** para los datos de contacto y la solicitud.
+- [ ] **Base legal y plazo de conservación de las reservas de la tienda**
+      (`merchandising.html` → `/api/reserva`). Son datos de adultos y sin datos
+      de salud, así que es mucho más simple que la solicitud de plaza, pero
+      sigue siendo un tratamiento con su propia finalidad. Los `[PENDENT]`
+      correspondientes ya están puestos en `privacitat.html`.
 - [ ] **Base legal específica (art. 9 RGPD)** para el campo de alergias y
       necesidades. Son datos de salud: no basta el consentimiento genérico.
 - [ ] **Plazo de conservación** si la familia no se apunta, y si se apunta. Un
       plazo concreto, y alguien encargado de borrar lo que caduque.
 - [ ] **Quién accede** a las fichas dentro del grupo y cómo se controla.
 - [ ] **Criterio de edad** y confirmación de que lo rellena siempre el tutor legal.
-- [ ] **DPA de Notion firmado/aceptado** y revisadas las garantías de
-      transferencia internacional (Notion es una empresa de EE. UU.).
+- [ ] **DPA de Google (Workspace) firmado/aceptado** y revisadas las garantías
+      de transferencia internacional (Google es una empresa de EE. UU., y ahí
+      se guardan la Google Sheet y las ejecuciones de Apps Script).
 - [ ] **DPA del proveedor de hosting** que elijas.
 - [ ] **Procedimiento** para atender una petición de acceso, rectificación o
       borrado: quién la recibe y en cuánto tiempo se contesta.
@@ -39,16 +45,24 @@ un menor: hasta que no esté esto resuelto, no hay base legal para guardarlo.
 
 ## B. Infraestructura
 
-- [ ] **Crear la base de datos en Notion** con las propiedades exactas que están
-      documentadas en el `README.md` (nombres con acentos incluidos).
-- [ ] Añadir la opción `Nova` al select `Estat` y las cuatro secciones al select
-      `Secció`.
-- [ ] **Crear la integración interna de Notion** en <https://www.notion.so/my-integrations>
-      y darle acceso **solo** a esa base de datos, a ninguna otra página.
+- [ ] **Crear la Google Sheet** donde van a aparecer las solicitudes (una hoja
+      en blanco basta: el Apps Script crea la cabecera la primera vez). El
+      mismo script crea también, solo, una segunda pestaña «Reserves botiga»
+      la primera vez que llegue una reserva: no hay que preparar nada más.
+      Si ya tenías el script pegado de antes, vuelve a pegarlo y **redespliega
+      la MISMA URL** (Desplegar → Gestionar despliegues → editar → Nueva
+      versión), o las reservas se escribirán en la pestaña de solicitudes.
+- [ ] **Pegar el script `scripts/google-apps-script.gs`** en Extensions → Apps
+      Script de esa Sheet, siguiendo los pasos del propio comentario del archivo.
+- [ ] **Añadir la propiedad `SHARED_SECRET`** en Configuración del proyecto →
+      Propiedades del script, con una cadena larga y aleatoria (32+ caracteres).
+- [ ] **Desplegar como Aplicación web** (Ejecutar como: tú, Acceso: cualquiera)
+      y **guardar la URL** que Google devuelve.
 - [ ] **Elegir hosting** (Vercel, Netlify o Cloudflare). El código ya funciona en
       los tres sin cambios.
 - [ ] **Configurar las variables de entorno en el panel del hosting real**, no
-      solo en tu `.env` local: `NOTION_TOKEN`, `NOTION_DATABASE_ID`, `ALLOWED_ORIGIN`.
+      solo en tu `.env` local: `SHEETS_WEBHOOK_URL` (la URL del paso anterior),
+      `SHEETS_SHARED_SECRET` (el mismo valor que `SHARED_SECRET`) y `ALLOWED_ORIGIN`.
 - [ ] **Dominio definitivo** contratado y apuntando al hosting.
 - [ ] **HTTPS activo** y redirección de HTTP a HTTPS encendida.
 - [ ] Poner el dominio real en `ALLOWED_ORIGIN`.
@@ -64,15 +78,25 @@ un menor: hasta que no esté esto resuelto, no hay base legal para guardarlo.
 ## C. Pruebas que solo puedes hacer tú
 
 - [ ] **Un envío real de principio a fin** desde el sitio ya publicado, y
-      comprobar que la ficha aparece en Notion con todos los campos bien.
-- [ ] Borrar esa ficha de prueba de Notion.
+      comprobar que la fila aparece en la Google Sheet con todos los campos bien.
+- [ ] Borrar esa fila de prueba de la Sheet.
 - [ ] Probar el formulario **con JavaScript desactivado** (debe enviarse igual y
       mostrar una página de confirmación).
 - [ ] Probar en **móvil real**, no solo en el navegador del ordenador.
 - [ ] Pasar el dominio por <https://securityheaders.com> y comprobar que las
       cabeceras llegan de verdad.
 - [ ] Comprobar que `https://tudominio/api/alta` con un GET responde 405 y no
-      enseña nada raro.
+      enseña nada raro. Lo mismo con `https://tudominio/api/reserva`.
+- [ ] **Una reserva real de principio a fin** desde la tienda publicada, y
+      comprobar que aparece en la pestaña «Reserves botiga» con los artículos,
+      las unidades y el total bien. Borrar después la fila de prueba.
+- [ ] Probar también la tienda **con JavaScript desactivado**: sin JS no hay
+      barra de total ni suma en vivo (es a propósito), pero elegir unidades y
+      enviar debe seguir funcionando y llegar la fila igual.
+- [ ] **Revisar los precios** de `api/_lib/productes.js` antes de publicar: se
+      han copiado tal cual de la web antigua y puede que alguno esté
+      desactualizado (la pañoleta a 1 € llama la atención). Los precios se
+      cambian **solo ahí**; `npm test` avisa si la página deja de coincidir.
 
 ---
 
@@ -100,6 +124,15 @@ tuyas.
       HTML. Las opciones están explicadas más abajo.
 - [ ] **Analítica.** No he añadido ninguna. Si algún día quieres, hay que
       actualizar `cookies.html` **antes** de activarla.
+- [ ] **Instagram incrustado en `#noticies`.** Usa el reproductor oficial de
+      Instagram (`embed.js`), sin token ni cuenta de desarrollador — pero se
+      carga siempre, no tras un botón, y sí puede instalar cookies de
+      terceros. Ya está explicado en `cookies.html`, pero falta confirmar con
+      quien lleve lo legal si hace falta banner de consentimiento antes de
+      publicar (ver el comentario al principio de `cookies.html`).
+      Las 3 tarjetas de ejemplo apuntan al perfil, no a publicaciones reales:
+      sustitúyelas por enlaces `/p/CODI/` reales cuando toque (instrucciones
+      en el comentario junto a `<div class="ig-grid">` en `index.html`).
 
 ---
 
