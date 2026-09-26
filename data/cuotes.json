@@ -1,0 +1,12 @@
+{
+  "$schema": "./cuotes.schema.json",
+  "curs": "2026-2027",
+  "oberta": false,
+  "dataLimit": null,
+  "importBaseCentims": null,
+  "descomptes": [],
+  "instruccions": {
+    "va": "Informació pendent de confirmar per tresoreria.",
+    "es": "Información pendiente de confirmar por tesorería."
+  }
+}

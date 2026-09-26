@@ -1,0 +1,1 @@
+throw new Error('gestio remote deployment is blocked until explicit authorization, EU D1 creation/metadata verification, Access/MFA configuration and a production config without DEV_IDENTITY_PROVIDER');

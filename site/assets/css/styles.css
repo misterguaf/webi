@@ -1,0 +1,496 @@
+
+/* ============================================================
+   Grup Scout Parpalló — estils compartits (multipàgina)
+   Paleta i tipografia: veure el pla de disseny.
+   ============================================================ */
+
+/* la cérvola real del grup, recolorable en qualsevol fons (via màscara) */
+.cierva{display:inline-block;aspect-ratio:499/313;background-color:currentColor;
+  -webkit-mask:url("/assets/img/cierva.png") center/contain no-repeat;
+  mask:url("/assets/img/cierva.png") center/contain no-repeat}
+:root{
+  /* escala unificada de verds */
+  --verd-nit:#1F3529;    /* fons profund, seccions fosques, footer */
+  --verd:#5E7948;        /* el verd del grup (el de les publicacions d'Instagram) */
+  --verd-fulla:#3E6B4A;  /* verd clar, acent, secció Tropa */
+  --verd-boira:#6A8571;  /* verd grisós, hints */
+
+  --roig:#A93A2C;        /* Roig Pañoleta  — acció */
+  --roig-fosc:#8C2E22;
+  --ocre:#C0862F;        /* Ocre Parpalló  — el traç */
+  --ocre-clar:#D6A24E;
+  --negre:#211C16;       /* Negre Manganès — text */
+  --calcaria:#E6E0D2;    /* Calcària       — fons */
+  --calcaria-2:#EFEADF;  /* plaqueta clara */
+  --calcaria-3:#DBD3C2;  /* vora de pedra  */
+
+  /* colors PROVISIONALS de secció (model estàndard — per confirmar) */
+  --s-manada:#C79A2E;
+  --s-tropa:var(--verd-fulla);
+  --s-escoltes:#9C3B30;
+  --s-clan:#6B3550;
+
+  --max:1120px;
+  --pas:clamp(3.2rem,7vw,5.4rem);
+}
+
+@media (max-width:760px){
+  body{--fosc-des:68%}   /* al mòbil el contingut s'estira i el quadern cau més avall */
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+body{
+  margin:0;
+  /* El verd del grup es manté pla tota la primera meitat i només comença a
+     enfosquir-se a partir del quadern del grup, cap al final de la pàgina.
+     El punt exacte el calcula portada.js i el deixa a --fosc-des, perquè
+     l'alçària de la pàgina canvia sola quan carreguen els incrustats
+     d'Instagram. Els valors d'ací són la reserva si el JS no s'executa. */
+  background:var(--verd-nit);
+  background-image:linear-gradient(180deg,var(--verd) 0%,var(--verd) var(--fosc-des,58%),var(--verd-nit) 100%);
+  background-repeat:no-repeat;
+  color:var(--calcaria);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  font-size:clamp(1.02rem,0.98rem + 0.3vw,1.14rem);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:clip;
+}
+/* gra de pedra calcària, molt subtil */
+body::before{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---- bilingüisme: valencià per defecte, castellà amb el toggle ---- */
+.es{display:none}
+[data-lang="es"] .va{display:none}
+[data-lang="es"] .es{display:revert}
+
+/* ---- tipografia ---- */
+h1,h2,h3,.display{font-family:"Bricolage Grotesque",-apple-system,system-ui,sans-serif;font-weight:700;line-height:1.04;letter-spacing:-.01em;margin:0 0 .4em}
+h1{font-size:clamp(2.3rem,5.2vw + 1rem,4.2rem)}
+h2{font-size:clamp(1.8rem,3.2vw + .8rem,2.9rem)}
+h3{font-size:clamp(1.2rem,1.2vw + .7rem,1.5rem)}
+p{margin:0 0 1rem;max-width:62ch}
+.hand{font-family:"Caveat",cursive;font-weight:600;line-height:1.15}
+
+a{color:var(--verd);text-decoration:none;font-weight:600}
+a:hover,a:focus-visible{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='8' viewBox='0 0 64 8' preserveAspectRatio='none'%3E%3Cpath d='M2 5 Q16 2 32 4 T62 4' fill='none' stroke='%23A93A2C' stroke-width='2.4' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-size:100% .42em;background-position:0 100%;
+}
+
+/* ---- foc de teclat = el traç incís (i outline robust) ---- */
+:focus-visible{outline:3px solid var(--ocre);outline-offset:3px;border-radius:3px}
+
+.wrap{max-width:var(--max);margin-inline:auto;padding-inline:clamp(1.1rem,4vw,2.2rem)}
+section{padding-block:var(--pas)}
+
+/* ---- el traç: divisor amb "sempre a punt" en morse ---- */
+/* codi morse: ...  .  --  .--.  .-.  .   /   .-   /   .--.  ..-  -.  -  */
+.ratlla{height:24px;margin:0;border:0;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='424' height='24' viewBox='0 0 424 24'%3E%3Cg fill='%23C9463A'%3E%3Ccircle cx='12' cy='12' r='2'/%3E%3Ccircle cx='20' cy='12' r='2'/%3E%3Ccircle cx='28' cy='12' r='2'/%3E%3Ccircle cx='44' cy='12' r='2'/%3E%3Crect x='58' y='10' width='12' height='4' rx='2'/%3E%3Crect x='74' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='100' cy='12' r='2'/%3E%3Crect x='106' y='10' width='12' height='4' rx='2'/%3E%3Crect x='122' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='140' cy='12' r='2'/%3E%3Ccircle cx='156' cy='12' r='2'/%3E%3Crect x='162' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='180' cy='12' r='2'/%3E%3Ccircle cx='196' cy='12' r='2'/%3E%3Ccircle cx='228' cy='12' r='2'/%3E%3Crect x='234' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='276' cy='12' r='2'/%3E%3Crect x='282' y='10' width='12' height='4' rx='2'/%3E%3Crect x='298' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='316' cy='12' r='2'/%3E%3Ccircle cx='332' cy='12' r='2'/%3E%3Ccircle cx='340' cy='12' r='2'/%3E%3Crect x='346' y='10' width='12' height='4' rx='2'/%3E%3Crect x='370' y='10' width='12' height='4' rx='2'/%3E%3Ccircle cx='388' cy='12' r='2'/%3E%3Crect x='402' y='10' width='12' height='4' rx='2'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:center;background-size:min(100%,424px) auto;opacity:.9}
+
+/* ---- botons ---- */
+.btn{display:inline-flex;align-items:center;gap:.5em;font-weight:700;font-size:1.02rem;white-space:nowrap;
+  padding:.85em 1.35em;border-radius:12px 9px 13px 8px;border:2.5px solid transparent;cursor:pointer;
+  font-family:inherit;line-height:1;text-align:center}
+.btn-alta{background:var(--roig);color:#fff;border-color:var(--roig-fosc);box-shadow:0 2px 0 var(--roig-fosc)}
+.btn-alta:hover,.btn-alta:focus-visible{background:var(--roig-fosc);background-image:none;transform:translateY(1px);box-shadow:0 1px 0 var(--roig-fosc)}
+.btn-ghost{background:transparent;color:var(--verd);border-color:var(--verd)}
+.btn-ghost:hover,.btn-ghost:focus-visible{background:var(--verd);color:var(--calcaria-2);background-image:none}
+
+/* ---- capçalera ---- */
+.skip{position:absolute;left:-999px;top:0;background:var(--verd);color:#fff;padding:.7em 1em;z-index:99;border-radius:0 0 8px 0}
+.skip:focus{left:0}
+header.top{position:sticky;top:0;z-index:40;background:var(--calcaria);
+  border-bottom:2px solid var(--roig);
+  transition:box-shadow .3s ease}
+header.top.scrolled{box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.top .wrap{display:flex;align-items:center;gap:.9rem;padding-block:.6rem}
+.top nav.inline{margin-left:1.1rem}
+@media (max-width:520px){.brand small{display:none}.top .btn-alta{padding:.55em .75em;font-size:.86rem}}
+.brand{display:flex;align-items:center;gap:.55rem;font-family:"Bricolage Grotesque",-apple-system,system-ui,sans-serif;font-weight:800;
+  font-size:1.06rem;color:var(--verd);line-height:1;background:none;letter-spacing:-.01em}
+.brand svg{display:none}
+.brand::before{content:"";width:54px;height:34px;flex:none;background-color:currentColor;
+  -webkit-mask:url("/assets/img/cierva.png") center/contain no-repeat;
+  mask:url("/assets/img/cierva.png") center/contain no-repeat}
+.brand small{display:block;font-weight:600;font-size:.7rem;color:var(--negre);opacity:.7;letter-spacing:.02em;
+  font-family:-apple-system,"Segoe UI",Roboto,sans-serif}
+.brand:hover,.brand:focus-visible{background-image:none}
+.spacer{flex:1}
+nav.inline{display:none;gap:1.1rem}
+nav.inline a{color:var(--negre);font-weight:600;font-size:.98rem}
+.lang{display:inline-flex;align-items:center;gap:.35em;background:transparent;border:2px solid var(--verd);color:var(--verd);
+  font-family:inherit;font-weight:700;font-size:.82rem;padding:.42em .6em;border-radius:9px;cursor:pointer;text-transform:uppercase;letter-spacing:.03em}
+.lang:hover,.lang:focus-visible{background:var(--verd);color:var(--calcaria-2)}
+.top .btn-alta{padding:.6em 1em;font-size:.92rem}
+@media (min-width:820px){nav.inline{display:flex}}
+
+/* ---- hero ---- */
+.hero{background:var(--calcaria);position:relative;overflow:hidden}
+.hero .grid{display:grid;gap:2rem}
+.hero .kicker{font-family:"Caveat",cursive;font-size:1.5rem;color:var(--roig);transform:rotate(-2deg);margin-bottom:.2rem}
+.hero .lead{font-size:clamp(1.1rem,.9rem + .8vw,1.35rem);max-width:34ch}
+.hero .actions{display:flex;flex-wrap:wrap;gap:.8rem;margin:.4rem 0 1.4rem}
+.factstrip{display:grid;grid-template-columns:1fr;gap:.1rem;border-top:2px solid var(--calcaria-3);border-bottom:2px solid var(--calcaria-3);padding:.9rem 0}
+.fact{display:flex;gap:.7rem;align-items:baseline;padding:.35rem 0}
+.fact b{font-family:"Bricolage Grotesque",sans-serif;color:var(--ocre-clar);font-size:.82rem;text-transform:uppercase;letter-spacing:.06em;min-width:5.5rem;flex:none}
+.pend{background:color-mix(in srgb,var(--ocre) 22%,var(--calcaria));border-bottom:2px dashed var(--ocre);
+  /* El fons del marcador és clar. Sense color propi heretava el text clar del
+     cos i sobre les seccions fosques quedava invisible (contrast 1.19:1). */
+  color:var(--negre);
+  padding:0 .25em;border-radius:3px;font-weight:600;white-space:nowrap}
+.hero-art{position:relative;min-height:230px;display:flex;align-items:center;justify-content:center}
+.hero-art .cervola{width:min(78%,320px);color:var(--verd);opacity:.92}
+.photo{background:var(--calcaria-3);border:2px solid var(--calcaria-3);border-radius:10px 6px 12px 7px;position:relative;
+  aspect-ratio:4/3;display:flex;align-items:flex-end;overflow:hidden}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.photo .ph{padding:.7rem .8rem;font-family:"Caveat",cursive;font-size:1.15rem;color:var(--verd);
+  background:linear-gradient(0deg,color-mix(in srgb,var(--calcaria) 92%,transparent),transparent);width:100%}
+.photo .tag{position:absolute;top:.5rem;left:.5rem;background:var(--negre);color:var(--calcaria-2);font-size:.72rem;
+  font-weight:700;padding:.2em .5em;border-radius:5px;transform:rotate(-2deg)}
+@media (min-width:820px){
+  .hero .grid{grid-template-columns:1.15fr .85fr;align-items:center}
+  .factstrip{grid-template-columns:1fr 1fr}
+}
+
+/* ---- portada: nom + cérvola darrere, verd i roig ---- */
+/* fons en degradat: cel profund (verd-nit) → terra pañoleta (verd),
+   perquè quan acabe la portada empalme sense salt amb el body */
+.portada{position:relative;min-height:100svh;display:grid;place-items:center;text-align:center;
+  background:transparent;color:var(--calcaria);overflow:hidden;padding:14vh 1.2rem 8vh}
+/* la portada ja no porta gra propi: el de body::before la travessa i,
+   si en posàvem un altre a sobre, es veia un escaló on començava i acabava */
+.portada-photo{position:absolute;inset:0;
+  background-image:linear-gradient(180deg,rgba(12,20,15,.72) 0%,rgba(12,20,15,.48) 45%,rgba(12,20,15,.88) 100%),url("/assets/img/historia-portada.webp");
+  background-size:cover;background-position:center 30%}
+.portada-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.portada-art svg{width:min(128%,980px);color:var(--ocre);opacity:.28}
+.portada-art img{width:min(122%,940px);height:auto;object-fit:contain;opacity:.55}
+.fed-logo{display:block;margin-top:1.1rem;width:min(220px,70%);height:auto;border-radius:6px}
+.portada-inner{position:relative;z-index:1;max-width:22ch}
+.portada .kicker2{font-family:"Caveat",cursive;font-size:clamp(1.4rem,4vw,2rem);color:var(--ocre-clar);margin:1rem 0 0;transform:rotate(-2deg)}
+/* els títols de la portada entren amb un fos lent en cascada */
+@media (prefers-reduced-motion:no-preference){
+  .portada h1{opacity:0;animation:portada-fos 1.6s ease .2s forwards}
+  .portada .rule{opacity:0;animation:portada-fos 1.4s ease 1.1s forwards}
+  .portada .kicker2{opacity:0;animation:portada-fos 1.6s ease 1.7s forwards}
+  @keyframes portada-fos{from{opacity:0}to{opacity:1}}
+}
+.portada h1{font-family:"Bricolage Grotesque",-apple-system,system-ui,sans-serif;font-weight:800;font-size:clamp(2.3rem,8vw,5rem);
+  color:#fff;margin:0;line-height:1.04;letter-spacing:-.02em}
+.portada .rule{display:block;height:14px;width:min(62%,300px);margin:1.1rem auto .2rem;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='14' viewBox='0 0 120 14' preserveAspectRatio='none'%3E%3Cpath d='M3 8 Q30 3 60 7 T117 6' fill='none' stroke='%23C9463A' stroke-width='3.4' stroke-linecap='round'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+.portada .sub{color:var(--calcaria-3);margin:.9rem auto 0;font-size:clamp(1.05rem,2.4vw,1.3rem);max-width:26ch}
+.scroll-cue{position:absolute;left:0;right:0;bottom:4vh;color:var(--ocre-clar);font-family:"Caveat",cursive;
+  font-size:1.4rem;font-weight:600;z-index:1}
+.scroll-cue:hover,.scroll-cue:focus-visible{background-image:none;color:#fff}
+@media (prefers-reduced-motion:no-preference){
+  .scroll-cue{animation:bob 2.4s ease-in-out infinite}
+  @keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+}
+
+/* ---- intro (primer bloc d'informació) ---- */
+.intro .lead{font-size:clamp(1.1rem,.9rem + .8vw,1.35rem);max-width:42ch}
+.intro .actions{display:flex;flex-wrap:wrap;gap:.8rem;margin:.6rem 0 1.4rem}
+.intro h2{max-width:16ch}
+.fed-strip{display:flex;align-items:center;gap:.9rem;flex-wrap:wrap;margin-top:2rem;padding-top:1.4rem;border-top:2px solid var(--calcaria-3)}
+.fed-strip .lbl{font-size:.82rem;text-transform:uppercase;letter-spacing:.08em;color:var(--ocre-clar);font-weight:700}
+.fed-strip img{width:min(210px,62%);height:auto;border-radius:6px;display:block}
+
+/* ---- blocs foscos ---- */
+/* les bandes fosques comencen amb un fos suau des de --verd fins a --verd-nit,
+   perquè no hi haja un tall recte quan es passa d'una secció clara a una fosca */
+/* les bandes "fosques" no pinten cap fons: el degradat del body ja
+   fa la feina, i així no hi ha cap costura enlloc. Només canvien el text. */
+.dark{background:transparent;color:var(--calcaria-2)}
+.dark h2,.dark h3{color:#fff}
+.dark .ocre{color:var(--ocre-clar)}
+.dark a{color:var(--ocre-clar)}
+.cova-bg{background:transparent;color:var(--calcaria-2)}
+.cova-bg h2{color:#fff}
+
+/* ---- "en un minut" ---- */
+.minut{display:grid;gap:1.1rem;grid-template-columns:1fr}
+.minut .q{background:var(--calcaria-2);border:2px solid var(--calcaria-3);border-radius:14px 9px 16px 10px;padding:1.1rem 1.2rem}
+.minut .q h3{color:var(--roig);margin-bottom:.3rem}
+.minut .q p{margin:0;font-size:1rem}
+@media (min-width:680px){.minut{grid-template-columns:1fr 1fr}}
+
+/* ---- seccions (home) ---- */
+.seccions .grid{display:grid;gap:1.2rem;grid-template-columns:1fr}
+.plaqueta{position:relative;background:var(--calcaria-2);color:var(--negre);border:2px solid var(--calcaria-3);
+  border-radius:16px 8px 18px 10px/10px 18px 8px 16px;padding:1.2rem 1.2rem 1.3rem;
+  border-left:8px solid var(--sc,var(--ocre))}
+.plaqueta .glyph{width:52px;height:52px;color:var(--sc,var(--verd));margin-bottom:.4rem}
+.plaqueta .edat{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--sc,var(--verd));font-size:.9rem}
+.plaqueta h3{margin:.1rem 0 .35rem;color:var(--negre)}
+.plaqueta p{font-size:.98rem;margin:0 0 .7rem}
+.manada{--sc:var(--s-manada)} .tropa{--sc:var(--s-tropa)}
+.escoltes{--sc:var(--s-escoltes)} .clan{--sc:var(--s-clan)}
+.selfloc{font-family:"Caveat",cursive;font-size:1.4rem;color:var(--ocre-clar);transform:rotate(-1.5deg);margin-top:.6rem}
+/* targeta de secció com a enllaç a la seua pàgina */
+a.plaqueta{color:var(--negre);font-weight:400;display:flex;flex-direction:column;height:100%;transition:transform .15s ease,box-shadow .15s ease}
+a.plaqueta:hover,a.plaqueta:focus-visible{background-image:none;transform:translateY(-3px);box-shadow:0 12px 26px rgba(33,28,22,.14)}
+.plaqueta .entrar{margin-top:auto;padding-top:.5rem;font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--sc,var(--verd));display:inline-flex;gap:.4em}
+.plaqueta .entrar .arr{transition:transform .15s ease}
+a.plaqueta:hover .entrar .arr,a.plaqueta:focus-visible .entrar .arr{transform:translateX(4px)}
+@media (min-width:640px){.seccions .grid{grid-template-columns:1fr 1fr}}
+@media (min-width:960px){.seccions .grid{grid-template-columns:1fr 1fr 1fr}}
+
+/* ---- qui ho porta ---- */
+.equip{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:1rem;margin-top:1.4rem}
+.pers{text-align:center}
+.pers .face{width:100%;aspect-ratio:1;border-radius:50%;background:color-mix(in srgb,var(--calcaria) 70%,#fff);
+  border:2px dashed var(--ocre-clar);display:flex;align-items:center;justify-content:center;font-family:"Caveat",cursive;
+  color:var(--ocre-clar);font-size:1.05rem;margin-bottom:.4rem}
+.pers b{display:block;font-family:"Bricolage Grotesque",sans-serif}
+.pers span{font-size:.85rem;opacity:.85}
+
+/* ---- d'on venim + tally ---- */
+.venim .grid{display:grid;gap:1.6rem}
+.quote{border-left:8px solid var(--ocre);padding:.4rem 0 .4rem 1.1rem;font-family:"Bricolage Grotesque",sans-serif;
+  font-size:1.25rem;line-height:1.25;color:#fff}
+.quote cite{display:block;font-family:"Caveat",cursive;font-style:normal;font-size:1.2rem;color:var(--ocre-clar);margin-top:.5rem}
+.tally{display:flex;flex-wrap:wrap;gap:5px 4px;max-width:420px;margin:.4rem 0 .6rem}
+.tally i{display:inline-block;width:4px;height:26px;background:var(--ocre-clar);border-radius:2px}
+.tally i:nth-child(2n){transform:rotate(4deg)} .tally i:nth-child(3n){transform:rotate(-5deg)} .tally i:nth-child(7n){transform:rotate(2deg)}
+.tally i.fifth{margin-right:14px;box-shadow:9px 0 0 -1px var(--ocre-clar);position:relative}
+.tally-cap{font-family:"Caveat",cursive;font-size:1.25rem;color:var(--ocre-clar)}
+@media (min-width:820px){.venim .grid{grid-template-columns:1fr 1fr;align-items:center}}
+
+/* ---- història: el quadern del grup (interactiu) ---- */
+.quadern{max-width:620px;margin-top:1.6rem}
+.quadern:focus-visible{outline:3px solid var(--ocre);outline-offset:6px;border-radius:8px}
+.fulls{position:relative}
+.full{background:var(--calcaria-2);color:var(--negre);border-radius:5px;padding:1.5rem 1.5rem 1.7rem;
+  position:relative;box-shadow:0 14px 34px rgba(0,0,0,.3);margin-bottom:1.1rem}
+.js .full{display:none;margin-bottom:0}
+.js .full.on{display:block}
+/* cinta adhesiva a les cantonades */
+.full::before,.full::after{content:"";position:absolute;top:-9px;width:58px;height:20px;
+  background:color-mix(in srgb,var(--ocre) 55%,transparent);opacity:.75;border-radius:2px}
+.full::before{left:26px;transform:rotate(-5deg)}
+.full::after{right:26px;transform:rotate(4deg)}
+.full .pagina{font-family:"Caveat",cursive;color:var(--roig);font-size:1.35rem;margin:0}
+.full h3{color:var(--negre);margin:.1rem 0 .5rem}
+.full p{margin:0 0 .7rem}
+.full .foto-scrap{aspect-ratio:4/3;background:var(--calcaria-3);border:7px solid #fff;box-shadow:0 5px 14px rgba(0,0,0,.18);
+  transform:rotate(-1.6deg);display:flex;align-items:flex-end;justify-content:center;padding:.6rem;margin:.9rem 0 1.1rem;
+  font-family:"Caveat",cursive;color:var(--verd);font-size:1.15rem;text-align:center;overflow:hidden}
+.full .foto-scrap img{width:100%;height:100%;object-fit:cover;display:block;padding:0}
+.full .nota{font-family:"Caveat",cursive;font-size:1.35rem;color:var(--verd);transform:rotate(-1deg);margin:.4rem 0 0}
+.full .retall{margin:.6rem 0 0;background:#ece5d6;border:1px dashed #b7ab92;padding:1rem 1.1rem;
+  font-family:Georgia,"Times New Roman",serif;font-size:1.12rem;line-height:1.4;color:#2a2620;
+  box-shadow:2px 3px 0 rgba(0,0,0,.08);transform:rotate(-.5deg)}
+.full .retall cite{display:block;margin-top:.6rem;font-family:"Caveat",cursive;font-style:normal;color:var(--roig);font-size:1.15rem}
+.full .tally{margin:.6rem 0}
+.full .tally i{background:var(--verd)}
+.full .tally i.fifth{box-shadow:9px 0 0 -1px var(--verd)}
+.quadern-nav{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-top:.4rem}
+.js .quadern-nav{margin-top:1rem}
+.qbtn{background:transparent;border:2px solid var(--ocre-clar);color:var(--ocre-clar);border-radius:9px;
+  padding:.5em .9em;font-family:inherit;font-weight:700;cursor:pointer;white-space:nowrap}
+.qbtn:hover:not(:disabled),.qbtn:focus-visible{background:var(--ocre-clar);color:var(--verd-nit);background-image:none}
+.qbtn:disabled{opacity:.35;cursor:default}
+.dots{display:flex;gap:.55rem}
+.dots button{width:12px;height:12px;border-radius:50%;border:2px solid var(--ocre-clar);background:transparent;cursor:pointer;padding:0}
+.dots button[aria-current="true"]{background:var(--ocre-clar)}
+/* sense JS: el quadern es llig com una llista de pàgines */
+.quadern:not(.js-ready) .quadern-nav{display:none}
+@media (prefers-reduced-motion:no-preference){
+  .js .full.on{animation:full-in .35s ease}
+  @keyframes full-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+}
+
+/* ---- la cova: banda teaser (home) ---- */
+.cova-teaser{background:transparent;color:#fff;position:relative;overflow:hidden;text-align:center}
+.cova-teaser .cervola-big{width:min(38%,140px);color:var(--ocre-clar);margin:0 auto 1rem;display:block}
+.cova-teaser .kick{font-family:"Caveat",cursive;font-size:1.6rem;color:var(--ocre-clar);margin:0 0 .3rem}
+.cova-teaser h2{color:#fff}
+.cova-teaser p{margin:0 auto 1.4rem;color:var(--calcaria-3);max-width:46ch}
+.cova-teaser .btn-ghost{color:#fff;border-color:var(--ocre-clar)}
+.cova-teaser .btn-ghost:hover,.cova-teaser .btn-ghost:focus-visible{background:var(--ocre-clar);color:var(--verd-nit)}
+
+/* ---- la cova: immersió estil Apple (pàgina cova.html) ---- */
+.cova-immersio{background:var(--verd-nit);color:#fff;position:relative}
+.cova-immersio .escena{position:relative;min-height:100svh;display:flex;align-items:center;justify-content:center;
+  padding:clamp(1.5rem,6vw,4rem);text-align:center;overflow:hidden}
+.cova-immersio .foto{position:absolute;inset:0;z-index:0;background:#2a1f14 center/cover no-repeat}
+.cova-immersio .foto::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,8,5,.35),rgba(10,8,5,.8))}
+.cova-immersio .foto::after{content:attr(data-label);position:absolute;bottom:1.1rem;left:0;right:0;text-align:center;
+  font-family:"Caveat",cursive;font-size:1.25rem;color:rgba(214,162,78,.65)}
+.cova-immersio .txt{position:relative;z-index:1;max-width:24ch}
+.cova-immersio .crumb{position:absolute;top:calc(1rem + env(safe-area-inset-top));left:0;right:0;text-align:center;color:var(--calcaria-3);font-size:.9rem}
+.cova-immersio .crumb a{color:var(--ocre-clar)}
+.cova-immersio .kick{font-family:"Caveat",cursive;font-size:1.7rem;color:var(--ocre-clar);margin:0 0 .5rem}
+.cova-immersio .big{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;line-height:1.04;
+  font-size:clamp(2rem,6.5vw,4.4rem);margin:0;color:#fff;letter-spacing:-.01em}
+.cova-immersio .sub{font-size:clamp(1rem,2.4vw,1.35rem);color:var(--calcaria-3);margin-top:1.1rem}
+.cova-immersio .scrollhint{font-family:"Caveat",cursive;color:var(--ocre-clar);margin-top:2.2rem;font-size:1.4rem}
+.cova-immersio .btn{margin-top:1.6rem}
+.cova-immersio .tornar{display:block;margin-top:1.1rem;color:var(--ocre-clar);font-weight:600}
+.cova-immersio .cervola-big{width:min(46%,170px);color:var(--ocre-clar);margin:0 auto 1rem;display:block}
+@media (prefers-reduced-motion:no-preference){
+  .js .cova-immersio .txt{opacity:0;transform:translateY(36px);transition:opacity .9s ease,transform .9s ease}
+  .js .cova-immersio .escena.in .txt{opacity:1;transform:none}
+  .js .cova-immersio .foto{transform:scale(1.09);transition:transform 1.6s ease}
+  .js .cova-immersio .escena.in .foto{transform:scale(1)}
+  .js .cova-immersio .escena-intro .crumb{opacity:1}
+}
+
+/* ---- pàgines de secció ---- */
+.sec-hero{background:var(--calcaria);color:var(--negre);border-top:7px solid var(--sc,var(--ocre))}
+.crumb{font-size:.9rem;margin-bottom:1.4rem}
+.crumb a{color:var(--verd)} .crumb span{opacity:.7;font-weight:700}
+.sec-hero-grid{display:grid;gap:2rem}
+.glyph-big{width:82px;height:82px;color:var(--sc,var(--verd));margin-bottom:.5rem}
+.sec-hero .edat{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--sc,var(--verd));font-size:1.05rem;margin:0}
+.sec-hero h1{color:var(--negre);margin:.1rem 0 .5rem}
+.sec-hero .lede{margin-bottom:1.2rem}
+@media (min-width:820px){.sec-hero-grid{grid-template-columns:1fr 1fr;align-items:center}}
+.sec-content{max-width:760px}
+.sec-content>p{font-size:1.15rem}
+.sec-facts{display:grid;gap:1.1rem;margin-top:1.6rem}
+.sec-facts>div{background:var(--calcaria-2);color:var(--negre);border:2px solid var(--calcaria-3);border-left:6px solid var(--sc,var(--ocre));
+  border-radius:12px 8px 12px 8px;padding:1rem 1.1rem}
+.sec-facts b{display:block;font-family:"Bricolage Grotesque",sans-serif;color:var(--sc,var(--verd));margin-bottom:.15rem}
+.sec-facts p{margin:0}
+.sec-facts .resp-face{display:inline-block;width:30px;height:30px;border-radius:50%;background:var(--calcaria-3);
+  border:2px dashed var(--ocre);vertical-align:-9px;margin-right:.4rem}
+@media (min-width:680px){.sec-facts{grid-template-columns:1fr 1fr}}
+.sec-switcher h2{font-size:1.5rem}
+.switch-grid{display:grid;gap:.8rem;grid-template-columns:1fr;margin-top:1rem}
+.switch{display:flex;align-items:center;gap:.6rem;background:var(--calcaria-2);border:2px solid var(--calcaria-3);
+  border-left:8px solid var(--sc,var(--ocre));border-radius:10px;padding:.9rem 1rem;color:var(--negre);font-weight:700;
+  font-family:"Bricolage Grotesque",sans-serif;transition:transform .15s ease}
+.switch small{font-weight:600;opacity:.7;font-family:inherit}
+.switch:hover,.switch:focus-visible{background:var(--calcaria-3);background-image:none;transform:translateX(4px)}
+@media (min-width:680px){.switch-grid{grid-template-columns:repeat(2,1fr)}}
+.sec-cta{text-align:center}
+.sec-cta .btn{margin-top:1rem}
+
+/* ---- alta ---- */
+.passos{display:grid;gap:1rem;grid-template-columns:1fr;margin:1.4rem 0}
+.pas{display:flex;gap:.9rem;align-items:flex-start;background:color-mix(in srgb,var(--verd-nit) 88%,#000);
+  border-radius:12px;padding:1rem 1.1rem}
+.pas .n{font-family:"Bricolage Grotesque",sans-serif;font-weight:800;font-size:1.5rem;color:var(--ocre-clar);flex:none;line-height:1}
+.pas p{margin:0;color:var(--calcaria-2)}
+@media (min-width:760px){.passos{grid-template-columns:repeat(3,1fr)}}
+
+form.alta{background:var(--calcaria-2);color:var(--negre);border:2px solid var(--calcaria-3);border-radius:16px;padding:clamp(1.1rem,3vw,2rem);max-width:720px}
+form.alta fieldset{border:0;border-top:2px solid var(--calcaria-3);margin:0 0 1.4rem;padding:1.2rem 0 0}
+form.alta legend{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--verd);font-size:1.15rem;padding:0}
+.field{margin-bottom:1rem}
+.field label{display:block;font-weight:700;margin-bottom:.3rem;font-size:.95rem}
+.field .help{font-size:.85rem;opacity:.75;font-weight:400}
+.field input,.field select,.field textarea{width:100%;font-family:inherit;font-size:1rem;padding:.7em .8em;
+  border:2px solid var(--calcaria-3);border-radius:9px;background:#fff;color:var(--negre)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--verd);outline:3px solid var(--ocre);outline-offset:1px}
+.two{display:grid;gap:1rem;grid-template-columns:1fr}
+@media (min-width:560px){.two{grid-template-columns:1fr 1fr}}
+.check{display:flex;gap:.6rem;align-items:flex-start;margin-bottom:.8rem;font-size:.94rem}
+.check input{width:1.3em;height:1.3em;margin-top:.15em;flex:none;accent-color:var(--verd)}
+.req{color:var(--roig)}
+.primerdia{background:rgba(0,0,0,.16);border:2px dashed var(--ocre-clar);border-radius:12px;padding:1.1rem 1.2rem;margin-top:1.6rem;color:var(--calcaria-2)}
+.primerdia h3{color:#fff}
+
+/* ---- cròniques ---- */
+.cronica-grid{display:grid;gap:1.2rem;grid-template-columns:1fr}
+.cronica{background:var(--calcaria-2);border:2px solid var(--calcaria-3);border-radius:14px 8px 16px 10px;overflow:hidden;display:flex;flex-direction:column}
+.cronica .photo{border:0;border-radius:0;aspect-ratio:16/10}
+.cronica .txt{padding:1rem 1.1rem 1.2rem}
+.cronica h3{margin-bottom:.3rem}
+.cronica .who{font-family:"Caveat",cursive;font-size:1.15rem;color:var(--roig)}
+@media (min-width:720px){.cronica-grid{grid-template-columns:1fr 1fr}}
+
+/* ---- calendari ---- */
+.agenda{display:flex;flex-direction:column;gap:.2rem;max-width:640px}
+.agenda .row{display:grid;grid-template-columns:auto 1fr;gap:.9rem;align-items:baseline;padding:.7rem 0;border-bottom:2px dotted var(--calcaria-3)}
+.agenda .d{font-family:"Bricolage Grotesque",sans-serif;font-weight:700;color:var(--roig);min-width:4.5rem}
+.agenda .portar{font-family:"Caveat",cursive;font-size:1.15rem;color:var(--verd);margin-top:1rem}
+
+/* ---- galeria ---- */
+.galeria{display:grid;grid-template-columns:repeat(2,1fr);gap:.7rem}
+.galeria .photo:nth-child(3n){aspect-ratio:1}
+@media (min-width:680px){.galeria{grid-template-columns:repeat(4,1fr)}}
+
+/* ---- peu ---- */
+footer{background:transparent;color:var(--calcaria-2)}
+footer .wrap{padding-block:var(--pas)}
+footer a{color:var(--ocre-clar)}
+.foot-grid{display:grid;gap:1.6rem;grid-template-columns:1fr}
+.foot-grid h3{color:#fff}
+/* Tots els enllaços de les columnes del peu van un davall de l'altre. S'exclou
+   .brand, que és un flex amb la cérvola i el nom i es trencaria. */
+.foot-grid > div > a:not(.brand){display:block;margin-bottom:.4rem}
+.made{font-family:"Caveat",cursive;font-size:1.3rem;color:var(--ocre-clar);margin-top:1.4rem}
+/* el morse tanca la pàgina, just abans de la línia legal */
+footer .ratlla{margin:2.4rem 0 1.6rem;opacity:.75}
+.legal{font-size:.82rem;opacity:.7;margin-top:1.4rem;display:flex;flex-wrap:wrap;gap:.4rem 1rem}
+.legal a{opacity:.85}
+@media (min-width:720px){.foot-grid{grid-template-columns:1.3fr 1fr 1fr}}
+
+.eyebrow{font-family:"Caveat",cursive;font-size:1.4rem;color:var(--ocre-clar);transform:rotate(-1.5deg);margin-bottom:.1rem}
+.dark .eyebrow,.cova-bg .eyebrow{color:var(--ocre-clar)}
+.lede{font-size:1.1rem;max-width:52ch;margin-bottom:.4rem}
+
+/* ============================================================
+   Experiència premium: revelat, progrés, elevació, tornar a dalt
+   ============================================================ */
+main section[id]{scroll-margin-top:88px}
+.progress-bar{position:fixed;top:0;left:0;height:3px;width:0;background:var(--roig);z-index:60;pointer-events:none;
+  transition:width .08s linear}
+header.top.revelat{box-shadow:0 8px 26px rgba(18,14,8,.22)}
+.to-top{position:fixed;right:1.1rem;bottom:1.1rem;z-index:55;width:64px;height:64px;
+  border:0;background:transparent;padding:0;cursor:pointer;
+  background-image:url("/assets/img/cierva-parche.png");background-size:contain;
+  background-repeat:no-repeat;background-position:center;
+  opacity:0;translate:0 12px;pointer-events:none;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,.4));
+  transition:opacity .3s ease,translate .3s ease,transform .2s ease,filter .2s ease}
+.to-top.show{opacity:1;translate:0 0;pointer-events:auto}
+.to-top:hover,.to-top:focus-visible{transform:scale(1.08);filter:drop-shadow(0 6px 14px rgba(0,0,0,.5))}
+/* micro-interaccions més fines */
+.btn{transition:transform .18s ease,background .2s ease,box-shadow .2s ease,color .2s ease}
+.plaqueta .glyph,.plaqueta .cierva{transition:scale .25s ease}
+a.plaqueta:hover .glyph,a.plaqueta:focus-visible .glyph{scale:1.06}
+@media (prefers-reduced-motion:no-preference){
+  .reveal{opacity:0;translate:0 24px;transition:opacity .7s cubic-bezier(.2,.7,.2,1),translate .7s cubic-bezier(.2,.7,.2,1)}
+  .reveal.in{opacity:1;translate:0 0}
+}
+
+
+/* ---- notícies (home) ---- */
+.noticies-llista{display:grid;gap:1.1rem;grid-template-columns:1fr;margin:1.4rem 0 1.2rem}
+.noticia{background:color-mix(in srgb,#fff 7%,transparent);
+  border:1px solid color-mix(in srgb,var(--ocre-clar) 28%,transparent);
+  border-left:6px solid var(--ocre-clar);border-radius:14px 8px 16px 10px;padding:1.1rem 1.2rem}
+.noticia .data{font-family:"Caveat",cursive;font-size:1.2rem;color:var(--ocre-clar);margin:0 0 .2rem}
+.noticia h3{color:#fff;margin:0 0 .4rem}
+.noticia p{margin:0;color:var(--calcaria-2);font-size:1rem}
+@media (min-width:760px){.noticies-llista{grid-template-columns:1fr 1fr}}
+
+.ig-header{margin-top:2.2rem}
+.ig-header h3{color:#fff;margin:.1rem 0 0}
+/* La fixada i el compte, un al costat de l'altre. L'incrustat d'Instagram té
+   una amplària mínima pròpia (326px), per això no es posen dues columnes fins
+   que hi caben de veritat. */
+.ig-duo{display:grid;gap:1.4rem;grid-template-columns:1fr;margin:1rem 0 1.2rem;align-items:start}
+@media(min-width:820px){.ig-duo{grid-template-columns:1fr 1fr}}
+.ig-etiqueta{font-family:"Caveat",cursive;font-size:1.35rem;color:var(--ocre-clar);margin:0 0 .4rem}
+/* Abans que embed.js el transforme en la graella real del perfil, el
+   blockquote es veu com un enllaç de reserva senzill. */
+.instagram-media{background:color-mix(in srgb,#fff 7%,transparent);
+  border:1px dashed color-mix(in srgb,var(--ocre-clar) 45%,transparent);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;text-align:center;
+  min-height:8rem;padding:1.4rem 1.2rem;margin:0;width:100%!important}
+.instagram-media a{color:var(--ocre-clar);text-decoration:none;font-family:"Caveat",cursive;font-size:1.15rem}
+.instagram-media a:hover,.instagram-media a:focus-visible{text-decoration:underline}

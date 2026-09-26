@@ -11,7 +11,13 @@
  * fitxer (Cloudflare KV / Durable Object, Upstash Redis, etc.).
  */
 
-const PER_IP = { max: 5, windowMs: 60 * 60 * 1000 };   // 5 sol·licituds/hora per IP
+const PER_ENDPOINT = {
+  alta: { max: 5, windowMs: 60 * 60 * 1000 },
+  reserva: { max: 10, windowMs: 60 * 60 * 1000 },
+  inscripcio: { max: 3, windowMs: 60 * 60 * 1000 },
+  quota: { max: 3, windowMs: 60 * 60 * 1000 },
+  portal: { max: 5, windowMs: 60 * 1000 },
+};
 const GLOBAL = { max: 60, windowMs: 60 * 60 * 1000 };  // vàlvula de seguretat global
 
 const hits = new Map();
@@ -28,13 +34,14 @@ function podar(llista, ara, windowMs) {
 function escombra(ara) {
   if (hits.size < 500) return;
   for (const [k, v] of hits) {
-    if (!v.length || v[v.length - 1] <= ara - PER_IP.windowMs) hits.delete(k);
+    if (!v.length || v[v.length - 1] <= ara - 60 * 60 * 1000) hits.delete(k);
   }
 }
 
 /* Retorna { ok, retryAfter } — retryAfter en segons. */
-export function check(ip) {
+export function check(ip, endpoint = "alta") {
   const ara = Date.now();
+  const limit = PER_ENDPOINT[endpoint] || PER_ENDPOINT.alta;
 
   global = podar(global, ara, GLOBAL.windowMs);
   if (global.length >= GLOBAL.max) {
@@ -43,12 +50,12 @@ export function check(ip) {
 
   // Sense IP fiable (proxy rar, execució local) no bloquegem per IP: només
   // queda el límit global. Preferim no tancar la porta a una família real.
-  const clau = ip || null;
+  const clau = ip ? `${endpoint}:${ip}` : null;
   if (clau) {
-    const prev = podar(hits.get(clau) || [], ara, PER_IP.windowMs);
-    if (prev.length >= PER_IP.max) {
+    const prev = podar(hits.get(clau) || [], ara, limit.windowMs);
+    if (prev.length >= limit.max) {
       hits.set(clau, prev);
-      return { ok: false, retryAfter: Math.ceil((prev[0] + PER_IP.windowMs - ara) / 1000) };
+      return { ok: false, retryAfter: Math.ceil((prev[0] + limit.windowMs - ara) / 1000) };
     }
     prev.push(ara);
     hits.set(clau, prev);

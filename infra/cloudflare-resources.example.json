@@ -1,0 +1,21 @@
+{
+  "$schema": "./cloudflare-resources.schema.json",
+  "remoteProvisioningAuthorized": false,
+  "environments": {
+    "development": {
+      "dataPolicy": "synthetic-only",
+      "d1": { "name": "parpallo-development", "jurisdiction": "eu" },
+      "r2PersonalData": { "name": "parpallo-personal-development", "jurisdiction": "eu", "public": false }
+    },
+    "staging": {
+      "dataPolicy": "synthetic-only",
+      "d1": { "name": "parpallo-staging", "jurisdiction": "eu" },
+      "r2PersonalData": { "name": "parpallo-personal-staging", "jurisdiction": "eu", "public": false }
+    },
+    "production": {
+      "dataPolicy": "real-data-after-legal-and-release-gates",
+      "d1": { "name": "parpallo-production", "jurisdiction": "eu" },
+      "r2PersonalData": { "name": "parpallo-personal-production", "jurisdiction": "eu", "public": false }
+    }
+  }
+}

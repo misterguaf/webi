@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ca">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Gestió local · Parpalló</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color:#172d27;background:#f3f5ef}body{max-width:1000px;margin:2rem auto;padding:0 1rem}header{display:flex;align-items:center;justify-content:space-between;gap:1rem}h1{font-size:1.6rem}section{background:#fff;border:1px solid #c8d5cb;border-radius:14px;padding:1.2rem;margin:1rem 0}button,select,input,textarea{font:inherit;padding:.6rem;border-radius:8px;border:1px solid #617e70}button{background:#145b43;color:white;cursor:pointer}button:disabled{opacity:.5}li{margin:.4rem 0}.note{background:#f7ebca;padding:.8rem;border-radius:8px}.muted{color:#476055}code{overflow-wrap:anywhere}label{display:block;margin:.5rem 0}label>input,label>select,label>textarea{display:block;width:100%;box-sizing:border-box}table{border-collapse:collapse;width:100%}th,td{border-bottom:1px solid #c8d5cb;padding:.5rem;text-align:left}nav{display:flex;flex-wrap:wrap;gap:.5rem}
+  </style>
+</head>
+<body>
+<header><h1>Gestió Parpalló <small class="muted">prototip local</small></h1><button id="logout" hidden>Tanca sessió</button></header>
+<p class="note">Només dades fictícies. No introduïu informació de menors, salut ni econòmica real.</p>
+<main>
+  <section id="login"><h2>Identitat de prova</h2><p>Selector disponible únicament en desenvolupament local.</p><select id="identity"></select> <button id="loginButton">Entrar</button></section>
+  <section id="account" hidden><h2>El meu compte</h2><div id="profile"></div><h3>Rols vigents</h3><ul id="roles"></ul></section>
+  <section id="sessions" hidden><h2>Les meues sessions</h2><ul id="sessionList"></ul><button id="revokeAll">Tanca totes les sessions</button></section>
+  <section id="participants" hidden><h2>Participants autoritzats</h2><p class="muted">Llista filtrada en la consulta D1 segons la secció autoritzada.</p><ul id="participantList"></ul></section>
+  <section id="activityPanel" hidden><h2>Activitats</h2><p class="muted">Gestió de prova: els imports i l'àmbit es fixen al servidor. No hi ha dades reals.</p>
+    <nav><button id="reloadActivities">Actualitza</button><button id="newActivity">Activitat nova</button></nav><ul id="activityList"></ul>
+    <form id="activityForm" hidden><h3 id="activityFormTitle">Activitat</h3>
+      <label>Nom <input id="activityName" required maxlength="120"></label>
+      <label>Àmbit <select id="activityAudience"><option value="SECTIONS">Seccions</option><option value="GENERAL">Tot el grup</option></select></label>
+      <label>Seccions (Cmd/Ctrl per a diverses) <select id="activitySections" multiple size="4"><option value="00000000-0000-4000-8000-000000000001">Manada</option><option value="00000000-0000-4000-8000-000000000002">Tropa</option><option value="00000000-0000-4000-8000-000000000003">Escolta</option><option value="00000000-0000-4000-8000-000000000004">Clan</option></select></label>
+      <label>Lloc <input id="activityLocation" required></label><label>Inici <input id="activityStart" type="datetime-local" required></label>
+      <label>Final <input id="activityEnd" type="datetime-local" required></label><label>Termini d'inscripció <input id="activityDeadline" type="datetime-local" required></label>
+      <label>Preu base en cèntims <input id="activityPrice" type="number" min="0" max="1000000" required></label>
+      <label>Descripció breu <textarea id="activityDescription" maxlength="600"></textarea></label><label>Material <textarea id="activityMaterials" maxlength="400"></textarea></label>
+      <label>Avís especial <textarea id="activityNotice" maxlength="400"></textarea></label>
+      <label><input id="activityTransport" type="checkbox"> Preguntar transport</label>
+      <label>Ajust del transport del grup, en cèntims <input id="activityTransportPrice" type="number" value="0"></label>
+      <button type="submit">Guarda</button><button id="publishActivity" type="button">Publica</button><button id="closeActivity" type="button">Tanca</button>
+    </form>
+  </section>
+  <section id="registrationPanel" hidden><h2>Inscripcions</h2><p>Seleccioneu una activitat per revisar-ne les inscripcions.</p><ul id="registrationList"></ul></section>
+  <section id="paymentPanel" hidden><h2>Pagaments d'activitats</h2><button id="reloadPayments">Actualitza</button><ul id="paymentList"></ul></section>
+  <section id="notificationPanel" hidden><h2>Notificacions de prova</h2><p>Només envia al capturador local; mai a un servei de correu.</p><button id="drainNotifications">Processa cua fictícia</button></section>
+  <p id="message" role="status"></p>
+</main>
+<script type="module" src="/app.js"></script>
+</body></html>

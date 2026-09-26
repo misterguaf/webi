@@ -15,11 +15,13 @@ import { check as rateCheck } from "./ratelimit.js";
 import { appendReserva } from "./sheets.js";
 import { json, html, volJson, parseBody, MAX_BODY } from "./handler.js";
 import { clientIp } from "./handler.js";
+import { isAcceptedFormContentType } from "./http-body.js";
+import { isAllowedOrigin } from "./environment.js";
 
 const MISSATGES = {
   ok: {
-    va: "Reserva rebuda! Et confirmarem la disponibilitat i quedem un dissabte per a arreplegar-ho.",
-    es: "¡Reserva recibida! Te confirmaremos la disponibilidad y quedamos un sábado para recogerlo.",
+    va: "Reserva rebuda! Et confirmarem la disponibilitat i quedem un dia per a arreplegar-ho.",
+    es: "¡Reserva recibida! Te confirmaremos la disponibilidad y quedamos un día para recogerlo.",
   },
   invalid: {
     va: "Revisa les dades marcades i torna a provar.",
@@ -47,6 +49,10 @@ export async function handleReserva(req) {
     return respond(405, { ok: false, message: MISSATGES.method }, { Allow: "POST" });
   }
 
+  if (!isAcceptedFormContentType(headers["content-type"])) {
+    return respond(415, { ok: false, message: MISSATGES.invalid });
+  }
+
   const raw = req.rawBody || "";
   if (raw.length > MAX_BODY) {
     return respond(413, { ok: false, message: MISSATGES.invalid });
@@ -64,7 +70,7 @@ export async function handleReserva(req) {
 
   const permes = req.env && req.env.ALLOWED_ORIGIN;
   const origin = headers["origin"];
-  if (permes && origin && origin !== permes) {
+  if (!isAllowedOrigin(origin, permes, req.env || {})) {
     console.warn("[reserva] origen no permès");
     return respond(403, { ok: false, message: MISSATGES.invalid });
   }
@@ -76,7 +82,7 @@ export async function handleReserva(req) {
   }
 
   const ip = req.ip || clientIp(headers);
-  const rl = rateCheck(ip);
+  const rl = rateCheck(ip, "reserva");
   if (!rl.ok) {
     console.warn("[reserva] límit de peticions superat");
     return respond(429, { ok: false, message: MISSATGES.rate }, { "Retry-After": String(rl.retryAfter) });

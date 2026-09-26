@@ -1,7 +1,8 @@
 # Grup Scout Parpalló — configuració de Cloudflare Workers.
 #
-# El Worker només atén POST /api/alta; la resta del lloc el serveix
-# Cloudflare Pages (o el hosting estàtic que es trie).
+# El Worker públic atén POST /api/alta i /api/reserva. Cloudflare
+# Pages serveix la resta del lloc. La ruta de zona /api/* es configura al
+# panell quan ja hi haja domini definitiu (vegeu CLOUDFLARE-SEGURIDAD.md).
 #
 # Els secrets NO es posen ací. Es carreguen una vegada amb:
 #   npx wrangler secret put SHEETS_WEBHOOK_URL
@@ -12,5 +13,6 @@ main = "worker.js"
 compatibility_date = "2024-09-23"
 
 [vars]
-# Domini públic del lloc; buit vol dir "no comprovar l'origen".
+# Domini públic del lloc. En producció és obligatori i ha de ser HTTPS.
 ALLOWED_ORIGIN = ""
+APP_ENV = "production"

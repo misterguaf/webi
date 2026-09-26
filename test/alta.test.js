@@ -9,25 +9,11 @@ import assert from "node:assert/strict";
 import { validate, isSpam } from "../api/_lib/validate.js";
 import { _reset } from "../api/_lib/ratelimit.js";
 import { handleAlta } from "../api/_lib/handler.js";
+import { hmacHex } from "../api/_lib/sheets.js";
+import { SHEETS_TEST_ENV, WAITLIST_REQUEST } from "./fixtures/synthetic.js";
 
-const VALID = {
-  nom: "Aina",
-  cognoms: "Exemple Prova",
-  naixement: "2015-04-12",
-  seccio: "Estol (8-11)",
-  notes: "Al·lèrgia als fruits secs",
-  tutor: "Marta Exemple",
-  telefon: "600 12 34 56",
-  email: "prova@exemple.org",
-  conegut: "Una amiga",
-  dades: "on",
-  contacte: "on",
-};
-
-const ENV = {
-  SHEETS_WEBHOOK_URL: "https://script.google.com/macros/s/AKfals/exec",
-  SHEETS_SHARED_SECRET: "secret-fals",
-};
+const VALID = WAITLIST_REQUEST;
+const ENV = SHEETS_TEST_ENV;
 
 let peticions = [];
 function mockFetch(resposta = { ok: true, status: 200, body: { ok: true } }) {
@@ -97,8 +83,12 @@ test("rebutja emails i telèfons mal formats", () => {
   assert.equal(validate({ ...VALID, telefon: "12" }).ok, false);
 });
 
-test("rebutja text desmesurat al camp de notes", () => {
-  assert.equal(validate({ ...VALID, notes: "x".repeat(1001) }).ok, false);
+test("rebutja qualsevol camp sanitari o l'antic camp notes", () => {
+  for (const field of ["notes", "alergias", "salut", "health", "medicacion", "diagnóstico"]) {
+    const v = validate({ ...VALID, [field]: "valor que no ha d'eixir" });
+    assert.equal(v.ok, false, field);
+    assert.ok(v.errors.sensitive, field);
+  }
 });
 
 test("sense consentiment no hi ha sol·licitud", () => {
@@ -125,20 +115,45 @@ test("un enviament correcte escriu a Sheets i confirma", async () => {
   assert.equal(r.status, 200);
   assert.equal(JSON.parse(r.body).ok, true);
   assert.equal(peticions.length, 1);
-  assert.match(peticions[0].url, /script\.google\.com/);
+  assert.equal(peticions[0].url, "https://sheets.invalid/fake");
 });
 
-test("el secret compartit viatja al webhook, mai a la resposta", async () => {
+test("el webhook rep un sobre HMAC, mai el secret en clar", async () => {
   const r = await post(VALID);
-  assert.ok(!r.body.includes("secret-fals"));
+  assert.ok(!r.body.includes(SHEETS_TEST_ENV.SHEETS_SHARED_SECRET));
   const enviat = JSON.parse(peticions[0].opts.body);
-  assert.equal(enviat.secret, "secret-fals");
+  assert.equal(enviat.secret, undefined);
+  const payload = JSON.parse(enviat.payload);
+  assert.equal(payload.tipus, "alta");
+  assert.equal(Object.hasOwn(payload, "notes"), false);
+  assert.equal(
+    enviat.signature,
+    await hmacHex(SHEETS_TEST_ENV.SHEETS_SHARED_SECRET, `${enviat.timestamp}.${enviat.nonce}.${enviat.payload}`)
+  );
 });
 
 test("les dades invàlides no arriben mai a Sheets", async () => {
   const r = await post({ ...VALID, email: "trencat" });
   assert.equal(r.status, 400);
   assert.ok(JSON.parse(r.body).errors.email);
+  assert.equal(peticions.length, 0);
+});
+
+test("les dades de salut no arriben mai a Sheets", async () => {
+  const r = await post({ ...VALID, notes: "legacy" });
+  assert.equal(r.status, 400);
+  assert.ok(JSON.parse(r.body).errors.sensitive);
+  assert.equal(peticions.length, 0);
+});
+
+test("es rebutja un tipus de contingut no admès", async () => {
+  const r = await handleAlta({
+    method: "POST",
+    headers: { "content-type": "text/plain", accept: "application/json" },
+    rawBody: JSON.stringify(VALID),
+    env: ENV,
+  });
+  assert.equal(r.status, 415);
   assert.equal(peticions.length, 0);
 });
 
@@ -200,6 +215,18 @@ test("es rebutja un origen que no és el nostre", async () => {
     env: { ...ENV, ALLOWED_ORIGIN: "https://parpallo.org" },
     headers: { origin: "https://lloc-clonat.example" },
   });
+  assert.equal(r.status, 403);
+  assert.equal(peticions.length, 0);
+});
+
+test("amb origen configurat també es rebutja un POST sense Origin", async () => {
+  const r = await post(VALID, { env: { ...ENV, ALLOWED_ORIGIN: "https://parpallo.org" } });
+  assert.equal(r.status, 403);
+  assert.equal(peticions.length, 0);
+});
+
+test("production sense ALLOWED_ORIGIN no escriu a Sheets", async () => {
+  const r = await post(VALID, { env: { ...ENV, APP_ENV: "production", ALLOWED_ORIGIN: "" } });
   assert.equal(r.status, 403);
   assert.equal(peticions.length, 0);
 });

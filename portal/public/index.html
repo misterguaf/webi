@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ca-ES-valencia" data-lang="va">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow,noarchive">
+  <title>Inscripcions · Grup Scout Parpalló</title>
+  <link rel="stylesheet" href="/portal.css?v=1">
+</head>
+<body>
+<a class="skip" href="#main"><span class="va">Salta al contingut</span><span class="es">Saltar al contenido</span></a>
+
+<header class="top">
+  <div class="wrap">
+    <span class="brand">
+      <img src="/cierva-parpallo.png" alt="">
+      <span>Parpalló<small>Grup Scout · Gandia</small></span>
+    </span>
+    <span class="spacer"></span>
+    <button class="lang" id="lang-toggle" type="button" aria-label="Canvia a castellà"><span class="lbl">cas</span></button>
+    <button class="logout" id="logout" type="button"><span class="va">Eixir</span><span class="es">Salir</span></button>
+  </div>
+</header>
+
+<main id="main">
+  <div class="wrap">
+    <section class="intro" aria-labelledby="portal-title">
+      <p class="eyebrow"><span class="va">Espai privat de famílies</span><span class="es">Espacio privado de familias</span></p>
+      <h1 id="portal-title"><span class="va">Inscripcions</span><span class="es">Inscripciones</span></h1>
+      <p class="lede"><span class="va">Tria què necessites fer. Només obrirem un formulari cada vegada i no perdràs el que ja hages escrit.</span><span class="es">Elige qué necesitas hacer. Solo abriremos un formulario cada vez y no perderás lo que ya hayas escrito.</span></p>
+      <span class="portal-status"><span class="va">Accés privat actiu durant 24 hores</span><span class="es">Acceso privado activo durante 24 horas</span></span>
+    </section>
+
+    <div class="gestions">
+      <section class="gestio">
+        <button class="gestio-toggle" id="toggle-activitats" type="button" aria-expanded="false" aria-controls="panel-activitats">
+          <span class="gestio-icon" aria-hidden="true">⌁</span>
+          <span class="gestio-copy"><strong><span class="va">Activitats i campaments</span><span class="es">Actividades y campamentos</span></strong><small><span class="va">Inscriu una persona participant i, si l'activitat és de pagament, adjunta el comprovant.</span><span class="es">Inscribe a la persona participante y, si la actividad es de pago, adjunta el justificante.</span></small></span>
+          <span class="gestio-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="gestio-panel" id="panel-activitats" tabindex="-1" hidden>
+          <div id="activities-loading" class="catalog-status" role="status"><span class="va">Carregant les activitats…</span><span class="es">Cargando las actividades…</span></div>
+
+          <form id="activity-form" class="alta" action="/api/inscripcio" method="post" novalidate hidden>
+            <p id="activity-alert" class="alert" role="status" aria-live="polite" tabindex="-1" hidden></p>
+            <div class="npot" aria-hidden="true"><label for="activity-nickname">No òmpligues este camp</label><input id="activity-nickname" name="malnom" type="text" tabindex="-1" autocomplete="off"></div>
+            <input type="hidden" name="_ts" value=""><input type="hidden" name="idempotencyKey" value="">
+
+            <fieldset>
+              <legend><span class="va">L'activitat</span><span class="es">La actividad</span></legend>
+              <div class="two">
+                <div class="field"><label for="activity-section"><span class="va">Secció</span><span class="es">Sección</span> <span class="req">*</span></label><select id="activity-section" name="seccio" required><option value="" data-va="Tria una secció" data-es="Elige una sección">Tria una secció</option><option value="EST" data-va="Estol (8-11)" data-es="Manada (8-11)">Estol (8-11)</option><option value="TRO">Tropa (11-14)</option><option value="ESC" data-va="Escoltes (14-17)" data-es="Escultas (14-17)">Escoltes (14-17)</option><option value="CLA">Clan (17-21)</option></select></div>
+                <div class="field"><label for="activity-id"><span class="va">Activitat o campament</span><span class="es">Actividad o campamento</span> <span class="req">*</span></label><select id="activity-id" name="activitatId" required disabled aria-describedby="activity-help"></select><p class="help" id="activity-help"></p></div>
+              </div>
+              <div id="activity-summary" class="activity-summary" aria-live="polite" hidden></div>
+              <div class="field" id="activity-transport-wrap" hidden>
+                <label for="activity-transport"><span class="va">Transport</span><span class="es">Transporte</span> <span class="req">*</span></label>
+                <select id="activity-transport" name="transportCode"></select>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="va">Qui participa</span><span class="es">Quién participa</span></legend>
+              <div class="two"><div class="field"><label for="activity-name"><span class="va">Nom</span><span class="es">Nombre</span> <span class="req">*</span></label><input id="activity-name" name="participantNom" type="text" autocomplete="given-name" maxlength="80" required></div><div class="field"><label for="activity-surname"><span class="va">Cognoms</span><span class="es">Apellidos</span> <span class="req">*</span></label><input id="activity-surname" name="participantCognoms" type="text" autocomplete="family-name" maxlength="120" required></div></div>
+              <div class="field"><label for="activity-birth"><span class="va">Data de naixement</span><span class="es">Fecha de nacimiento</span> <span class="req">*</span></label><input id="activity-birth" name="naixement" type="date" required><p class="help"><span class="va">Només s'utilitzarà per ajudar a identificar la fitxa correcta; no canviarem la fitxa del participant.</span><span class="es">Solo se usará para ayudar a identificar la ficha correcta; no modificaremos la ficha del participante.</span></p></div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="va">Persona que fa l'enviament</span><span class="es">Persona que realiza el envío</span></legend>
+              <div class="field"><label for="activity-tutor"><span class="va">Nom i cognoms</span><span class="es">Nombre y apellidos</span> <span class="req">*</span></label><input id="activity-tutor" name="tutor" type="text" autocomplete="name" maxlength="120" required><p class="help"><span class="va">És la persona que envia esta sol·licitud; no verifica una relació de tutela.</span><span class="es">Es la persona que envía esta solicitud; no verifica una relación de tutela.</span></p></div>
+              <div class="two"><div class="field"><label for="activity-phone"><span class="va">Telèfon mòbil (opcional)</span><span class="es">Teléfono móvil (opcional)</span></label><input id="activity-phone" name="telefon" type="tel" autocomplete="tel" maxlength="24"></div><div class="field"><label for="activity-email">Email <span class="req">*</span></label><input id="activity-email" name="email" type="email" autocomplete="email" maxlength="150" required></div></div>
+            </fieldset>
+
+            <fieldset id="activity-evidence-fieldset" hidden>
+              <legend><span class="va">Comprovant de la transferència</span><span class="es">Comprobante de la transferencia</span></legend>
+              <div class="field"><label for="activity-receipt"><span class="va">Foto o captura del rebut</span><span class="es">Foto o captura del justificante</span> <span class="req">*</span></label><input id="activity-receipt" name="comprovant" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment"><p class="help"><span class="va">JPG, PNG, WEBP o PDF, fins a 4 MB.</span><span class="es">JPG, PNG, WEBP o PDF, hasta 4 MB.</span></p></div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="va">Autoritzacions</span><span class="es">Autorizaciones</span></legend>
+              <label class="check"><input name="participacio" type="checkbox" required><span><span class="va">Autoritze la participació en l'activitat triada.</span><span class="es">Autorizo la participación en la actividad elegida.</span> <span class="req">*</span></span></label>
+              <label class="check"><input name="privacitat" type="checkbox" required><span><span class="va">He llegit la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacitat</a>.</span><span class="es">He leído la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacidad</a>.</span> <span class="req">*</span></span></label>
+              <button class="btn btn-primary" id="activity-submit" type="submit"><span class="va">Enviar la inscripció</span><span class="es">Enviar la inscripción</span></button>
+            </fieldset>
+          </form>
+
+          <div id="activity-success" class="success" role="status" tabindex="-1" hidden>
+            <span class="pending-badge"><span class="va">Pendent de revisió</span><span class="es">Pendiente de revisión</span></span>
+            <h2><span class="va">Inscripció rebuda</span><span class="es">Inscripción recibida</span></h2>
+            <p id="activity-success-name"></p>
+            <p><span class="va">Hem rebut la sol·licitud i la revisarem. Si cal, et contactarem. Este missatge no confirma una plaça.</span><span class="es">Hemos recibido la solicitud y la revisaremos. Si hace falta, te contactaremos. Este mensaje no confirma una plaza.</span></p>
+          </div>
+        </div>
+      </section>
+
+      <section class="gestio">
+        <button class="gestio-toggle" id="toggle-quota" type="button" aria-expanded="false" aria-controls="panel-quota">
+          <span class="gestio-icon" aria-hidden="true">€</span>
+          <span class="gestio-copy"><strong><span class="va">Quota anual</span><span class="es">Cuota anual</span></strong><small id="fee-option-copy"><span class="va">Import i condicions pendents de confirmar.</span><span class="es">Importe y condiciones pendientes de confirmar.</span></small></span>
+          <span class="gestio-chevron" aria-hidden="true">⌄</span>
+        </button>
+        <div class="gestio-panel" id="panel-quota" tabindex="-1" hidden>
+          <div id="fee-closed" class="card closed-card">
+            <span class="pending-badge"><span class="va">Pròximament</span><span class="es">Próximamente</span></span>
+            <h2><span class="va">La quota encara no està oberta</span><span class="es">La cuota todavía no está abierta</span></h2>
+            <p><span class="va">Tresoreria ha de confirmar l'import, els descomptes i les instruccions de pagament abans d'acceptar dades reals.</span><span class="es">Tesorería debe confirmar el importe, los descuentos y las instrucciones de pago antes de aceptar datos reales.</span></p>
+          </div>
+
+          <form id="fee-form" class="alta" action="/api/cuota" method="post" novalidate hidden>
+            <p id="fee-alert" class="alert" role="status" aria-live="polite" tabindex="-1" hidden></p>
+            <div class="npot" aria-hidden="true"><label for="fee-nickname">No òmpligues este camp</label><input id="fee-nickname" name="malnom" type="text" tabindex="-1" autocomplete="off"></div>
+            <input type="hidden" name="_ts" value=""><input type="hidden" name="idempotencyKey" value="">
+
+            <fieldset>
+              <legend><span class="va">Xiquets i xiquetes</span><span class="es">Niños y niñas</span></legend>
+              <p class="help"><span class="va">Si la transferència inclou germans, afig-los tots ací i adjunta un sol comprovant.</span><span class="es">Si la transferencia incluye hermanos, añádelos todos aquí y adjunta un solo comprobante.</span></p>
+              <div id="fee-children" class="children"></div>
+              <button id="add-child" class="btn btn-secondary btn-small add-child" type="button"><span class="va">+ Afegir germà o germana</span><span class="es">+ Añadir hermano o hermana</span></button>
+              <div id="fee-summary" class="fee-summary" aria-live="polite"></div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="va">Transferència</span><span class="es">Transferencia</span></legend>
+              <div id="fee-instructions" class="transfer-box"></div>
+              <div class="field field-spaced"><label for="fee-receipt"><span class="va">Foto o captura del comprovant</span><span class="es">Foto o captura del comprobante</span> <span class="req">*</span></label><input id="fee-receipt" name="comprovant" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" required><p class="help"><span class="va">JPG, PNG, WEBP o PDF, fins a 4 MB.</span><span class="es">JPG, PNG, WEBP o PDF, hasta 4 MB.</span></p></div>
+            </fieldset>
+
+            <fieldset>
+              <legend><span class="va">Dades de contacte</span><span class="es">Datos de contacto</span></legend>
+              <div class="field"><label for="fee-tutor"><span class="va">Nom del tutor o tutora</span><span class="es">Nombre del tutor o tutora</span> <span class="req">*</span></label><input id="fee-tutor" name="tutor" type="text" autocomplete="name" maxlength="120" required></div>
+              <div class="two"><div class="field"><label for="fee-phone"><span class="va">Telèfon</span><span class="es">Teléfono</span> <span class="req">*</span></label><input id="fee-phone" name="telefon" type="tel" autocomplete="tel" maxlength="24" required></div><div class="field"><label for="fee-email">Email <span class="req">*</span></label><input id="fee-email" name="email" type="email" autocomplete="email" maxlength="150" required></div></div>
+              <label class="check"><input name="privacitat" type="checkbox" required><span><span class="va">He llegit i accepte la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacitat</a>.</span><span class="es">He leído y acepto la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacidad</a>.</span> <span class="req">*</span></span></label>
+            </fieldset>
+            <button class="btn btn-primary" id="fee-submit" type="submit"><span class="va">Enviar el comprovant</span><span class="es">Enviar el comprobante</span></button>
+          </form>
+
+          <div id="fee-success" class="success" role="status" tabindex="-1" hidden>
+            <span class="pending-badge"><span class="va">Pendent de revisió</span><span class="es">Pendiente de revisión</span></span>
+            <h2><span class="va">Comprovant rebut</span><span class="es">Comprobante recibido</span></h2>
+            <p><span class="va">Tresoreria revisarà l'ingrés i t'enviarà un correu quan quede confirmat.</span><span class="es">Tesorería revisará el ingreso y te enviará un correo cuando quede confirmado.</span></p>
+            <div class="reference"><span><span class="va">Referència de la quota</span><span class="es">Referencia de la cuota</span></span><div class="reference-row"><strong id="fee-reference"></strong><button class="btn btn-secondary btn-small copy-reference" data-target="fee-reference" type="button"><span class="va">Copiar</span><span class="es">Copiar</span></button></div></div>
+            <p><strong><span class="va">Total:</span><span class="es">Total:</span></strong> <span id="fee-success-total"></span></p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<footer><div class="wrap"><span>© <span id="year"></span> Grup Scout Parpalló</span> · <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener"><span class="va">Privacitat</span><span class="es">Privacidad</span></a></div></footer>
+
+<template id="child-template">
+  <div class="child-card">
+    <h3></h3>
+    <button class="btn btn-secondary btn-small remove-child" type="button"><span class="va">Llevar</span><span class="es">Quitar</span></button>
+    <div class="two"><div class="field"><label><span class="va">Nom</span><span class="es">Nombre</span> <span class="req">*</span></label><input data-child="nom" type="text" maxlength="80" autocomplete="off" required></div><div class="field"><label><span class="va">Cognoms</span><span class="es">Apellidos</span> <span class="req">*</span></label><input data-child="cognoms" type="text" maxlength="120" autocomplete="off" required></div></div>
+    <div class="field"><label><span class="va">Secció</span><span class="es">Sección</span> <span class="req">*</span></label><select data-child="seccio" required><option value="" data-va="Tria una secció" data-es="Elige una sección">Tria una secció</option><option value="EST" data-va="Estol (8-11)" data-es="Manada (8-11)">Estol (8-11)</option><option value="TRO">Tropa (11-14)</option><option value="ESC" data-va="Escoltes (14-17)" data-es="Escultas (14-17)">Escoltes (14-17)</option><option value="CLA">Clan (17-21)</option></select></div>
+  </div>
+</template>
+
+  <script src="/portal.js?v=2" defer></script>
+</body>
+</html>

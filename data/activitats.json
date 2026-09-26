@@ -1,0 +1,27 @@
+{
+  "$schema": "./activitats.schema.json",
+  "activitats": [
+    {
+      "id": "ACAMP26",
+      "va": { "nom": "Acampada d'inici de curs" },
+      "es": { "nom": "Acampada de inicio de curso" },
+      "inici": "2026-10-17",
+      "fi": "2026-10-18",
+      "preu": 3500,
+      "seccions": ["EST", "TRO", "ESC", "CLA"],
+      "limit": "2026-10-05",
+      "places": 60
+    },
+    {
+      "id": "CAMP27",
+      "va": { "nom": "Campament d'estiu" },
+      "es": { "nom": "Campamento de verano" },
+      "inici": "2027-07-19",
+      "fi": "2027-07-29",
+      "preu": 25000,
+      "seccions": ["TRO", "ESC", "CLA"],
+      "limit": "2027-05-30",
+      "places": 40
+    }
+  ]
+}

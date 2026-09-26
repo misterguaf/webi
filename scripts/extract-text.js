@@ -21,27 +21,27 @@ import {
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 const PAGES = [
-  { file: "index.html", prefix: "IDX", title: "Inici — index.html" },
-  { file: "cova.html", prefix: "COV", title: "La Cova del Parpalló — cova.html" },
-  { file: "estol.html", prefix: "EST", title: "Estol — estol.html" },
-  { file: "tropa.html", prefix: "TRO", title: "Tropa — tropa.html" },
-  { file: "esculta.html", prefix: "ESC", title: "Escoltes — esculta.html" },
-  { file: "clan.html", prefix: "CLA", title: "Clan — clan.html" },
-  { file: "fersescout.html", prefix: "FER", title: "Fer-se scout — fersescout.html" },
-  { file: "merchandising.html", prefix: "BOT", title: "Botiga del grup — merchandising.html" },
+  { file: "site/index.html", prefix: "IDX", title: "Inici — index.html" },
+  { file: "site/cova.html", prefix: "COV", title: "La Cova del Parpalló — cova.html" },
+  { file: "site/estol.html", prefix: "EST", title: "Estol — estol.html" },
+  { file: "site/tropa.html", prefix: "TRO", title: "Tropa — tropa.html" },
+  { file: "site/esculta.html", prefix: "ESC", title: "Escoltes — esculta.html" },
+  { file: "site/clan.html", prefix: "CLA", title: "Clan — clan.html" },
+  { file: "site/fersescout.html", prefix: "FER", title: "Fer-se scout — fersescout.html" },
+  { file: "site/merchandising.html", prefix: "BOT", title: "Botiga del grup — merchandising.html" },
 ];
 
 const LEGAL_PAGES = [
-  { file: "avis-legal.html", prefix: "LEG", title: "Avís legal — avis-legal.html" },
-  { file: "privacitat.html", prefix: "PRI", title: "Privacitat — privacitat.html" },
-  { file: "cookies.html", prefix: "COO", title: "Cookies — cookies.html" },
+  { file: "site/avis-legal.html", prefix: "LEG", title: "Avís legal — avis-legal.html" },
+  { file: "site/privacitat.html", prefix: "PRI", title: "Privacitat — privacitat.html" },
+  { file: "site/cookies.html", prefix: "COO", title: "Cookies — cookies.html" },
 ];
 
 const JS_FILES = [
-  { file: "form.js", label: "form.js" },
+  { file: "site/assets/js/form.js", label: "form.js" },
   { file: "api/_lib/validate.js", label: "api/_lib/validate.js" },
   { file: "api/_lib/handler.js", label: "api/_lib/handler.js" },
-  { file: "merch.js", label: "merch.js" },
+  { file: "site/assets/js/merch.js", label: "merch.js" },
   { file: "api/_lib/reserva.js", label: "api/_lib/reserva.js" },
   { file: "api/_lib/handler-reserva.js", label: "api/_lib/handler-reserva.js" },
 ];
@@ -289,7 +289,7 @@ out.push('   tipográficas ("como estas") si hace falta, porque esas cadenas viv
 out.push("5. Los bloques marcados **⚠️ PENDIENTE DE REDACTAR** son placeholders explícitos del sitio;");
 out.push("   son la prioridad para escribir contenido real.");
 out.push("6. Los bloques de la sección **Legal — pendiente de datos jurídicos** no son de redacción libre:");
-out.push("   son datos legales concretos (NIF, domicilio, plazos...). Ver `PRE-LANZAMIENTO.md`, apartado A.");
+out.push("   son datos legales concretos (NIF, domicilio, plazos...). Ver `docs/PRE-LANZAMIENTO.md`, apartado A.");
 out.push("");
 out.push("**Fuera de este documento a propósito:** `fuentes.html` (herramienta interna de pruebas), los");
 out.push("datos estructurados JSON-LD de `index.html`, comentarios de código, y el campo trampa anti-bots");
@@ -329,7 +329,7 @@ out.push("## Legal — pendiente de datos jurídicos");
 out.push("");
 out.push("Estos fragmentos no son redacción de estilo: son datos legales concretos que solo puede decidir");
 out.push("alguien con acceso a la documentación del grupo (NIF, domicilio social, plazos de conservación,");
-out.push("base legal RGPD...). Ver `PRE-LANZAMIENTO.md`, apartado A, antes de rellenarlos.");
+out.push("base legal RGPD...). Ver `docs/PRE-LANZAMIENTO.md`, apartado A, antes de rellenarlos.");
 out.push("");
 for (const item of jurDoc) {
   out.push(block(item));
@@ -348,7 +348,7 @@ for (const item of sysDoc) {
   out.push("");
 }
 
-writeFileSync(join(ROOT, "TEXTOS-WEB.md"), out.join("\n"));
+writeFileSync(join(ROOT, "docs", "TEXTOS-WEB.md"), out.join("\n"));
 writeFileSync(join(ROOT, "scripts", "text-manifest.json"), JSON.stringify(manifest, null, 2));
 
 const totalItems = Object.keys(manifest).length;

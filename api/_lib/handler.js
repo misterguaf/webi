@@ -6,14 +6,16 @@
  * Cloudflare) només tradueixen el format de la petició i la resposta.
  * Així es pot canviar de hosting sense tocar cap regla de negoci ni de seguretat.
  *
- * PRIVACITAT — regla d'or d'este fitxer: ací passen dades de menors, incloses
- * possibles dades de salut. MAI s'escriu el contingut d'un camp a la consola.
+ * PRIVACITAT — regla d'or d'este fitxer: ací passen dades de menors. La llista
+ * d'espera rebutja dades de salut. MAI s'escriu el contingut a la consola.
  * Els logs diuen què ha passat (validació fallida, error de Sheets), mai amb quines dades.
  */
 
 import { validate, isSpam } from "./validate.js";
 import { check as rateCheck } from "./ratelimit.js";
 import { appendRow } from "./sheets.js";
+import { isAcceptedFormContentType } from "./http-body.js";
+import { isAllowedOrigin } from "./environment.js";
 
 const MAX_BODY = 16 * 1024; // 16 KB: molt per damunt d'un formulari legítim
 
@@ -127,6 +129,10 @@ export async function handleAlta(req) {
     return respond(405, { ok: false, message: MISSATGES.method }, { Allow: "POST" });
   }
 
+  if (!isAcceptedFormContentType(headers["content-type"])) {
+    return respond(415, { ok: false, message: MISSATGES.invalid });
+  }
+
   const raw = req.rawBody || "";
   if (raw.length > MAX_BODY) {
     return respond(413, { ok: false, message: MISSATGES.invalid });
@@ -146,7 +152,7 @@ export async function handleAlta(req) {
   // Ajuda contra formularis clonats en altres dominis que apunten ací.
   const permes = req.env && req.env.ALLOWED_ORIGIN;
   const origin = headers["origin"];
-  if (permes && origin && origin !== permes) {
+  if (!isAllowedOrigin(origin, permes, req.env || {})) {
     console.warn("[alta] origen no permès");
     return respond(403, { ok: false, message: MISSATGES.invalid });
   }
@@ -159,7 +165,7 @@ export async function handleAlta(req) {
   }
 
   const ip = req.ip || clientIp(headers);
-  const rl = rateCheck(ip);
+  const rl = rateCheck(ip, "alta");
   if (!rl.ok) {
     console.warn("[alta] límit de peticions superat");
     return respond(429, { ok: false, message: MISSATGES.rate }, { "Retry-After": String(rl.retryAfter) });

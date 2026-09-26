@@ -1,11 +1,11 @@
 # Grup Scout Parpalló — configuració de Netlify.
-# El lloc és estàtic (arrel del repositori) i la funció d'alta viu a
+# El lloc és estàtic (`site/`) i la funció d'alta viu a
 # netlify/functions/. La redirecció deixa l'endpoint com a /api/alta,
 # la mateixa ruta que a Vercel i a Cloudflare, perquè fersescout.html no
 # haja de canviar si algun dia es canvia de hosting.
 
 [build]
-  publish = "."
+  publish = "site"
   functions = "netlify/functions"
 
 [[redirects]]

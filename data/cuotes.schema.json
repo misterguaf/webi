@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Configuració de la quota anual del Grup Scout Parpalló",
+  "type": "object",
+  "required": ["curs", "oberta", "dataLimit", "importBaseCentims", "descomptes", "instruccions"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "curs": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{4}$" },
+    "oberta": { "type": "boolean" },
+    "dataLimit": { "type": ["string", "null"], "format": "date" },
+    "importBaseCentims": { "type": ["integer", "null"], "minimum": 0 },
+    "descomptes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["desDe", "percentatge"],
+        "additionalProperties": false,
+        "properties": {
+          "desDe": { "type": "integer", "minimum": 2, "maximum": 8 },
+          "percentatge": { "type": "number", "minimum": 0, "maximum": 100 }
+        }
+      }
+    },
+    "instruccions": {
+      "type": "object",
+      "required": ["va", "es"],
+      "additionalProperties": false,
+      "properties": {
+        "va": { "type": "string", "minLength": 1, "maxLength": 600 },
+        "es": { "type": "string", "minLength": 1, "maxLength": 600 }
+      }
+    }
+  }
+}

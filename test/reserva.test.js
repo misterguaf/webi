@@ -13,6 +13,7 @@ import { validate } from "../api/_lib/reserva.js";
 import { PRODUCTES, preuText } from "../api/_lib/productes.js";
 import { _reset } from "../api/_lib/ratelimit.js";
 import { handleReserva } from "../api/_lib/handler-reserva.js";
+import { hmacHex } from "../api/_lib/sheets.js";
 
 const ARREL = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -143,21 +144,33 @@ test("una reserva correcta s'escriu i es confirma amb el total del servidor", as
   assert.equal(body.ok, true);
   assert.equal(body.total, "40 €");
   assert.equal(enviats.length, 1);
-  assert.equal(enviats[0].tipus, "reserva");
-  assert.equal(enviats[0].total, "40 €");
-  assert.equal(enviats[0].unitats, 2);
-  assert.match(enviats[0].articles, /2 × Sudadera/);
+  const payload = JSON.parse(enviats[0].payload);
+  assert.equal(payload.tipus, "reserva");
+  assert.equal(payload.total, "40 €");
+  assert.equal(payload.unitats, 2);
+  assert.match(payload.articles, /2 × Sudadera/);
 });
 
-test("el secret compartit viatja al webhook, mai a la resposta", async () => {
+test("la reserva viatja en un sobre HMAC sense secret en clar", async () => {
   const r = await post(VALID);
-  assert.equal(enviats[0].secret, "secret-fals");
+  assert.equal(enviats[0].secret, undefined);
+  assert.equal(JSON.parse(enviats[0].payload).tipus, "reserva");
+  assert.equal(
+    enviats[0].signature,
+    await hmacHex("secret-fals", `${enviats[0].timestamp}.${enviats[0].nonce}.${enviats[0].payload}`)
+  );
   assert.ok(!r.body.includes("secret-fals"));
 });
 
 test("una reserva invàlida no arriba mai a Sheets", async () => {
   const r = await post({ ...VALID, email: "roin" });
   assert.equal(r.status, 400);
+  assert.equal(enviats.length, 0);
+});
+
+test("production sense ALLOWED_ORIGIN no escriu la reserva", async () => {
+  const r = await post(VALID, { env: { ...ENV, APP_ENV: "production", ALLOWED_ORIGIN: "" } });
+  assert.equal(r.status, 403);
   assert.equal(enviats.length, 0);
 });
 
@@ -198,7 +211,7 @@ test("un formulari sense JS rep HTML, no JSON", async () => {
 /* ---------- coherència entre el catàleg i la pàgina ---------- */
 
 test("merchandising.html i el catàleg diuen els mateixos preus", () => {
-  const html = readFileSync(join(ARREL, "merchandising.html"), "utf8");
+  const html = readFileSync(join(ARREL, "site", "merchandising.html"), "utf8");
 
   for (const p of PRODUCTES) {
     // Cada producte ha de tindre el seu camp de quantitat...
@@ -225,7 +238,7 @@ test("merchandising.html i el catàleg diuen els mateixos preus", () => {
 });
 
 test("la pàgina no ofereix cap article que no estiga al catàleg", () => {
-  const html = readFileSync(join(ARREL, "merchandising.html"), "utf8");
+  const html = readFileSync(join(ARREL, "site", "merchandising.html"), "utf8");
   const ids = new Set(PRODUCTES.map((p) => p.id));
   for (const m of html.matchAll(/name="qt-([\w-]+)"/g)) {
     assert.ok(ids.has(m[1]), `merchandising.html ofereix "${m[1]}", que no és al catàleg`);

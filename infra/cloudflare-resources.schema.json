@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["remoteProvisioningAuthorized", "environments"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": { "type": "string" },
+    "remoteProvisioningAuthorized": { "const": false },
+    "environments": {
+      "type": "object",
+      "required": ["development", "staging", "production"],
+      "additionalProperties": false,
+      "properties": {
+        "development": { "$ref": "#/$defs/environment" },
+        "staging": { "$ref": "#/$defs/environment" },
+        "production": { "$ref": "#/$defs/environment" }
+      }
+    }
+  },
+  "$defs": {
+    "resource": {
+      "type": "object",
+      "required": ["name", "jurisdiction"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^parpallo-[a-z-]+$" },
+        "jurisdiction": { "const": "eu" }
+      }
+    },
+    "r2": {
+      "type": "object",
+      "required": ["name", "jurisdiction", "public"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "type": "string", "pattern": "^parpallo-[a-z-]+$" },
+        "jurisdiction": { "const": "eu" },
+        "public": { "const": false }
+      }
+    },
+    "environment": {
+      "type": "object",
+      "required": ["dataPolicy", "d1", "r2PersonalData"],
+      "additionalProperties": false,
+      "properties": {
+        "dataPolicy": { "enum": ["synthetic-only", "real-data-after-legal-and-release-gates"] },
+        "d1": { "$ref": "#/$defs/resource" },
+        "r2PersonalData": { "$ref": "#/$defs/r2" }
+      }
+    }
+  }
+}

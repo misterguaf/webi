@@ -1,37 +1,53 @@
 # Web del Grup Scout Parpalló
 
-Lloc estàtic (HTML, CSS i JS sense cap framework) més un únic endpoint
-serverless per al formulari de sol·licitud de plaça de `fersescout.html`.
+La infraestructura nova incorpora `gestio/`, prototip **només local i amb dades fictícies** per a identitat, sessions, D1 i autorització. Instruccions a [gestio/README.md](gestio/README.md). **NOT PRODUCTION READY**; no s'ha creat cap recurs Cloudflare remot ni s'ha modificat la web antiga publicada.
 
-> **Este endpoint tracta dades de menors d'edat**, incloses possibles dades de
-> salut (al·lèrgies i necessitats). Abans d'activar-lo en producció cal tindre
+Lloc públic estàtic (HTML, CSS i JS sense framework) amb els endpoints de
+sol·licitud de plaça i reserva de botiga. Les inscripcions i quotes viuen en
+un segon Worker privat i independent, dins de `portal/`.
+
+> **Este endpoint tracta dades de menors d'edat**, però la llista d'espera no
+> demana ni admet dades de salut. Abans d'activar-lo en producció cal tindre
 > publicades i enllaçades les pàgines legals, i confirmat qui és el responsable
-> del tractament. Vegeu `PRE-LANZAMIENTO.md` quan estiga creat.
+> del tractament. Vegeu `docs/PRE-LANZAMIENTO.md`.
 
 ---
 
 ## Estructura
 
 ```
-index.html, manada.html, ...   pàgines del lloc (no les toca l'endpoint)
-styles.css, script.js          estils i JS compartits de tot el lloc
-form.css, form.js              NOMÉS el formulari d'alta (afegits, no substituïxen res)
+site/                          arrel pública del lloc; conserva les URL /pagina.html
+site/assets/css/               estils del lloc
+site/assets/js/                JavaScript del lloc
+site/assets/img/               imatges i icones
+site/_headers                  capçaleres de Cloudflare Pages i Netlify
+site/robots.txt, sitemap.xml   fitxers públics de rastreig
 api/_lib/validate.js           validació de servidor + filtre anti-spam
 api/_lib/ratelimit.js          límit de peticions
-api/_lib/sheets.js             escriptura a Google Sheets via Apps Script
+api/_lib/sheets.js             adaptador legacy d'alta, reserva i quota
 api/_lib/handler.js            nucli de l'endpoint, independent de la plataforma
+api/_lib/quota.js              validació i càlcul de la quota anual
+portal/                        frontend familiar canònic i Worker d'activitats 3A / quota legacy
+gestio/                        serveis 3A, D1 local i plataforma interna
+family/                        frontend anterior deprecated, sense ruta familiar canònica
 api/alta.js                    adaptador Vercel
-netlify/functions/alta.js      adaptador Netlify
+netlify/functions/alta.js      adaptador Netlify (també reserva.js)
 worker.js                      adaptador Cloudflare Workers
 scripts/dev.js                 servidor local de proves
 scripts/google-apps-script.gs  script per a enganxar al projecte d'Apps Script
+data/activitats.json           fixture/catàleg legacy; no governa les activitats noves
+data/cuotes.json               configuració de la quota (tancada fins completar-la)
 test/alta.test.js              proves automàtiques
+docs/                          guies, textos i documentació del projecte
+Launchers/                     accessos locals per a obrir els servidors
 ```
 
-La lògica viu tota a `api/_lib/`. Els tres adaptadors només tradueixen el
-format de petició i resposta de cada plataforma, així que **es pot canviar de
-hosting sense tocar cap regla de validació ni de seguretat**. En les tres
-opcions la ruta pública és la mateixa: `POST /api/alta`.
+Alta, reserva i quota conserven l'adaptador legacy d'`api/_lib/`. Les activitats
+noves passen de `portal/worker.js` als serveis 3A de `gestio/`: catàleg
+`PUBLISHED` en D1, matching, revisió de pagament, abstracció de storage per als
+justificants i notification outbox. Les úniques rutes públiques de la web
+general són `POST /api/alta` i `POST /api/reserva`; `/api/inscripcio` només
+existix darrere de la sessió del portal privat.
 
 ---
 
@@ -39,11 +55,15 @@ opcions la ruta pública és la mateixa: `POST /api/alta`.
 
 | Variable | Obligatòria | Què és |
 |---|---|---|
-| `SHEETS_WEBHOOK_URL` | Sí | URL del desplegament d'Apps Script que escriu a la Google Sheet. Es genera un sol cop en desplegar el script (vegeu la secció de sota). |
-| `SHEETS_SHARED_SECRET` | Sí | Cadena llarga i aleatòria. Ha de coincidir amb la propietat `SHARED_SECRET` guardada dins del projecte d'Apps Script. Sense secret ningú extern pot escriure a la fulla, encara que descobrisca la URL. |
-| `ALLOWED_ORIGIN` | Recomanada | Domini públic del lloc, sense barra final. Rebutja els enviaments que vinguen d'un altre origen. Buit = no es comprova. |
+| `SHEETS_WEBHOOK_URL` | Per als fluxos legacy | URL d'Apps Script per a alta, reserva i quota; mai per a activitats noves. |
+| `SHEETS_SHARED_SECRET` | Per als fluxos legacy | Clau HMAC llarga i aleatòria. Ha de coincidir amb la propietat `WEBHOOK_HMAC_SECRET` de l'Apps Script. El servidor no l'envia en clar: firma cada petició amb caducitat curta i nonce. |
+| `ALLOWED_ORIGIN` | Sí en producció | Origen públic HTTPS exacte per a alta i reserva. Si falta amb `APP_ENV=production`, els POST es rebutgen. La quota usa `PORTAL_ALLOWED_ORIGIN`. |
+| `APP_ENV` | Sí | `development`, `staging` o `production`; els entorns no productius activen les guardes d'egress. |
+| `ALLOW_REAL_EGRESS` | Només integració local | Ha de ser exactament `true` per a permetre una prova externa des de desenvolupament. |
+| `DEV_EGRESS_ALLOWLIST` | Només integració local | Orígens exactes autoritzats, separats per comes i sense comodins. |
 
-`.env.example` té la plantilla. Per a proves locals, copia'l a `.env`.
+`.env.example` té la plantilla de la integració explícita. Les proves locals
+ordinàries no carreguen `.env` i funcionen amb serveis simulats.
 
 **El `.env` real no es puja mai al repositori** (està al `.gitignore`). En
 producció els valors es configuren al panell del hosting, mai en un fitxer del
@@ -52,15 +72,23 @@ que rep el navegador: només els usa la funció de servidor.
 
 ---
 
-## La Google Sheet i el seu Apps Script
+## Fluxos d'activitats i d'Apps Script legacy
 
-Tot el flux és:
+Els destins estan separats:
 
 ```
-Formulari (fersescout.html) → /api/alta (funció serverless)
-    → Apps Script (dins del compte de Google propietari de la fulla)
-    → una fila nova a la fulla "Sol·licituds"
+fersescout.html        → /api/alta       → pestanya "Sol·licituds"
+merchandising.html     → /api/reserva    → pestanya "Reserves botiga"
+portal /api/cuota      → Apps Script     → pestanya "Cuotas" + Drive de quotes
+portal /api/inscripcio → serveis FASE 3A → D1 + storage abstraction + notification outbox
 ```
+
+Només alta, reserva i quota passen per `scripts/google-apps-script.gs`.
+L'Apps Script rebutja explícitament els enviaments de tipus `inscripcio`.
+La revisió de pagaments d'activitats es fa des de `gestio/`.
+Un desplegament remot antic de l'Apps Script podria conservar codi anterior:
+cal verificar i actualitzar la versió desplegada, amb autorització, abans de
+tractar dades reals. Este repositori no ha modificat cap desplegament remot.
 
 No usem l'API oficial de Google Sheets a propòsit: exigeix un compte de
 servei amb una clau JSON, cosa desproporcionada per a este cas d'ús.
@@ -70,19 +98,44 @@ propietari de la fulla; nosaltres només guardem una URL i un secret.
 **Passos per a preparar-ho (una sola vegada):**
 
 1. Crea la Google Sheet on vols veure les sol·licituds. No cal preparar
-   capçaleres: el script les crea la primera vegada.
-2. A la Sheet: menú **Extensions → Apps Script**.
-3. Esborra l'exemple que apareix i enganxa **tot** `scripts/google-apps-script.gs`.
-4. Menú de l'engranatge (**Configuració del projecte**) → **Propietats de l'script**
-   → afig una propietat amb nom `SHARED_SECRET` i valor una cadena llarga i
-   aleatòria (32+ caràcters).
-5. **Desplega → Nou desplegament → Tipus: Aplicació web**.
+   capçaleres: el script les crea la primera vegada (pestanyes "Sol·licituds",
+   "Reserves botiga" i "Cuotas").
+2. Per a la quota legacy, crea a Drive una **carpeta privada** per als comprovants
+   (compartida NOMÉS amb qui gestiona els pagaments del grup).
+   Obri-la al navegador i copia l'ID de la URL
+   (`https://drive.google.com/drive/folders/ESTE_ID`).
+3. A la Sheet: menú **Extensions → Apps Script**.
+4. Esborra l'exemple que apareix i enganxa **tot** `scripts/google-apps-script.gs`.
+5. A *Configuració del projecte → Propietats de l'script*, configura:
+   - `DRIVE_FOLDER_CUOTES_ID`: l'ID d'una carpeta privada específica del curs.
+   - `STATUS_SPREADSHEET_ID`: l'ID d'una segona Sheet de només lectura per als responsables.
+   - `WEBHOOK_HMAC_SECRET`: una cadena aleatòria de 32+ caràcters.
+   Revisa també `REMITENT_NOM` i `CORREU_CONTACTE` per als correus de quota.
+6. **Desplega → Nou desplegament → Tipus: Aplicació web**.
    - *Executar com*: **Jo** (el teu compte)
    - *Qui té accés*: **Qualsevol**
-6. Autoritza els permisos que demane i copia la **URL de l'aplicació web**.
-7. Al panell del hosting posa:
+7. Autoritza els permisos que demane (Sheets, Drive i Gmail) i copia la
+   **URL de l'aplicació web**.
+8. Copia `.env.example` a `.env` (local) i, al panell del hosting, posa:
    - `SHEETS_WEBHOOK_URL` = eixa URL
-   - `SHEETS_SHARED_SECRET` = el mateix valor que has posat a `SHARED_SECRET`
+   - `SHEETS_SHARED_SECRET` = el mateix valor que has posat a `WEBHOOK_HMAC_SECRET`
+
+Per a obrir la web general en local, fes doble clic a
+`Launchers/Abrir web general local.command`; arranca el servidor y abre la
+portada en <http://localhost:4000/>. El launcher y `npm run dev:site` arrancan
+siempre en modo seguro: datos sintéticos, Google Sheets simulado y sin egress.
+`npm run dev:site:fake` se conserva como alias explícito del mismo modo.
+
+Proves locals amb el circuit sencer simulat (sense escriure enlloc):
+`node scripts/dev.js --fals`. Una integració externa exigeix el comando distinto
+`npm run dev:site:integration`, `ALLOW_REAL_EGRESS=true` y el origen exacto en
+`DEV_EGRESS_ALLOWLIST`. Usa solo un despliegue de pruebas con datos sintéticos.
+
+Per al portal privat, fes doble clic a `Launchers/Abrir portal local.command`; obri el
+navegador en <http://localhost:4100> i
+entra amb la contrasenya fictícia `families-demo`. Les activitats usen D1 i
+storage emulats locals, amb outbox fake; la quota simula el webhook legacy.
+La guia completa de configuració és `docs/PORTAL-PRIVAT.md`.
 
 **Si edites el script més endavant:** ves a *Desplega → Gestiona desplegaments*
 → edita el desplegament existent (llapis) → *Versió: Nova* → *Desplega*. Així
@@ -98,20 +151,21 @@ cap valor arbitrari.
 ## Proves en local
 
 ```bash
-node scripts/dev.js --fals
+npm run dev
 ```
 
-Obri <http://localhost:4000/fersescout.html>. En mode `--fals` Google Sheets
+Obri <http://localhost:4000/fersescout.html>. En el modo seguro Google Sheets
 està simulat: pots provar tot el circuit (validació, errors, missatges, lector
 de pantalla) **sense crear cap fila real ni tractar dades de ningú**. És el
 mode recomanat per a provar.
 
-Sense `--fals` llig el `.env` i escriu a la Google Sheet de veritat.
+El servidor només carrega `.env` amb `--real-egress`, i encara exigix el doble
+opt-in i l'allowlist. El mode ordinari no pot escriure en un servei real.
 
-Proves automàtiques:
+Verificació local completa (lint, `checkJs`, schemas, guardes, tests i audit):
 
 ```bash
-npm test
+npm run ci
 ```
 
 ---
@@ -119,25 +173,34 @@ npm test
 ## Desplegament
 
 El lloc s'ha de servir **sempre per HTTPS**. Sense HTTPS, les dades del
-formulari (nom, data de naixement i al·lèrgies d'un menor) viatgen en clar per
+formulari (nom, data de naixement i contacte del tutor) viatgen en clar per
 la xarxa. Les tres plataformes de sota donen HTTPS automàtic amb certificat
 gestionat; cal a més activar la redirecció de HTTP a HTTPS i deixar-la activada.
 
+Vercel y Netlify se conservan como adaptadores existentes de la web estática,
+pero no son la plataforma objetivo de la nueva infraestructura.
+
 ### Vercel
 
-1. Importa el repositori. No cal cap comanda de build: el lloc és estàtic.
-2. *Settings → Environment Variables*: afig `SHEETS_WEBHOOK_URL`, `SHEETS_SHARED_SECRET` i `ALLOWED_ORIGIN`.
+1. Importa el repositori. No cal cap comanda de build: Vercel publica `site/` (configurat a `vercel.json`).
+2. *Settings → Environment Variables*: afig `SHEETS_WEBHOOK_URL`, `SHEETS_SHARED_SECRET`, `ALLOWED_ORIGIN` i `APP_ENV=production`.
 3. Desplega. L'endpoint queda a `/api/alta`.
 
 ### Netlify
 
-1. Importa el repositori; `netlify.toml` ja té la configuració i la redirecció de `/api/alta`.
-2. *Site settings → Environment variables*: les mateixes tres variables.
+1. Importa el repositori; `netlify.toml` ja publica `site/` i configura les redireccions d'API.
+2. *Site settings → Environment variables*: les mateixes variables.
 3. Desplega.
 
 ### Cloudflare
 
-1. El lloc estàtic, a Cloudflare Pages.
+Cloudflare es la plataforma objetivo aprobada para la primera versión:
+D1/R2 con jurisdicción `eu`, Workers/Static Assets, Access y Turnstile. La
+decisión completa y el gate para cambiar de proveedor están en
+`docs/adr/ADR-001-cloudflare-first-eu.md`. No crees recursos remotos sin
+autorización explícita.
+
+1. El lloc estàtic, a Cloudflare Pages. En la configuració de build del projecte, posa `site` com a *Build output directory*. És necessari perquè les adreces públiques continuen sent `/index.html`, `/clan.html`, etc.; `site/` és només l'arrel interna publicada. El fitxer de capçaleres és `site/_headers`.
 2. El Worker, amb `npx wrangler deploy` (configuració a `wrangler.toml`).
 3. Els secrets es carreguen una sola vegada, no van al repositori:
 
@@ -146,18 +209,21 @@ npx wrangler secret put SHEETS_WEBHOOK_URL
 npx wrangler secret put SHEETS_SHARED_SECRET
 ```
 
-4. `ALLOWED_ORIGIN` es pot deixar a `[vars]` del `wrangler.toml` (no és secret).
+4. Configura el Worker amb la ruta de zona `/api/*` del domini i posa
+   `ALLOWED_ORIGIN` amb el domini HTTPS definitiu. Vegeu
+   `docs/CLOUDFLARE-SEGURIDAD.md` per a Turnstile, rate limiting i les
+   restriccions de jurisdicció.
 
 ---
 
-## Què fa l'endpoint amb cada enviament
+## Què fan els endpoints públics d'alta i reserva
 
 1. Rebutja qualsevol cosa que no siga `POST`, i els cossos de més de 16 KB.
-2. Comprova l'origen, si `ALLOWED_ORIGIN` està configurada.
+2. Comprova l'origen exacte configurat a `ALLOWED_ORIGIN`.
 3. Filtre anti-spam: camp trampa ocult i temps mínim d'emplenament. Al bot se
    li respon que tot ha anat bé i no s'escriu res enlloc, per no ensenyar-li
    quin filtre l'ha aturat.
-4. Límit de peticions: 5 per hora i IP, i 60 per hora en total. És una defensa
+4. Límit de peticions: 5 altes o 10 reserves per hora i IP, i 60 peticions per hora en total. És una defensa
    contra l'abús ordinari, no contra un atac distribuït: per a això cal el WAF
    del hosting.
 5. Validació completa al servidor. El `required` de l'HTML no compta: qualsevol
@@ -178,7 +244,7 @@ normal i el servidor respon una pàgina de confirmació mínima.
 
 Estan definides dues vegades, perquè cada plataforma llig un format:
 
-- `_headers` — el llig Netlify i Cloudflare Pages.
+- `site/_headers` — el llig Netlify i Cloudflare Pages.
 - `vercel.json` — les mateixes capçaleres per a Vercel.
 
 Si canvies una, canvia l'altra.
@@ -194,23 +260,22 @@ La política de contingut (CSP) està ajustada al que la web fa de veritat:
 | `form-action 'self'` | El formulari només pot enviar-se al nostre servidor. |
 | `img-src 'self' data:` | Els fons i les icones del CSS són SVG en `data:`. |
 
-**Un detall conegut:** `index.html` té un `onerror="this.style.display='none'"` a la
+**Un detall conegut:** `site/index.html` té un `onerror="this.style.display='none'"` a la
 imatge decorativa de la portada. Amb esta CSP eixe manejador no s'executarà. No
 passa res: la imatge té `alt=""` i és decorativa, així que si algun dia fallara,
 el navegador no mostraria res igualment. Si es vol que funcione, la solució és
-moure eixa línia a `script.js`, no debilitar la CSP.
+moure eixa línia a `site/assets/js/script.js`, no debilitar la CSP.
 
-**HSTS** està comentada al `_headers` a propòsit. Activa-la només quan el domini
-definitiu ja funcione bé per HTTPS: una vegada un navegador la rep, no accepta
-HTTP en eixe domini durant un any.
+**HSTS** ja està definida a `site/_headers` i `vercel.json` amb
+`includeSubDomains`. És un **PRODUCTION_BLOCKER** fins a comprovar HTTPS i
+certificats de `portal`, `gestio` i la resta de subdominis, o decidir
+explícitament un altre abast. Una vegada un navegador la rep, no accepta
+HTTP durant un any.
 
-## Si algun dia es vol un panell d'administració
+## Gestió interna
 
-Ara mateix no n'hi ha cap, i és una bona notícia: no hi ha res que autenticar.
-
-Si algun dia es vol veure o gestionar les sol·licituds des de la mateixa web,
-**cal parlar-ho abans de programar res**. Un panell que ensenya dades de menors
-necessita autenticació de veritat (usuaris, contrasenyes ben guardades, sessions,
-tancament de sessió), no una URL secreta ni un formulari amb una contrasenya
-única al codi. Mentre no hi haja eixa conversa, la manera segura de consultar les
-fitxes és obrir la Google Sheet amb el compte de Google de cadascú.
+La web pública de `site/` no incorpora un panell d'administració. La plataforma
+interna és `gestio/`: en local/sintètic ja disposa d'identitat, sessions i
+permisos per a la revisió de les activitats 3A. No està preparada per a
+producció. Les sol·licituds d'alta i les reserves, i la quota anual legacy,
+continuen amb els seus fluxos Google separats; no donen accés a les dades 3A.

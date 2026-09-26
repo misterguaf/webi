@@ -7,6 +7,13 @@
       "runtimeArgs": ["scripts/dev.js", "--fals"],
       "port": 4000,
       "autoPort": true
+    },
+    {
+      "name": "parpallo-dev-default-safe",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/dev.js"],
+      "port": 4000,
+      "autoPort": true
     }
   ]
 }

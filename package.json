@@ -4,7 +4,44 @@
   "private": true,
   "description": "Web del Grup Scout Parpalló (Gandia). Lloc estàtic + endpoint d'alta.",
   "type": "module",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "packageManager": "npm@11.16.0",
   "scripts": {
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "dev": "node scripts/dev.js",
+    "dev:site": "node scripts/dev.js",
+    "dev:site:fake": "node scripts/dev.js --fals",
+    "dev:site:integration": "node scripts/dev.js --real-egress",
+    "dev:portal": "node portal/dev.js",
+    "dev:gestio": "node gestio/scripts/local.js dev",
+    "dev:family:activities": "node family/scripts/local.js",
+    "gestio:migrate": "node gestio/scripts/local.js migrate",
+    "gestio:seed": "node gestio/scripts/local.js seed",
+    "gestio:reset": "node gestio/scripts/local.js reset",
+    "gestio:test": "node --test test/gestio.test.js",
+    "gestio:3a:test": "node --test test/gestio-3a.test.js",
+    "db:backup": "node gestio/scripts/recovery.js backup",
+    "db:backup:verify": "node gestio/scripts/recovery.js verify",
+    "db:backup:test": "node --test test/gestio-recovery.test.js",
+    "db:restore": "node gestio/scripts/recovery.js restore",
+    "db:restore:test": "node --test test/gestio-recovery.test.js",
+    "disaster:drill": "node --test test/gestio-recovery.test.js",
+    "gestio:deploy": "node gestio/scripts/deploy.js",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.check.json",
+    "schema:check": "node scripts/validate-schemas.js",
+    "cloudflare:check": "node scripts/check-cloudflare-config.js",
+    "waitlist:check": "node scripts/check-waitlist-boundary.js",
+    "secrets:check": "node scripts/check-secrets.js",
+    "audit": "npm audit --audit-level=high",
+    "ci": "node scripts/ci.js"
+  },
+  "devDependencies": {
+    "ajv": "8.20.0",
+    "eslint": "10.11.0",
+    "typescript": "7.0.2",
+    "wrangler": "4.135.0"
   }
 }

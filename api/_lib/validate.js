@@ -4,10 +4,9 @@
  * Qualsevol pot enviar un POST directe a l'endpoint saltant-se el navegador,
  * així que TOTA la validació de veritat viu ací.
  *
- * Este formulari recull dades de MENORS D'EDAT i, al camp `notes`, pot recollir
- * dades de salut (al·lèrgies) — categoria especial de l'art. 9 del RGPD.
- * Per això: límits de longitud estrictes, cap camp lliure sense topall, i mai
- * es registra el contingut dels camps als logs (vegeu handler.js).
+ * Este formulari recull dades de MENORS D'EDAT, però la llista d'espera no és
+ * un canal sanitari. Els camps de salut i l'antic camp obert `notes` es
+ * rebutgen explícitament perquè una interfície antiga no els reintroduïsca.
  */
 
 const SECCIONS = [
@@ -20,7 +19,6 @@ const SECCIONS = [
 const LIMITS = {
   nom: 80,
   cognoms: 120,
-  notes: 1000,
   tutor: 120,
   telefon: 24,
   email: 150,
@@ -33,7 +31,10 @@ const MSG = {
   cognoms: { va: "Falten els cognoms.", es: "Faltan los apellidos." },
   naixement: { va: "La data de naixement no és vàlida.", es: "La fecha de nacimiento no es válida." },
   seccio: { va: "Eixa secció no existix.", es: "Esa sección no existe." },
-  notes: { va: "El text és massa llarg.", es: "El texto es demasiado largo." },
+  sensitive: {
+    va: "La llista d'espera no admet dades de salut ni observacions lliures.",
+    es: "La lista de espera no admite datos de salud ni observaciones libres.",
+  },
   tutor: { va: "Falta el nom de la mare, pare o tutor/a.", es: "Falta el nombre de la madre, padre o tutor/a." },
   telefon: { va: "El telèfon no és vàlid.", es: "El teléfono no es válido." },
   email: { va: "L'email no és vàlid.", es: "El email no es válido." },
@@ -65,6 +66,8 @@ export function validate(input) {
   const errors = {};
   const d = {};
 
+  if (containsForbiddenSensitiveField(input)) errors.sensitive = MSG.sensitive;
+
   d.nom = clean(input.nom);
   if (!d.nom || d.nom.length > LIMITS.nom) errors.nom = MSG.nom;
 
@@ -93,9 +96,6 @@ export function validate(input) {
   d.seccio = str(input.seccio);
   if (d.seccio && !SECCIONS.includes(d.seccio)) errors.seccio = MSG.seccio;
 
-  d.notes = clean(input.notes);
-  if (d.notes.length > LIMITS.notes) errors.notes = MSG.notes;
-
   d.tutor = clean(input.tutor);
   if (!d.tutor || d.tutor.length > LIMITS.tutor) errors.tutor = MSG.tutor;
 
@@ -123,6 +123,34 @@ export function validate(input) {
   return { ok: Object.keys(errors).length === 0, data: d, errors };
 }
 
+const FORBIDDEN_SENSITIVE_FIELDS = new Set([
+  "notes",
+  "alergia",
+  "alergias",
+  "allergies",
+  "allergy",
+  "salut",
+  "salud",
+  "health",
+  "medical",
+  "medicacio",
+  "medicacion",
+  "medication",
+  "diagnostic",
+  "diagnostico",
+  "diagnosis",
+  "malaltia",
+  "enfermedad",
+]);
+
+function normalizedKey(value) {
+  return String(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
+
+export function containsForbiddenSensitiveField(input) {
+  return Object.keys(input || {}).some((key) => FORBIDDEN_SENSITIVE_FIELDS.has(normalizedKey(key)));
+}
+
 /* Anti-spam sense serveis externs ni captchas de pagament.
  *
  * 1) Honeypot: un camp ocult que cap persona veu ni omple. Els bots que
@@ -147,4 +175,4 @@ export function isSpam(input) {
   return false;
 }
 
-export { SECCIONS, LIMITS };
+export { SECCIONS, LIMITS, FORBIDDEN_SENSITIVE_FIELDS };

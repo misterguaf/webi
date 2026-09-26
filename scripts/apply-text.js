@@ -38,7 +38,7 @@ function parseDoc(md) {
   return entries;
 }
 
-const md = readFileSync(join(ROOT, "TEXTOS-WEB.md"), "utf8");
+const md = readFileSync(join(ROOT, "docs", "TEXTOS-WEB.md"), "utf8");
 const manifest = JSON.parse(readFileSync(join(ROOT, "scripts", "text-manifest.json"), "utf8"));
 const edited = parseDoc(md);
 

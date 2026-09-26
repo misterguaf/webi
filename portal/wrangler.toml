@@ -1,0 +1,59 @@
+name = "parpallo-inscripcions"
+main = "worker.js"
+compatibility_date = "2026-09-19"
+
+[vars]
+PORTAL_ALLOWED_ORIGIN = "https://inscripciones.grupscoutparpallo.com"
+PORTAL_SESSION_VERSION = "2026-2027"
+APP_ENV = "production"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+[[ratelimits]]
+name = "PORTAL_LOGIN_LIMITER"
+namespace_id = "270901"
+
+  [ratelimits.simple]
+  limit = 5
+  period = 60
+
+# Secrets obligatoris, configurats amb `wrangler secret put`:
+# PORTAL_ACCESS_PASSWORD
+# PORTAL_SESSION_SECRET
+# SHEETS_WEBHOOK_URL (només quota legacy)
+# SHEETS_SHARED_SECRET (només quota legacy)
+
+# Local synthetic environment. It shares the same local D1/R2 state as gestio;
+# the all-zero D1 ID is only a Wrangler local-development placeholder. No
+# production D1/R2 resource is bound or provisioned by this configuration.
+[env.local]
+name = "parpallo-inscripcions-local"
+
+[env.local.vars]
+PORTAL_ALLOWED_ORIGIN = "http://127.0.0.1:4100"
+PORTAL_SESSION_VERSION = "demo-2026-2027"
+PORTAL_DEV_ALLOW_HTTP = "1"
+PORTAL_ACCESS_PASSWORD = "families-demo"
+PORTAL_SESSION_SECRET = "secret-local-fictici-de-mes-de-trenta-dos-caracters"
+APP_ENV = "development"
+
+[env.local.assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+[[env.local.d1_databases]]
+binding = "DB"
+database_name = "parpallo-gestio-local"
+database_id = "00000000-0000-0000-0000-000000000001"
+migrations_dir = "../gestio/migrations"
+
+[[env.local.r2_buckets]]
+binding = "EVIDENCE_STORAGE"
+bucket_name = "parpallo-evidence-local"
+jurisdiction = "eu"

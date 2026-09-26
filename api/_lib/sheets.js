@@ -1,4 +1,5 @@
-/* Grup Scout Parpalló — escriptura a Google Sheets via Apps Script.
+/* Grup Scout Parpalló — escriptura legacy a Google Sheets via Apps Script.
+ * Només alta pública, reserva i quota anual. Les activitats noves usen D1.
  *
  * Sense SDK de Google i sense credencials OAuth: només `fetch` cap a un
  * endpoint d'Apps Script desplegat com a Web App. Qui gestiona la fulla
@@ -11,12 +12,16 @@
  * queda dins del compte de Google propietari de la fulla; nosaltres no
  * toquem cap credencial de Google.
  *
- * La URL (SHEETS_WEBHOOK_URL) i el secret (SHEETS_SHARED_SECRET) arriben
- * per variable d'entorn del servidor i MAI s'inclouen en cap resposta ni
- * en cap log.
+ * La URL (SHEETS_WEBHOOK_URL) i la clau HMAC (SHEETS_SHARED_SECRET) arriben
+ * per variable d'entorn del servidor. La clau mai viatja en clar: només firma
+ * un sobre amb caducitat curta i nonce, que l'Apps Script comprova.
  */
 
+import { assertAllowedEgress } from "./environment.js";
+
 const TIMEOUT_MS = 10000;
+/* La quota espera el LockService i guarda el comprovant a Drive. */
+const TIMEOUT_QUOTA_MS = 45000;
 
 export async function appendRow(d, env) {
   return enviar(
@@ -27,7 +32,6 @@ export async function appendRow(d, env) {
       cognoms: d.cognoms,
       naixement: d.naixement,
       seccio: d.seccio || "",
-      notes: d.notes || "",
       tutor: d.tutor,
       telefon: d.telefon,
       email: d.email,
@@ -63,19 +67,43 @@ export async function appendReserva(d, env) {
   );
 }
 
-async function enviar(dades, env) {
+/* Quota anual. Un sol enviament pot incloure diversos germans i un únic
+ * comprovant. L'Apps Script crea una fila per menor i torna una referència
+ * comuna per a poder tractar el pagament com una sola operació. */
+export async function appendQuota(d, env) {
+  const body = await enviar(
+    Object.assign({ tipus: "quota", rebut: new Date().toISOString() }, d),
+    env,
+    TIMEOUT_QUOTA_MS
+  );
+  return {
+    referencia: body.referencia || "",
+    duplicada: body.duplicada === true,
+  };
+}
+
+async function enviar(dades, env, timeoutMs) {
   const url = env.SHEETS_WEBHOOK_URL;
   const secret = env.SHEETS_SHARED_SECRET;
-  if (!url) {
-    const e = new Error("SHEETS_WEBHOOK_URL no configurat");
+  if (!url || !secret) {
+    const e = new Error("SHEETS_WEBHOOK_URL o SHEETS_SHARED_SECRET no configurat");
     e.code = "CONFIG";
     throw e;
   }
 
-  const cos = Object.assign({ secret: secret || "" }, dades);
+  // En desenvolupament esta comprovació ocorre abans de firmar o fer fetch.
+  // Un `.env` antic no pot convertir una prova ordinària en una escriptura real.
+  assertAllowedEgress(url, env);
+
+  const payload = JSON.stringify(dades);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const nonce = crearNonce();
+  const signable = `${timestamp}.${nonce}.${payload}`;
+  const signature = await hmacHex(secret, signable);
+  const cos = { timestamp, nonce, payload, signature };
 
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), TIMEOUT_MS);
+  const t = setTimeout(() => ctrl.abort(), timeoutMs || TIMEOUT_MS);
   let res;
   try {
     res = await fetch(url, {
@@ -117,5 +145,27 @@ async function enviar(dades, env) {
     throw e;
   }
 
-  return true;
+  return body;
 }
+
+function crearNonce() {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hmacHex(secret, message) {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  const bytes = new Uint8Array(await crypto.subtle.sign("HMAC", key, encoder.encode(message)));
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+export { hmacHex };

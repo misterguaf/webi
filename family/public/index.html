@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ca"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow,noarchive"><title>Activitats de prova · Parpalló</title>
+<style>
+:root{font-family:system-ui,sans-serif;color:#17382d;background:#f3f5ef}body{max-width:780px;margin:2rem auto;padding:0 1rem}
+main,section{background:#fff;border:1px solid #cbd8d0;border-radius:12px;padding:1rem;margin:1rem 0}label{display:block;margin:.8rem 0}
+input,select,button{font:inherit;padding:.55rem;max-width:100%;box-sizing:border-box}input,select{width:100%}button{background:#175e43;color:white;border:0;border-radius:7px;cursor:pointer}
+.notice{background:#fff1c8;padding:.8rem;border-radius:8px}.muted{color:#486456}fieldset{border:1px solid #cbd8d0;border-radius:8px}#message{min-height:2rem}
+</style></head><body><header><h1>Activitats de prova</h1><p class="notice">Entorn local amb dades fictícies. No introduïu dades de menors, correus ni justificants reals.</p></header>
+<main><h2>Inscripció en un sol tràmit</h2><p>La família pot enviar una inscripció i el justificant. Aquesta pàgina no mostra fitxes, històrics ni estats privats.</p>
+<form id="registration">
+<label>Activitat <select id="activity" required></select></label>
+<section id="summary" aria-live="polite"></section>
+<label>Nom i cognoms de l'educand <input id="participantName" required maxlength="120" autocomplete="off"></label>
+<label>Secció <select id="section"><option value="">Tria si cal</option><option>MANADA</option><option>TROPA</option><option>ESCOLTA</option><option>CLAN</option></select></label>
+<label>Correu de prova per al rebut <input id="email" type="email" required placeholder="familia@example.test"></label>
+<label id="transportLabel" hidden>Transport <select id="transport"></select></label>
+<label id="evidenceLabel" hidden>Justificant sintètic (PDF, PNG, JPG o WebP, màxim 4 MB) <input id="evidence" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp"></label>
+<label><input id="consent" type="checkbox" required style="width:auto"> Autoritze aquesta inscripció de prova (text DEMO-3A; no és un consentiment de producció).</label>
+<button id="submit" type="submit">Enviar inscripció de prova</button>
+</form><p id="message" role="status"></p></main>
+<script type="module" src="/app.js"></script></body></html>

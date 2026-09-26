@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Activitats i campaments del Grup Scout Parpalló",
+  "description": "Este fitxer és l'ÚNICA font de veritat de les activitats: el llig el navegador per a pintar el desplegable i el servidor per a validar l'enviament. Per a obrir una inscripció, afig un objecte a l'array; per a tancar-la, lleva'l o passa la data límit.",
+  "type": "object",
+  "required": ["activitats"],
+  "properties": {
+    "activitats": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "va", "es", "inici", "fi", "preu", "seccions", "limit", "places"],
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[A-Z0-9]{3,12}$",
+            "description": "Identificador estable en majúscules. Apareix a la referència de pagament (CAMP26-EST-0001), així que una vegada hi ha inscripcions NO es pot canviar."
+          },
+          "va": {
+            "type": "object",
+            "required": ["nom"],
+            "additionalProperties": false,
+            "properties": { "nom": { "type": "string", "minLength": 1, "maxLength": 120 } }
+          },
+          "es": {
+            "type": "object",
+            "required": ["nom"],
+            "additionalProperties": false,
+            "properties": { "nom": { "type": "string", "minLength": 1, "maxLength": 120 } }
+          },
+          "inici": { "type": "string", "format": "date", "description": "Primer dia de l'activitat (AAAA-MM-DD)." },
+          "fi": { "type": "string", "format": "date", "description": "Últim dia de l'activitat (AAAA-MM-DD)." },
+          "preu": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Import EN CÈNTIMS, com a api/_lib/productes.js: 25000 són 250 €. Amb decimals en coma flotant els totals ixen amb cèntims fantasma."
+          },
+          "seccions": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": { "enum": ["EST", "TRO", "ESC", "CLA"] },
+            "description": "Seccions que poden inscriure's. EST=Estol, TRO=Tropa, ESC=Escoltes, CLA=Clan."
+          },
+          "limit": { "type": "string", "format": "date", "description": "Últim dia per a inscriure's, inclòs (AAAA-MM-DD)." },
+          "places": { "type": "integer", "minimum": 0, "description": "Places totals. L'ocupació real la compta l'Apps Script sobre les files de la fulla." }
+        }
+      }
+    }
+  }
+}

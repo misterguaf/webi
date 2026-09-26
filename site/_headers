@@ -1,0 +1,40 @@
+# Grup Scout Parpalló — capçaleres de seguretat.
+#
+# Este format el llegixen Netlify i Cloudflare Pages directament.
+# Per a Vercel, les mateixes capçaleres estan a vercel.json.
+#
+# La política de contingut (CSP) està ajustada al que la web fa DE VERITAT:
+#   - script-src 'self' + www.instagram.com: no hi ha ni un sol script inline
+#     propi al lloc, així que es poden prohibir del tot. L'única excepció és
+#     l'embed.js d'Instagram (incrustacions de publicacions a #noticies).
+#   - style-src ... 'unsafe-inline': l'HTML actual fa servir atributs style="
+#     en 78 llocs. Llevar-los seria reescriure el maquetat, i el plan diu que
+#     el disseny no es toca. Els estils inline són molt menys perillosos que
+#     els scripts inline.
+#   - fonts.googleapis.com / fonts.gstatic.com: les tipografies del lloc.
+#     Si algun dia s'allotgen al propi servidor, es poden llevar d'ací i de la
+#     política de cookies.
+#   - frame-src ... www.instagram.com: perquè es puga incrustar l'iframe de
+#     cada publicació d'Instagram (Google Maps ja hi era per la Cova).
+#   - img-src ... instagram.com/cdninstagram.com/fbcdn.net: miniatures i avatar
+#     de les publicacions d'Instagram incrustades.
+#   - frame-ancestors 'none': que ningú puga posar la web dins d'un iframe per
+#     a suplantar el formulari.
+#   - form-action 'self': el formulari només pot enviar-se al nostre servidor.
+
+/*
+  Content-Security-Policy: default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; script-src 'self' https://www.instagram.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: https://www.instagram.com https://*.cdninstagram.com https://*.fbcdn.net; connect-src 'self' https://www.instagram.com; frame-src https://www.google.com https://maps.google.com https://www.instagram.com; upgrade-insecure-requests
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+  Cross-Origin-Opener-Policy: same-origin
+
+# HSTS obliga el navegador a no tornar a entrar mai per HTTP. Activa'l només
+# després de verificar el domini definitiu per HTTPS, abans del llançament.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+# Les respostes de l'endpoint porten dades personals: no s'han de cachejar mai.
+/api/*
+  Cache-Control: no-store
+  X-Content-Type-Options: nosniff
