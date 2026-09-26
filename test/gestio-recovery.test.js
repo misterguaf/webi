@@ -62,38 +62,44 @@ async function startWorker(cwd,state) {
   const child=spawn(wrangler,['dev','--local','--persist-to',state,'--ip','127.0.0.1',
     '--port',String(port),'--config','wrangler.toml'],{cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
   let logs='';
-  child.stdout.on('data',chunk=>{logs+=chunk.toString();});
-  child.stderr.on('data',chunk=>{logs+=chunk.toString();});
+  let closed=false,spawnError=null;
+  const capture=chunk=>{logs=(logs+chunk.toString()).slice(-8000);};
+  child.stdout.on('data',capture);
+  child.stderr.on('data',capture);
+  child.on('error',error=>{spawnError=error;});
+  const close=new Promise(resolveClosed=>child.once('close',()=>{closed=true;resolveClosed();}));
+  const worker={child,close};
   for (let i=0;i<100;i++) {
-    if (child.exitCode!==null) break;
-    try { const response=await fetch(base+'/api/dev/identities');if(response.ok) {
+    if (closed || spawnError) break;
+    try { const response=await fetch(base+'/api/dev/identities',{signal:AbortSignal.timeout(1000)});if(response.ok) {
       const request=async (path,{method='GET',cookie='',body}={})=>{
-        const response=await fetch(base+path,{method,headers:{
-          ...(cookie?{Cookie:cookie}:{}),...(method!=='GET'?{Origin:base}:{}),
-          ...(body?{'Content-Type':'application/json'}:{})
-        },body:body?JSON.stringify(body):undefined});
-        return {status:response.status,data:await response.json(),cookie:response.headers.get('set-cookie'),requestId:response.headers.get('x-request-id')};
+        try {
+          const response=await fetch(base+path,{method,signal:AbortSignal.timeout(15000),headers:{
+            ...(cookie?{Cookie:cookie}:{}),...(method!=='GET'?{Origin:base}:{}),
+            ...(body?{'Content-Type':'application/json'}:{})
+          },body:body?JSON.stringify(body):undefined});
+          return {status:response.status,data:await response.json(),cookie:response.headers.get('set-cookie'),requestId:response.headers.get('x-request-id')};
+        } catch(error) {
+          throw new Error(`Worker ${method} ${path} failed; exit=${child.exitCode}, signal=${child.signalCode}, closed=${closed}; logs=${logs.slice(-2000)}`,{cause:error});
+        }
       };
       const login=async subject=>{
         const response=await request('/api/dev/login',{method:'POST',body:{subject}});
         assert.equal(response.status,200,logs.slice(-1200));
         return response.cookie.split(';')[0];
       };
-      return {child,request,login};
+      return {...worker,request,login};
     }} catch {}
     await new Promise(r=>setTimeout(r,100));
   }
-  child.kill('SIGTERM');
-  throw new Error('Worker did not start: '+logs.slice(-1000));
+  await stopWorker(worker);
+  throw new Error(`Worker did not start; exit=${child.exitCode}, signal=${child.signalCode}; ${spawnError?.message??''}; logs=${logs.slice(-2000)}`);
 }
 async function stopWorker(worker) {
   if (!worker) return;
-  worker.child.kill('SIGTERM');
-  await new Promise(resolveReady=>{
-    if (worker.child.exitCode!==null) return resolveReady();
-    worker.child.once('exit',resolveReady);
-    setTimeout(resolveReady,1500);
-  });
+  if (worker.child.exitCode===null && worker.child.signalCode===null) worker.child.kill('SIGTERM');
+  const timer=setTimeout(()=>worker.child.kill('SIGKILL'),5000);
+  try {await worker.close;} finally {clearTimeout(timer);}
 }
 
 test('FASE 2B: backup, rejection, disaster and D1 restore with application invariants', {timeout:150_000}, async()=>{
@@ -224,6 +230,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal((await worker.request('/api/dev/login',{method:'POST',body:{subject:'seed-106'}})).status,401);
     assert.equal((await worker.request('/api/audit/events?requestId='+protectedEvent.request_id,{cookie:group}))
       .data.events.some(row=>row.id===protectedEvent.id),true);
+    await stopWorker(worker);worker=null;
     run(isolated,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"UPDATE audit_event SET occurred_at=1 WHERE id='"+protectedEvent.id+"'",'--yes']);
     run(isolated,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
@@ -231,6 +238,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       "UPDATE retention_policy SET enabled=1,retention_ms=1 WHERE category='AUDIT_EVENT'",'--yes']);
     const lifecycle=await runRetention(localD1Adapter(isolated,restored),{requestId:randomUUID(),now:2000});
     assert.deepEqual(lifecycle,{auditDeleted:0,sessionsDeleted:0,enabled:true});
+    worker=await startWorker(isolated,restored);
     assert.equal((await worker.request('/api/audit/events?requestId='+protectedEvent.request_id,{cookie:group}))
       .data.events.some(row=>row.id===protectedEvent.id),true);
     const continuing=await worker.request('/api/participants',{cookie:group});
