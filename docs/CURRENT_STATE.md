@@ -1,14 +1,20 @@
 # Estado actual del sistema
 
-Fecha de corte: **2026-09-24**
-Fase: **3A consolidada — actividades e inscripciones locales sintéticas**
+Fecha de corte: **2026-09-26**
+Fase: **3B en desarrollo — cuota anual y tesorería locales sintéticas**
 Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
-Commit base: `90b2770` (`main`, alineado con `origin/main`)
-Estado del árbol: **con cambios locales extensos previos a esta auditoría**.
+Commit base: `3690bca` (`phase-3a-ci-stable`); rama de trabajo `phase/3b-annual-fees`.
+Estado del árbol: **cambios locales 3B sin commit; no desplegado**.
+
+## Actualización FASE 3B
+
+`portal/` conserva su UI familiar y ahora enruta las **cuotas nuevas** exclusivamente a `gestio/src/services/annual-fee-service.js`: ronda y datos bancarios de D1, matching server-side, justificante en storage emulado, pago pendiente de revisión y outbox ficticio. `gestio/` ofrece operaciones funcionales de Tesorería, obligaciones, agrupaciones familiares explícitas, fraccionamientos, asignaciones e incidencias. `0006_annual_fees.sql` separa obligación, transferencia y allocation. El importe declarado por la familia no verifica el banco ni determina deuda. El frontend familiar no muestra expedientes ni actualiza datos maestros. Ver [informe 3B](PHASE_3B_REPORT.md).
+
+`api/_lib/handler-quota.js`, `api/_lib/quota.js`, `api/_lib/cuotes.js`, `data/cuotes.json` y las ramas de cuota de `scripts/google-apps-script.gs` se conservan **DEPRECATED / CANDIDATE_FOR_REMOVAL**, pero `portal/worker.js` ya no los importa ni les envía cuotas. Alta y reserva públicas conservan su integración legacy. Un Apps Script remoto previo podría seguir desplegado: **PRODUCTION_BLOCKER / MIGRATION_CHECK**; no se ha consultado ni modificado. Todo 3B continúa **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY**.
 
 ## Actualización FASE 3A
 
-La implementación inicial de FASE 3A está en `gestio/`; la consolidación de 2026-09-24 hace de `portal/` la única superficie familiar mantenida para actividades. `portal/public/` conserva el frontend anterior y `portal/worker.js` llama los servicios 3A para catálogo, inscripción, matching, pago, storage y outbox. `family/` queda **DEPRECATED / CANDIDATE_FOR_REMOVAL** y no se borra todavía. `gestio/` sigue siendo la plataforma interna. `0004_submission_matching_data.sql` añade datos temporales de envío; `0005_registration_authorizations.sql` añade trazabilidad de participación y lectura de privacidad y evita colapsar pendientes con fechas declaradas distintas. Las rutas de actividad dejan de usar Sheets, Drive y `data/activitats.json`. La cuota anual conserva su handler legacy sin cambios.
+La implementación inicial de FASE 3A está en `gestio/`; la consolidación de 2026-09-24 hace de `portal/` la única superficie familiar mantenida para actividades. `portal/public/` conserva el frontend anterior y `portal/worker.js` llama los servicios 3A para catálogo, inscripción, matching, pago, storage y outbox. `family/` queda **DEPRECATED / CANDIDATE_FOR_REMOVAL** y no se borra todavía. `gestio/` sigue siendo la plataforma interna. `0004_submission_matching_data.sql` añade datos temporales de envío; `0005_registration_authorizations.sql` añade trazabilidad de participación y lectura de privacidad y evita colapsar pendientes con fechas declaradas distintas. Las rutas de actividad dejan de usar Sheets, Drive y `data/activitats.json`. La referencia histórica a cuota legacy corresponde al estado 3A, antes de 3B.
 
 Los justificantes de prueba se guardan en R2 **emulado localmente** bajo estado ignorado de Wrangler; no existe bucket remoto. D1 local contiene metadata, no el binario. No se crearon recursos remotos ni se utilizaron datos reales.
 
@@ -40,9 +46,9 @@ La RC1 jurídica se consultó como fuente de requisitos. Su propio README indica
 | Runtime local | Node.js; auditado con Node `v24.18.0` y npm `11.16.0` | TESTED |
 | Package manager | npm; lockfile v3 | IMPLEMENTED |
 | Dependencias npm | Sin dependencias de ejecución; ESLint, TypeScript, Ajv y Wrangler fijados como desarrollo | IMPLEMENTED, AUDITED |
-| Persistencia legacy (alta/reserva/cuota) | Google Sheets mediante Google Apps Script | IMPLEMENTED, EXTERNAL CONFIGURATION UNVERIFIED |
-| Ficheros legacy de cuota | Google Drive mediante Apps Script | IMPLEMENTED, EXTERNAL CONFIGURATION UNVERIFIED |
-| Correo legacy de cuota | `MailApp` de Google Apps Script | IMPLEMENTED, EXTERNAL CONFIGURATION UNVERIFIED |
+| Persistencia legacy (alta/reserva; código de cuota no canónico) | Google Sheets mediante Google Apps Script | IMPLEMENTED, EXTERNAL CONFIGURATION UNVERIFIED |
+| Ficheros legacy de cuota | Google Drive mediante Apps Script | DEPRECATED; no usados por cuotas nuevas de `portal/` |
+| Correo legacy de cuota | `MailApp` de Google Apps Script | DEPRECATED; no usado por cuotas nuevas de `portal/` |
 | Base de datos/ORM | D1 local en `gestio/`, sin ORM | IMPLEMENTED LOCALLY, TESTED |
 | Autenticación interna | Identidades ficticias y sesiones propias; adaptador JWT Access sin configuración remota | PARTIAL, TESTED LOCALLY |
 | Autorización interna | Policy engine y consultas D1 con scope | IMPLEMENTED LOCALLY, TESTED |
@@ -67,9 +73,9 @@ api/_lib/             validación y lógica HTTP compartida
 api/                  adaptadores Vercel
 netlify/functions/    adaptadores Netlify
 worker.js             Worker público Cloudflare
-portal/               Worker y frontend familiar autoritativo para actividades y cuota legacy
+portal/               Worker y frontend familiar autoritativo para actividades 3A y cuotas 3B
 family/               Worker 3A anterior, deprecated / candidate for removal
-data/                 cuota JSON y fixture/catálogo legacy de actividades no autoritativo
+data/                 cuota JSON y fixture/catálogo legacy; no autoritativos para nuevas actividades/cuotas
 scripts/              servidor local y Google Apps Script
 test/                 pruebas Node
 docs/                 documentación operativa y legal-técnica
@@ -100,9 +106,9 @@ No existe lectura pública de participantes. El Worker público devuelve 404 par
 - `DELETE /api/portal/session`: cierre de sesión.
 - `GET /api/portal/config`: catálogo de actividades y estado público de cuotas.
 - `POST /api/inscripcio`: actividad nueva en D1/FASE 3A; justificante condicional, servicio de matching y outbox.
-- `POST /api/cuota`: comunicación de cuota con justificante.
+- `POST /api/cuota`: submission 3B con justificante obligatorio, D1 local y outbox fake; sin Sheets/Drive.
 
-Las actividades publicadas se leen desde D1; la cuota anual sigue usando el flujo legacy y queda expresamente fuera de esta consolidación. La cookie compartida solo es una barrera de acceso casual, no autentica a la familia ni verifica parentesco.
+Las actividades publicadas y la ronda de cuota abierta se leen desde D1. La cookie compartida solo es una barrera de acceso casual, no autentica a la familia ni verifica parentesco.
 
 La sesión es una cookie firmada HMAC, `HttpOnly`, `SameSite=Strict`, `Secure` fuera del modo local, con duración de 24 horas y versión revocable de forma global. No identifica a una familia. Es un filtro de acceso compartido, no autorización por persona ni por familia.
 
@@ -110,7 +116,7 @@ El portal no tiene endpoints de listado, búsqueda o lectura de participantes. E
 
 ### 4.3 Portal interno de gestión
 
-No existe `gestio.grupscoutparpallo.com` ni MFA/Access real. El prototipo local `gestio/` contiene panel básico, usuarios ficticios, roles/permisos, sesiones, suspensión, grants sanitarios sintéticos, audit log backend paginado, incidente/hold mínimo y UI funcional de actividades, inscripciones y pagos. Backup/restore D1 local sintético y drill están probados; backup de objetos, almacenamiento/cifrado/restore de producción y break-glass siguen pendientes. La UI no incluye aún vista de auditoría; el API sí.
+No existe `gestio.grupscoutparpallo.com` ni MFA/Access real. El prototipo local `gestio/` contiene panel básico, usuarios ficticios, roles/permisos, sesiones, suspensión, grants sanitarios sintéticos, audit log backend paginado, incidente/hold mínimo y UI funcional de actividades, inscripciones, cuotas y revisión de pagos. Backup/restore D1 local sintético y drill están probados; backup de objetos, almacenamiento/cifrado/restore de producción y break-glass siguen pendientes. La UI no incluye aún vista de auditoría; el API sí.
 
 ## 5. Flujos de datos actuales
 
@@ -123,7 +129,10 @@ flowchart LR
   S --> DB[(D1 local)]
   S --> R2[R2 emulado local]
   S --> O[Notification outbox fake]
-  D -->|Solo cuota anual legacy| E
+  D -->|Cuota nueva| Q[Servicios 3B]
+  Q --> DB
+  Q --> R2
+  Q --> O
   E --> F[(Google Sheets)]
   E --> G[(Google Drive)]
   E --> H[MailApp]
@@ -135,10 +144,10 @@ El Apps Script valida HMAC SHA-256, timestamp de cinco minutos y nonce temporal.
 
 - Solicitud pública: identidad y contacto de menor/tutor, fecha de nacimiento y sección; no admite campo abierto ni datos de salud.
 - Actividades: identidad y fecha de nacimiento auxiliar del participante, datos de quien envía, autorización de participación, acuse de privacidad y justificante solo cuando el precio D1 es positivo; sin DNI/NIE, salud ni observaciones libres sanitarias.
-- Cuotas: identidad de uno o más menores, sección, tutor, contacto e imagen/PDF de justificante.
+- Cuotas nuevas: identidad y fecha de nacimiento auxiliar de uno o más educandos, sección, nombre/correo de quien envía, teléfono opcional, acuse de privacidad y justificante sintético obligatorio. La transferencia declarada es informativa.
 - Tienda: nombre, contacto, artículos y notas.
 
-Los justificantes de cuota legacy se transmiten en base64, con límite nominal de 4 MB y comprobación de firma binaria inicial, y se guardan en Drive configurado externamente. Los justificantes sintéticos de actividades pasan por la abstracción de storage 3A; no existe cuarentena, análisis antimalware ni content disarm.
+Los justificantes de cuota **nueva** y actividades pasan por la misma abstracción de storage emulado local (4 MiB, MIME/firma/extensión, nombre seguro y hash); la metadata está en D1 y los binarios fuera del backup SQL. El código de cuota legacy todavía podría escribir en Drive si algún flujo antiguo externo lo invocara; `portal/` ya no lo hace. No existe cuarentena, análisis antimalware ni content disarm.
 
 ## 6. Controles existentes
 
@@ -151,7 +160,7 @@ Los justificantes de cuota legacy se transmiten en base64, con límite nominal d
 | Anti-replay | timestamp + nonce cacheado | IMPLEMENTED, NOT EXTERNALLY VERIFIED |
 | CSRF del portal | token ligado a cookie y comprobación de origen | IMPLEMENTED, TESTED |
 | Cookie segura del portal | `HttpOnly`, `SameSite=Strict`, `Secure` | IMPLEMENTED, TESTED LOCALLY |
-| Idempotencia | clave de cliente; D1 para actividades y deduplicación en Sheets para cuota | IMPLEMENTED, TESTED LOCALLY |
+| Idempotencia | clave de cliente + hash en D1 para actividades y cuotas nuevas; deduplicación Sheets solo en código legacy | IMPLEMENTED, TESTED LOCALLY |
 | Mitigación de formula injection | `safeCell`/`safeRow` | IMPLEMENTED, NOT UNIT TESTED |
 | Cabeceras del sitio | CSP, HSTS, COOP, no-sniff, frame denial | IMPLEMENTED IN CONFIG, EXTERNAL VERIFICATION PENDING |
 | Minimización de logs | los handlers no registran payloads completos | IMPLEMENTED BY CODE REVIEW |
@@ -187,7 +196,7 @@ No se verificaron paneles, DNS, WAF, Access, Turnstile, D1, R2, secrets de produ
 
 | Comprobación | Resultado |
 |---|---|
-| `npm run ci` | PASS en copia aislada y checkout real tras saneamiento FASE 3A: 86/86 tests, lint, typecheck, schemas, guardas y audit sin vulnerabilidades altas |
+| `npm run ci` | PASS local FASE 3B: 94/94 tests (baseline 3A: 93/93), lint, typecheck, schemas, guardas y audit sin vulnerabilidades altas |
 | `db:backup:test` / `db:restore:test` / `disaster:drill` | mismo drill integral local/sintético FASE 2B; PASS |
 | `npm run lint` | PASS |
 | `npm run typecheck` | PASS sobre la frontera gradual seleccionada |
@@ -202,7 +211,7 @@ Los tests usan fixtures declarados como ficticios. No se detectaron ficheros de 
 
 ## 10. Conclusión del estado actual
 
-La nueva web pública y sus formularios son una base pequeña, comprensible y testeada. Para actividades, `portal/` es ahora la plataforma familiar única prevista y no expone lectura de expedientes; la cuota anual sigue en su carril legacy. La consolidación no convierte el portal en una identidad verificada ni lo habilita para datos reales.
+La nueva web pública y sus formularios son una base pequeña, comprensible y testeada. Para actividades y cuotas nuevas, `portal/` es la plataforma familiar única y no expone lectura de expedientes. La consolidación no convierte el portal en una identidad verificada ni lo habilita para datos reales.
 
 La futura gestión interna no debe construirse ampliando Sheets/Drive ni convirtiendo la contraseña compartida en una autenticación general. Necesita una nueva capa de aplicación, usuarios individuales, autorización centralizada, D1 con semántica SQLite, R2 privado, dominios de datos separados, auditoría y revocación.
 

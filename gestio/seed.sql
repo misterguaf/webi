@@ -97,8 +97,10 @@ INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_
 ('00000000-0000-4000-8000-000000000719','00000000-0000-4000-8000-000000000107','auth.permission.provision',1700000000000,NULL,'Fixture sintético');
 INSERT INTO user_role(id,user_id,role_code,section_id,valid_from,expires_at,granted_by,justification) VALUES
 ('00000000-0000-4000-8000-000000000731','00000000-0000-4000-8000-000000000105','SECTION_DELEGATE','00000000-0000-4000-8000-000000000002',1700000000000,4102444800000,'00000000-0000-4000-8000-000000000101','Delegación ficticia');
-INSERT INTO delegated_permission(id,user_id,permission_code,section_id,authorized_by,provisioned_by,authorization_reference,granted_at,expires_at)
-VALUES ('00000000-0000-4000-8000-000000000741','00000000-0000-4000-8000-000000000105','activities.registration.review','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000102','00000000-0000-4000-8000-000000000107','DEMO-AUTH-TROPA-001',1700000000000,4102444800000);
+INSERT INTO delegated_permission(id,user_id,permission_code,section_id,authorized_by,provisioned_by,authorization_reference,granted_at,expires_at,
+  ratification_status,ratified_at,ratified_by,ratification_reference)
+VALUES ('00000000-0000-4000-8000-000000000741','00000000-0000-4000-8000-000000000105','activities.registration.review','00000000-0000-4000-8000-000000000002','00000000-0000-4000-8000-000000000102','00000000-0000-4000-8000-000000000107','DEMO-AUTH-TROPA-001',1700000000000,4102444800000,
+  'RATIFIED',1700000000001,'00000000-0000-4000-8000-000000000101','DEMO-RATIFIED-TROPA-001');
 INSERT INTO participant_contact(participant_id,notification_email,verified_at) VALUES
 ('00000000-0000-4000-8000-000000000501','familia501@example.test',1700000000000),
 ('00000000-0000-4000-8000-000000000502','familia502@example.test',1700000000000),
@@ -127,3 +129,28 @@ INSERT INTO payment_evidence(id,registration_id,object_key,sha256,size_bytes,det
 INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at) VALUES
 ('00000000-0000-4000-8000-000000000841','00000000-0000-4000-8000-000000000821','CONFIRMED','familia503@example.test','PENDING',1700000000000),
 ('00000000-0000-4000-8000-000000000842','00000000-0000-4000-8000-000000000822','PENDING_PAYMENT','demo822@example.test','PENDING',1700000000000);
+
+-- FASE 3B: only synthetic round instructions and explicit internal permissions.
+INSERT INTO role_permission(role_code,permission_code) VALUES
+('GROUP_COORDINATOR','finance.fee.read'),('GROUP_COORDINATOR','finance.fee.manage'),
+('GROUP_COORDINATOR','finance.fee.payment.review'),('GROUP_COORDINATOR','finance.fee.installment.authorize'),
+('GROUP_COORDINATOR','finance.fee.config.manage'),
+('TREASURY','finance.fee.read'),('TREASURY','finance.fee.manage'),
+('TREASURY','finance.fee.payment.review'),('TREASURY','finance.fee.installment.authorize'),
+('TREASURY','finance.fee.config.manage'),
+('SECTION_DELEGATE','finance.fee.payment.review');
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification) VALUES
+('00000000-0000-4000-8000-000000000720','00000000-0000-4000-8000-000000000101','finance.fee.read',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000721','00000000-0000-4000-8000-000000000101','finance.fee.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000722','00000000-0000-4000-8000-000000000101','finance.fee.payment.review',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000723','00000000-0000-4000-8000-000000000101','finance.fee.installment.authorize',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000724','00000000-0000-4000-8000-000000000101','finance.fee.config.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000725','00000000-0000-4000-8000-000000000104','finance.fee.read',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000726','00000000-0000-4000-8000-000000000104','finance.fee.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000727','00000000-0000-4000-8000-000000000104','finance.fee.payment.review',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000728','00000000-0000-4000-8000-000000000104','finance.fee.installment.authorize',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000729','00000000-0000-4000-8000-000000000104','finance.fee.config.manage',1700000000000,NULL,'Fixture sintético');
+INSERT INTO annual_fee_round(id,code,is_open,base_cents,deadline_at,account_holder,iban,concept_template,created_by,updated_by,created_at,updated_at)
+VALUES('00000000-0000-4000-8000-000000000901','2026/2027',1,10000,NULL,'Titular fictici de prova',
+  'ES0000000000000000000000','Cuota Anual {Nombre educando}',
+  '00000000-0000-4000-8000-000000000101','00000000-0000-4000-8000-000000000101',1700000000000,1700000000000);

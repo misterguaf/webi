@@ -11,54 +11,42 @@ polsa Ctrl+C en eixa finestra per a tancar-lo. També pots iniciar-lo des de la
 terminal amb `npm run dev:portal -- --open`.
 
 El portal s'obri en `http://localhost:4100` i la clau de prova és
-`families-demo`. És fictícia. Les activitats usen D1 i storage emulats locals
-amb notification outbox fake; la quota anual manté el webhook legacy simulat.
-No introduïsques dades reals.
+`families-demo`. És fictícia. Activitats i **quotes noves** usen D1 i storage
+emulats locals amb notification outbox fake. La clau compartida no verifica
+la identitat familiar. No introduïsques dades reals.
 
-## Abans d'obrir la quota
+## Configuració de la quota 3B local
 
-Edita `data/cuotes.json` només quan tresoreria haja confirmat:
+No edites `data/cuotes.json`: és legacy i no governa la quota nova. En Gestió,
+Tesoreria o Coordinació de Grup configura la ronda D1 sintètica:
 
-- curs scout;
+- ronda solar;
 - import base en cèntims;
-- data límit;
-- descomptes per ordre de germà;
-- instruccions bilingües de transferència.
+- data límit orientativa opcional, que no bloqueja pagaments tardans;
+- titular, IBAN de prova i concepte recomanat.
 
-Mantín `oberta: false` fins que totes les dades estiguen revisades. El servidor
-recalcula sempre els imports i ignora qualsevol total enviat pel navegador.
+La regla de descompte aprovada per a 3B és 50 % des del tercer germà, amb
+agrupació familiar explícita i auditada. El servidor calcula imports i ignora
+com a autoritat el que declare el navegador. La persona revisora comprova
+separadament el banc, verifica l'import i assigna el pagament.
 
-## Apps Script — només quota anual legacy
+## Apps Script anterior — deprecated
 
-En les propietats del projecte configura:
+`api/_lib/handler-quota.js`, `data/cuotes.json` i les branques de quota de
+`scripts/google-apps-script.gs` es conserven per inventari i compatibilitat,
+però `portal/worker.js` ja no envia allí quotes noves. **No configures ni
+desplegues el circuit antic per a 3B.** Un endpoint remot anterior podria
+continuar actiu; comprovar-lo i desactivar-lo és un bloquejant de producció i
+requereix autorització separada. El seu contingut remot no s'ha verificat.
 
-- `WEBHOOK_HMAC_SECRET`;
-- `DRIVE_FOLDER_CUOTES_ID` per als justificants del curs;
-- `STATUS_SPREADSHEET_ID` per a la Sheet de responsables.
+## Desplegament
 
-Executa una vegada `provaConfiguracio` i després
-`installaAutomatitzacionsCuotes`. Esta última crea el disparador de canvi
-d'estat i la sincronització horària de la fulla resum. La fulla resum només
-rep curs, menor, secció, estat i data de confirmació.
+**No desplegar 3B.** Només local i sintètic; no hi ha D1/R2 remots. Abans de
+producció falten Access/MFA, Turnstile, R2 EU privat, backup d'objectes,
+correu real, textos/retencions legals, origen HTTPS exacte i decisió HSTS.
+Vegeu [informe 3B](PHASE_3B_REPORT.md).
 
-## Desplegament de Cloudflare
-
-Des de `portal/`:
-
-```bash
-npx wrangler secret put PORTAL_ACCESS_PASSWORD
-npx wrangler secret put PORTAL_SESSION_SECRET
-npx wrangler secret put SHEETS_WEBHOOK_URL
-npx wrangler secret put SHEETS_SHARED_SECRET
-npx wrangler deploy
-```
-
-La contrasenya i el secret de sessió no s'escriuen en cap fitxer. Associa el
-Worker al domini `inscripciones.grupscoutparpallo.com`, comprova que
-`PORTAL_ALLOWED_ORIGIN` coincidix exactament i canvia
-`PORTAL_SESSION_VERSION` en cada curs o sempre que calga invalidar sessions.
-
-## Comprovacions obligatòries
+## Comprovacions locals obligatòries
 
 - Una petició directa a un HTML o a `/api/inscripcio` sense cookie torna a la
   pantalla d'accés o respon 401.
@@ -66,8 +54,8 @@ Worker al domini `inscripciones.grupscoutparpallo.com`, comprova que
 - Cap pàgina, sitemap o peu públic enllaça al portal.
 - Els fitxers porten `noindex`, `no-store`, CSP i bloqueig d'iframes.
 - Les proves d'activitats creen inscripció en D1, justificant en storage emulat
-  quan cal i esdeveniment de notification outbox, sense Sheets/Drive ni correu real.
-- La prova de quota legacy crea fila, fitxer privat, correu i referència al
-  circuit simulat; la integració externa continua pendent d'autorització.
-- `PAGADA` sincronitza tots els germans, actualitza el resum i envia un únic
-  correu de confirmació.
+  quan cal i notification outbox, sense Sheets/Drive ni correu real.
+- La prova de quota 3B crea transferència, metadata de justificant i avís
+  fictici; **no** marca PAGADA només per pujar el fitxer.
+- Una transferència pot tindre diverses assignacions independents; cada quota
+  deriva `PENDING`, `PARTIAL`, `PAID` o `ISSUE` després de verificació humana.

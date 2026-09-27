@@ -20,7 +20,15 @@ const TABLES=[
   'user_role','user_permission_grant','participant','health_access_grant','security_event',
   'audit_event','security_incident','incident_resource','incident_audit_hold','retention_policy',
   'activity','activity_section','activity_transport_option','participant_contact','delegated_permission',
-  'activity_registration','payment_evidence','notification_outbox','notification_capture','d1_migrations'
+  'activity_registration','payment_evidence','notification_outbox','notification_capture',
+  'annual_fee_round','annual_fee_round_revision','annual_fee_family_group','annual_fee_family_member',
+  'annual_fee_family_revision','annual_fee_family_revision_member','annual_fee_family_correction_gate',
+  'annual_fee_obligation','annual_fee_amount_revision',
+  'annual_fee_payment','annual_fee_submission_person','annual_fee_evidence','annual_fee_allocation',
+  'annual_fee_allocation_revision',
+  'annual_fee_installment_plan','annual_fee_issue',
+  'annual_fee_notification_outbox','annual_fee_notification_capture',
+  'annual_fee_issue_outbox','annual_fee_issue_capture','d1_migrations'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -35,7 +43,27 @@ const REQUIRED_OBJECTS=[
   'trigger:activity_registration_transition','trigger:payment_review_transition',
   'trigger:delegated_permission_transition','trigger:activity_section_locked_insert',
   'trigger:activity_section_locked_delete','trigger:activity_transport_locked_insert',
-  'trigger:activity_transport_locked_delete','trigger:notification_delivery_transition'
+  'trigger:activity_transport_locked_delete','trigger:notification_delivery_transition',
+  'index:annual_fee_one_open_round','index:annual_fee_payment_person_unique',
+  'index:annual_fee_round_revision_idx','index:annual_fee_amount_revision_idx',
+  'index:annual_fee_allocation_revision_idx',
+  'index:annual_fee_allocation_obligation_idx','trigger:annual_fee_allocation_guard',
+  'trigger:annual_fee_allocation_no_update','trigger:annual_fee_allocation_delete_guard',
+  'trigger:annual_fee_payment_amount_guard','trigger:annual_fee_payment_review_guard',
+  'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
+  'trigger:annual_fee_obligation_allocation_amount_guard',
+  'trigger:annual_fee_obligation_family_insert_guard','trigger:annual_fee_obligation_family_update_guard',
+  'trigger:annual_fee_installment_total_insert','trigger:annual_fee_installment_total_update',
+  'trigger:annual_fee_installment_immutable_update','trigger:annual_fee_installment_immutable_delete',
+  'trigger:annual_fee_obligation_installment_total_update','index:annual_fee_family_revision_group_idx',
+  'view:annual_fee_installment_part','view:annual_fee_obligation_status',
+  'view:annual_fee_payment_balance','trigger:annual_fee_payment_allocated_review_guard',
+  'trigger:annual_fee_unallocated_issue_resolution_guard',
+  'trigger:annual_fee_family_member_insert_guard','trigger:annual_fee_family_member_update_guard',
+  'trigger:annual_fee_family_member_delete_guard','index:annual_fee_issue_outbox_pending_idx',
+  'index:annual_fee_family_member_binding_unique',
+  'trigger:annual_fee_family_member_binding_insert','trigger:annual_fee_family_member_binding_update',
+  'trigger:annual_fee_obligation_member_update'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};
@@ -135,7 +163,10 @@ function inspectSql(sqlPath,info) {
       "(SELECT count(*) FROM notification_outbox WHERE recipient_email NOT LIKE '%@%.test') AS external_mail,"+
       "(SELECT count(*) FROM participant_contact WHERE notification_email NOT LIKE '%@%.test') AS external_contact,"+
       "(SELECT count(*) FROM payment_evidence WHERE object_key NOT LIKE 'synthetic/%' AND object_key!='fixture-only/no-binary') AS external_object,"+
-      "(SELECT count(*) FROM delegated_permission WHERE authorization_reference NOT LIKE 'DEMO-%') AS external_delegation")[0];
+      "(SELECT count(*) FROM delegated_permission WHERE authorization_reference NOT LIKE 'DEMO-%') AS external_delegation,"+
+      "(SELECT count(*) FROM annual_fee_payment WHERE receipt_email NOT LIKE '%@example.test') AS external_fee_mail,"+
+      "(SELECT count(*) FROM annual_fee_evidence WHERE object_key NOT LIKE 'synthetic/%') AS external_fee_object,"+
+      "(SELECT count(*) FROM annual_fee_notification_outbox WHERE recipient_email NOT LIKE '%@example.test') AS external_fee_notice")[0];
     if (Object.values(syntheticBusiness).some(value=>value!==0)) fail('SYNTHETIC_BUSINESS_REQUIRED');
     const sessionColumns=sqliteQuery(database,'PRAGMA table_info(app_session)').map(row=>row.name);
     if (sessionColumns.includes('token') || !sessionColumns.includes('token_hash')) fail('PLAINTEXT_SESSION_SCHEMA');
@@ -180,6 +211,17 @@ export function createBackup(outputPath,configPath=resolve(root,'wrangler.toml')
     chmodSync(temp,0o700);
     run(wrangler,['d1','export',DB_NAME,'--local','--config',info.path,'--output',join(temp,'dump.sql'),'--skip-confirmation'],
       {cwd:info.folder});
+    // D1 imports the dump with FK checks active. The generated family FK needs its parent unique
+    // index before the first populated obligation row, while Wrangler exports indexes last.
+    const dumpPath=join(temp,'dump.sql');
+    const dump=readFileSync(dumpPath,'utf8');
+    const bindingIndex='CREATE UNIQUE INDEX annual_fee_family_member_binding_unique ON annual_fee_family_member(binding_key);\n';
+    if (!dump.includes(bindingIndex)) fail('SCHEMA_OBJECT_MISSING');
+    const ordered=dump.replace(bindingIndex,'');
+    const memberTable=ordered.indexOf('CREATE TABLE annual_fee_family_member');
+    const memberEnd=memberTable<0?-1:ordered.indexOf(';\n',memberTable);
+    if (memberEnd<0) fail('SCHEMA_OBJECT_MISSING');
+    writeFileSync(dumpPath,ordered.slice(0,memberEnd+2)+bindingIndex+ordered.slice(memberEnd+2),{mode:0o600});
     chmodSync(join(temp,'dump.sql'),0o600);
     const snapshot=inspectSql(join(temp,'dump.sql'),info);
     const commit=spawnSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'});
@@ -230,7 +272,15 @@ function verifyRestoredState(info,state,manifest) {
     "(SELECT count(*) FROM activity_registration r LEFT JOIN activity a ON a.id=r.activity_id WHERE a.id IS NULL) AS orphan_registration,"+
     "(SELECT count(*) FROM payment_evidence e LEFT JOIN activity_registration r ON r.id=e.registration_id WHERE r.id IS NULL) AS orphan_evidence,"+
     "(SELECT count(*) FROM notification_outbox o LEFT JOIN activity_registration r ON r.id=o.registration_id WHERE r.id IS NULL) AS orphan_outbox,"+
-    "(SELECT count(*) FROM delegated_permission WHERE ratification_status='REVOKED' AND revoked_at IS NULL) AS bad_revocation")[0];
+    "(SELECT count(*) FROM delegated_permission WHERE ratification_status='REVOKED' AND revoked_at IS NULL) AS bad_revocation,"+
+    "(SELECT count(*) FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id JOIN annual_fee_obligation o ON o.id=a.obligation_id WHERE p.round_id!=o.round_id) AS cross_round_fee,"+
+    "(SELECT count(*) FROM annual_fee_payment p WHERE (SELECT COALESCE(SUM(a.amount_cents),0) FROM annual_fee_allocation a WHERE a.payment_id=p.id)>COALESCE(p.verified_amount_cents,0)) AS overallocated_fee,"+
+    "(SELECT count(*) FROM annual_fee_obligation WHERE amount_due_cents<1) AS bad_fee_due,"+
+    "(SELECT count(*) FROM annual_fee_installment_plan p JOIN annual_fee_obligation o ON o.id=p.obligation_id WHERE p.first_cents<1 OR p.second_cents<1 OR p.first_cents+p.second_cents!=o.amount_due_cents) AS bad_fee_installment,"+
+    "(SELECT count(*) FROM annual_fee_obligation o WHERE o.discount_cents!=CASE WHEN o.sibling_ordinal>=3 THEN CAST(o.base_cents/2 AS INTEGER) ELSE 0 END OR NOT EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id AND m.group_id=o.family_group_id AND m.sibling_ordinal=o.sibling_ordinal) AND o.family_group_id IS NOT NULL OR o.family_group_id IS NULL AND (o.sibling_ordinal!=1 OR EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id))) AS bad_fee_family,"+
+    "(SELECT count(*) FROM annual_fee_family_correction_gate) AS open_family_gate,"+
+    "(SELECT count(*) FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id WHERE p.review_status!='VERIFIED' OR p.reviewed_by IS NULL OR p.reviewed_at IS NULL) AS unreviewed_fee_allocation,"+
+    "(SELECT count(*) FROM annual_fee_payment_balance b WHERE b.unallocated_cents>0 AND b.review_status='VERIFIED' AND NOT EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=b.id AND i.code='ALLOCATION_UNCLEAR' AND i.status='OPEN')) AS unexplained_fee_balance")[0];
   if (Object.values(business).some(value=>value!==0)) fail('D1_BUSINESS_INVARIANT_FAILED');
 }
 export function restoreBackup(backupPath,destination,configPath=resolve(root,'wrangler.toml')) {

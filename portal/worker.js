@@ -1,9 +1,8 @@
-import { handleQuota } from "../api/_lib/handler-quota.js";
-import { configuracioPublica } from "../api/_lib/cuotes.js";
 import { check as rateCheck } from "../api/_lib/ratelimit.js";
 import { isSpam } from "../api/_lib/validate.js";
 import { publicActivities } from "../gestio/src/services/activity-service.js";
 import { submitRegistration } from "../gestio/src/services/registration-service.js";
+import { publicRound, submitFee } from "../gestio/src/services/annual-fee-service.js";
 import { AppError } from "../gestio/src/services/common.js";
 import {
   capcaleraCookie,
@@ -22,6 +21,8 @@ const ACTIVITY_FORM_FIELDS = new Set([
   "participantNom", "participantCognoms", "naixement", "seccio", "activitatId", "tutor", "telefon", "email",
   "participacio", "privacitat", "idioma", "idempotencyKey", "malnom", "_ts", "comprovant", "transportCode",
 ]);
+const FEE_FORM_FIELDS = new Set(["fills","tutor","telefon","email","privacitat","idioma",
+  "idempotencyKey","malnom","_ts","comprovant","roundCode","declaredAmountCents"]);
 const ACTIVITY_SECTION_CODES = { EST: "MANADA", TRO: "TROPA", ESC: "ESCOLTA", CLA: "CLAN" };
 const ACTIVITY_RECEIVED = {
   va: "Hem rebut la sol·licitud. La revisarem i, si cal, et contactarem. Esta resposta no confirma una plaça.",
@@ -30,6 +31,10 @@ const ACTIVITY_RECEIVED = {
 const ACTIVITY_REVIEW = {
   va: "Revisa les dades marcades i torna a provar.",
   es: "Revisa los datos marcados e inténtalo de nuevo.",
+};
+const FEE_RECEIVED = {
+  va: "Hem rebut el justificant. Tresoreria revisarà la transferència i, si cal, es posarà en contacte amb vosaltres.",
+  es: "Hemos recibido el justificante. Tesorería revisará la transferencia y, si hace falta, se pondrá en contacto con vosotros.",
 };
 
 const SEGURETAT = {
@@ -62,12 +67,6 @@ function respostaJson(status, body, extra) {
 
 function ipDe(request) {
   return request.headers.get("cf-connecting-ip") || request.headers.get("x-real-ip") || null;
-}
-
-function capcaleresPlanes(request) {
-  const headers = {};
-  for (const [k, v] of request.headers) headers[k.toLowerCase()] = v;
-  return headers;
 }
 
 function origenCorrecte(request, env) {
@@ -152,27 +151,6 @@ async function gestionaSessio(request, env) {
   }
 }
 
-async function passaFormulari(request, env, handler, sessio) {
-  if (!origenCorrecte(request, env)) return respostaJson(403, { ok: false });
-  if (request.headers.get("x-csrf-token") !== sessio.csrf) return respostaJson(403, { ok: false });
-  if (!isJsonContentType(request.headers.get("content-type"))) return respostaJson(415, { ok: false });
-  let rawBody;
-  try {
-    rawBody = await readRequestBody(request, MAX_PRIVATE_FORM_BODY);
-  } catch (error) {
-    if (error instanceof BodyTooLargeError) return respostaJson(413, { ok: false });
-    throw error;
-  }
-  const r = await handler({
-    method: request.method,
-    headers: capcaleresPlanes(request),
-    rawBody,
-    env: Object.assign({}, env, { ALLOWED_ORIGIN: env.PORTAL_ALLOWED_ORIGIN }),
-    ip: ipDe(request),
-  });
-  return ambSeguretat(new Response(r.body, { status: r.status, headers: r.headers }));
-}
-
 function portalLocalSintetic(request,env) {
   return env.APP_ENV === "development" && ["localhost","127.0.0.1"].includes(new URL(request.url).hostname) &&
     !!env.DB && !!env.EVIDENCE_STORAGE;
@@ -236,6 +214,41 @@ async function passaInscripcioFase3A(request,env,sessio) {
   }
 }
 
+async function passaQuotaFase3B(request,env,sessio) {
+  if (request.method!=="POST") return respostaJson(405,{ok:false,message:ACTIVITY_REVIEW},{Allow:"POST"});
+  if (!origenCorrecte(request,env) || request.headers.get("x-csrf-token")!==sessio.csrf)
+    return respostaJson(403,{ok:false,message:ACTIVITY_REVIEW});
+  if (!isJsonContentType(request.headers.get("content-type"))) return respostaJson(415,{ok:false,message:ACTIVITY_REVIEW});
+  if (!portalLocalSintetic(request,env)) return respostaJson(503,{ok:false,code:"LOCAL_SYNTHETIC_ONLY"});
+  let body;
+  try {body=JSON.parse(await readRequestBody(request,MAX_PRIVATE_FORM_BODY));}
+  catch(error) {return respostaJson(error instanceof BodyTooLargeError?413:400,{ok:false,message:ACTIVITY_REVIEW});}
+  if (!body || typeof body!=="object" || Array.isArray(body)) return respostaJson(400,{ok:false,message:ACTIVITY_REVIEW});
+  if (isSpam(body)) return respostaJson(202,{ok:true,message:FEE_RECEIVED});
+  const limit=rateCheck(ipDe(request),"quota");
+  if (!limit.ok) return respostaJson(429,{ok:false,message:ACTIVITY_REVIEW},{"Retry-After":String(limit.retryAfter)});
+  if (Object.keys(body).some(key=>!FEE_FORM_FIELDS.has(key)) || body.privacitat!==true ||
+      !Array.isArray(body.fills) || body.fills.some(person=>!person || typeof person!=="object" || Array.isArray(person) ||
+        Object.keys(person).some(key=>!["nom","cognoms","naixement","seccio"].includes(key))))
+    return respostaJson(400,{ok:false,message:ACTIVITY_REVIEW});
+  const input={roundCode:body.roundCode,
+    children:body.fills.map(person=>({name:[person.nom,person.cognoms].filter(value=>typeof value==="string").join(" ").trim(),
+      birthDate:person.naixement,sectionCode:ACTIVITY_SECTION_CODES[person.seccio]})),
+    submittedByName:body.tutor,contactPhone:body.telefon,receiptEmail:body.email,
+    declaredAmountCents:body.declaredAmountCents??null,privacyAcknowledged:body.privacitat,
+    privacyNoticeVersion:"DEMO-3B-PRIVACY-NOTICE-V1",idempotencyKey:body.idempotencyKey,
+    evidence:body.comprovant && typeof body.comprovant==="object"
+      ?{filename:body.comprovant.nom,mime:body.comprovant.tipus,dataBase64:body.comprovant.base64}:undefined};
+  try {
+    const result=await submitFee(env.DB,env.EVIDENCE_STORAGE,input,crypto.randomUUID());
+    return respostaJson(202,{ok:true,referencia:result.reference,message:FEE_RECEIVED});
+  } catch(error) {
+    if (!(error instanceof AppError)) console.error("[portal] fee submission failed",{name:error?.name});
+    return respostaJson(error instanceof AppError?error.status:500,
+      {ok:false,code:error instanceof AppError?error.code:"internal_error",message:ACTIVITY_REVIEW});
+  }
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -254,14 +267,14 @@ export default {
     if (url.pathname === "/api/portal/config" && request.method === "GET") {
       if (!portalLocalSintetic(request,env)) return respostaJson(503,{ok:false,code:"LOCAL_SYNTHETIC_ONLY"});
       try {
-        return respostaJson(200,{ok:true,activitats:await publicActivities(env.DB),quota:configuracioPublica()});
+        return respostaJson(200,{ok:true,activitats:await publicActivities(env.DB),quota:await publicRound(env.DB)});
       } catch(error) {
         if (!(error instanceof AppError)) console.error("[portal] activity catalogue unavailable",{name:error?.name});
         return respostaJson(error instanceof AppError?error.status:503,{ok:false,code:error.code||"CATALOG_UNAVAILABLE"});
       }
     }
     if (url.pathname === "/api/inscripcio") return passaInscripcioFase3A(request,env,sessio);
-    if (url.pathname === "/api/cuota") return passaFormulari(request, env, handleQuota, sessio);
+    if (url.pathname === "/api/cuota") return passaQuotaFase3B(request,env,sessio);
     if (url.pathname.startsWith("/api/")) return respostaJson(404, { ok: false });
 
     if (url.pathname === "/" || url.pathname === "/access.html") return asset(env, request, "/index.html");

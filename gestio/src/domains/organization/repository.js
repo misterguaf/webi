@@ -9,7 +9,7 @@ export async function effectiveSections(db, userId, permission, now) {
     JOIN user_role ur ON ur.user_id=dp.user_id
     JOIN role_permission rp ON rp.role_code=ur.role_code AND rp.permission_code=dp.permission_code
     WHERE dp.user_id=? AND dp.permission_code=? AND dp.revoked_at IS NULL
-    AND dp.ratification_status IN ('PENDING_RATIFICATION','RATIFIED')
+    AND dp.ratification_status='RATIFIED'
     AND dp.granted_at<=? AND (dp.expires_at IS NULL OR dp.expires_at>?)
     AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)
     AND ((dp.section_id IS NULL AND ur.section_id IS NULL) OR

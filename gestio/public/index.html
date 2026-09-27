@@ -34,6 +34,34 @@
   </section>
   <section id="registrationPanel" hidden><h2>Inscripcions</h2><p>Seleccioneu una activitat per revisar-ne les inscripcions.</p><ul id="registrationList"></ul></section>
   <section id="paymentPanel" hidden><h2>Pagaments d'activitats</h2><button id="reloadPayments">Actualitza</button><ul id="paymentList"></ul></section>
+  <section id="feePanel" hidden><h2>Quota anual · Tresoreria</h2><p class="muted">Dades fictícies. Les transferències es comproven al banc abans de verificar imports i assignacions.</p>
+    <label>Ronda <select id="feeRound"></select></label><button id="reloadFees" type="button">Actualitza</button>
+    <div id="feeManagePanel">
+    <form id="feeRoundForm"><h3>Configuració de ronda</h3>
+      <label>Codi de ronda <input id="feeRoundCode" placeholder="2026/2027" required></label>
+      <label>Quota base (cèntims) <input id="feeBase" type="number" min="1" required></label>
+      <label>Data límit orientativa (opcional) <input id="feeDeadline" type="date"></label>
+      <label>Titular <input id="feeHolder" required></label><label>IBAN de prova <input id="feeIban" required></label>
+      <label>Concepte <input id="feeConcept" required></label>
+      <label><input id="feeOpen" type="checkbox"> Ronda oberta al portal</label>
+      <button type="submit">Guarda configuració</button><button id="newFeeRound" type="button">Nova ronda</button>
+    </form>
+    <ul id="feeRoundRevisions"></ul>
+    <h3>Resum</h3><pre id="feeMetrics"></pre>
+    <h3>Educands i agrupació explícita</h3>
+    <label>Busca educand <input id="feePersonSearch" minlength="2" placeholder="Nom fictici"></label>
+    <button id="feeSearchButton" type="button">Busca</button><ul id="feeSearchResults"></ul>
+    <label>Referència interna del grup familiar <input id="feeGroupReference" placeholder="DEMO-FAMILY-001"></label>
+    <button id="feeCreateGroup" type="button">Agrupa educands seleccionats en este ordre</button><ul id="feeGroups"></ul>
+    <h3>Obligacions</h3>
+    <label>Filtra per secció <select id="feeSectionFilter"><option value="">Totes</option><option value="00000000-0000-4000-8000-000000000001">Manada</option><option value="00000000-0000-4000-8000-000000000002">Tropa</option><option value="00000000-0000-4000-8000-000000000003">Escolta</option><option value="00000000-0000-4000-8000-000000000004">Clan</option></select></label>
+    <label>Filtra per estat <select id="feeStatusFilter"><option value="">Tots</option><option>PENDING</option><option>PARTIAL</option><option>PAID</option><option>ISSUE</option></select></label>
+    <label>Busca pel nom <input id="feeObligationSearch"></label><button id="feeFilterButton" type="button">Filtra</button>
+    <ul id="feeObligations"></ul><div id="feeObligationDetail"></div>
+    </div>
+    <h3>Transferències pendents de revisar</h3><ul id="feePayments"></ul><div id="feePaymentDetail"></div>
+    <h3>Incidències</h3><ul id="feeIssues"></ul>
+  </section>
   <section id="notificationPanel" hidden><h2>Notificacions de prova</h2><p>Només envia al capturador local; mai a un servei de correu.</p><button id="drainNotifications">Processa cua fictícia</button></section>
   <p id="message" role="status"></p>
 </main>

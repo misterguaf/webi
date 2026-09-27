@@ -9,6 +9,8 @@ import * as activities from './src/services/activity-service.js';
 import * as registrations from './src/services/registration-service.js';
 import * as delegations from './src/services/delegation-service.js';
 import * as notifications from './src/services/notification-service.js';
+import * as fees from './src/services/annual-fee-service.js';
+import * as feeMetrics from './src/services/annual-fee-metrics.js';
 import { AppError, requirePermission } from './src/services/common.js';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
@@ -140,6 +142,53 @@ async function api(request,env,url,requestId) {
       throw new AppError(400,'invalid_request');
     return json({...await notifications.drainFake(db,context,requestId,body),requestId});
   }
+
+  if (path==='/api/fees/rounds' && method==='GET') return json({rounds:await fees.listRounds(db,context,requestId),requestId});
+  if (path==='/api/fees/review-rounds' && method==='GET') return json({rounds:await fees.listReviewRounds(db,context,requestId),requestId});
+  if (path==='/api/fees/rounds' && method==='POST') return json({...await fees.createRound(db,context,requestId,await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/fees\/rounds\/([^/]+)$/);
+  if (match && method==='PATCH') return json({...await fees.updateRound(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/fees\/rounds\/([^/]+)\/revisions$/);
+  if (match && method==='GET') return json({revisions:await fees.roundRevisions(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/fees\/rounds\/([^/]+)\/(obligations|metrics|payments|participants|groups|issues)$/);
+  if (match && method==='GET') {
+    const id=match[1],kind=match[2];
+    if (kind==='obligations') return json({obligations:await feeMetrics.listObligations(db,context,requestId,
+      {roundId:id,sectionId:url.searchParams.get('sectionId'),status:url.searchParams.get('status'),
+        search:url.searchParams.get('search')??''}),requestId});
+    if (kind==='metrics') return json({metrics:await feeMetrics.feeMetrics(db,context,requestId,id),requestId});
+    if (kind==='payments') return json({payments:await fees.listFeePayments(db,context,requestId,id),requestId});
+    if (kind==='participants') return json({participants:await fees.searchFeeParticipants(db,context,requestId,id,
+      url.searchParams.get('search')??''),requestId});
+    if (kind==='groups') return json({groups:await fees.listFamilyGroups(db,context,requestId,id),requestId});
+    return json({issues:await fees.listFeeIssues(db,context,requestId,id),requestId});
+  }
+  if (path==='/api/fees/groups' && method==='POST') return json({...await fees.createFamilyGroup(db,context,requestId,await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/fees\/groups\/([^/]+)$/);
+  if (match && method==='PATCH') return json({...await fees.correctFamilyGroup(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/fees\/groups\/([^/]+)\/revisions$/);
+  if (match && method==='GET') return json({revisions:await fees.familyGroupRevisions(db,context,requestId,match[1]),requestId});
+  if (path==='/api/fees/obligations' && method==='POST') return json({...await fees.createObligation(db,context,requestId,await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/fees\/obligations\/([^/]+)$/);
+  if (match && method==='GET') return json({...await fees.feeObligationDetail(db,context,requestId,match[1]),requestId});
+  if (match && method==='PATCH') return json({...await fees.overrideAmount(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/fees\/obligations\/([^/]+)\/installments$/);
+  if (match && method==='POST') return json({...await fees.authorizeInstallments(db,context,requestId,match[1],await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/fees\/payments\/([^/]+)$/);
+  if (match && method==='GET') return json({...await fees.feePaymentDetail(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/fees\/payments\/([^/]+)\/review$/);
+  if (match && method==='POST') return json({...await fees.reviewFeePayment(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/fees\/payments\/([^/]+)\/allocations$/);
+  if (match && method==='PATCH') return json({...await fees.reviseFeeAllocations(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/fees\/people\/([^/]+)\/review$/);
+  if (match && method==='POST') return json({...await fees.reviewFeeMatch(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/fees\/people\/([^/]+)\/candidates$/);
+  if (match && method==='GET') return json({candidates:await fees.feeMatchCandidates(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/fees\/evidence\/([^/]+)$/);
+  if (match && method==='GET') return fees.feeEvidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1]);
+  if (path==='/api/fees/issues' && method==='POST') return json({...await fees.openFeeIssue(db,context,requestId,await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/fees\/issues\/([^/]+)\/resolve$/);
+  if (match && method==='POST') return json({...await fees.resolveFeeIssue(db,context,requestId,match[1]),requestId});
 
   match=path.match(/^\/api\/users\/([^/]+)\/(suspend|disable|enable)$/);
   if (match && method==='POST') {

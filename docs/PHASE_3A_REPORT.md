@@ -1,5 +1,7 @@
 # FASE 3A — actividades, inscripciones y revisión de pagos
 
+Nota de vigencia: este informe documenta el checkpoint 3A. La cuota anual, descrita aquí como legacy, se enruta a servicios 3B **solo para envíos nuevos desde `portal/`** en la rama 3B; véase [PHASE_3B_REPORT](PHASE_3B_REPORT.md). No se ha modificado el tag estable 3A.
+
 Fecha del informe original: 2026-09-23. Resultado original: **PASS en el alcance local y sintético; NOT PRODUCTION READY**. La implementación inicial estaba en `gestio/` y en un Worker `family/` separado. La consolidación posterior descrita a continuación sustituye esa topología familiar para actividades. No creó ni usó D1/R2 remotos ni datos reales.
 
 ## Consolidación familiar — 2026-09-24

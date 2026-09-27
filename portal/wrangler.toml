@@ -24,8 +24,8 @@ namespace_id = "270901"
 # Secrets obligatoris, configurats amb `wrangler secret put`:
 # PORTAL_ACCESS_PASSWORD
 # PORTAL_SESSION_SECRET
-# SHEETS_WEBHOOK_URL (només quota legacy)
-# SHEETS_SHARED_SECRET (només quota legacy)
+# El portal 3B no necessita SHEETS_WEBHOOK_URL ni SHEETS_SHARED_SECRET;
+# els noms legacy queden documentats al backend públic fins retirar-ne dependències.
 
 # Local synthetic environment. It shares the same local D1/R2 state as gestio;
 # the all-zero D1 ID is only a Wrangler local-development placeholder. No

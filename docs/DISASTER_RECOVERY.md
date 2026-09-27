@@ -2,6 +2,8 @@
 
 Estado: diseño operativo **provisional**, drill **local/sintético** probado. Nada de esto autoriza datos reales ni aprovisionamiento remoto.
 
+FASE 3B: las copias D1 locales incluyen configuración de ronda, grupos explícitos, obligaciones, transferencias, allocations, planes de dos partes, incidencias y outbox de cuota; el test 3B restaura estos datos con FK. Los binarios de justificantes de cuota y actividad permanecen **fuera** de D1 y requieren respaldo/restauración independientes por clave/hash. La reapertura no debe confirmar pagos sin cotejo bancario; un backup antiguo puede resucitar asignaciones o datos suprimidos, por lo que el ledger externo pendiente sigue siendo bloqueante.
+
 ## Objetivos propuestos
 
 - **RPO: 24 horas — `PROVISIONAL_OPERATIONAL_DECISION`.** Proponer una exportación diaria verificable limita la pérdida desde la última copia independiente a un día. D1 Time Travel puede reducirla para incidentes recientes si está disponible, pero no es una copia independiente. La cadencia diaria y los datos incluidos deberán aprobarse.

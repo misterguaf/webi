@@ -14,10 +14,18 @@ export const ACTIONS = new Set([
   'REGISTRATION_RECEIVED','REGISTRATION_MATCHED','REGISTRATION_MATCH_REVIEW_REQUIRED','REGISTRATION_MATCH_RESOLVED',
   'REGISTRATION_CONFIRMED','REGISTRATION_REJECTED','PAYMENT_EVIDENCE_RECEIVED','PAYMENT_VERIFIED','PAYMENT_ISSUE',
   'DELEGATED_PERMISSION_GRANTED','DELEGATED_PERMISSION_RATIFIED','DELEGATED_PERMISSION_REVOKED',
-  'NOTIFICATION_QUEUED','NOTIFICATION_SENT','NOTIFICATION_FAILED'
+  'NOTIFICATION_QUEUED','NOTIFICATION_SENT','NOTIFICATION_FAILED',
+  'FEE_ROUND_CREATED','FEE_ROUND_UPDATED','FEE_BASE_CHANGED','FEE_DEADLINE_CHANGED',
+  'FEE_FAMILY_GROUP_CREATED','FEE_FAMILY_CORRECTED','FEE_DISCOUNT_APPLIED','FEE_DISCOUNT_RECALCULATED',
+  'FEE_OBLIGATION_CREATED','FEE_AMOUNT_OVERRIDDEN','FEE_SUBMISSION_RECEIVED','FEE_MATCH_REVIEWED',
+  'FEE_EVIDENCE_RECEIVED','FEE_PAYMENT_VERIFIED','FEE_ALLOCATION_CREATED','FEE_ALLOCATION_REVISED','FEE_ISSUE_OPENED',
+  'FEE_ISSUE_RESOLVED','FEE_INSTALLMENT_AUTHORIZED'
 ]);
 const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
-  'activity','activity_registration','payment_evidence','delegated_permission','notification_outbox']);
+  'activity','activity_registration','payment_evidence','delegated_permission','notification_outbox',
+  'annual_fee_round','annual_fee_family_group','annual_fee_obligation','annual_fee_payment',
+  'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',
+  'annual_fee_evidence','annual_fee_notification_outbox','annual_fee_issue_outbox']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);
 const SOURCES = new Set(['local-fixture','retention-job']);
 const safeId = value => value === null || (typeof value === 'string' && UUID.test(value));

@@ -136,10 +136,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,5);
+    assert.equal(manifest.schema_version,9);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
-      '0005_registration_authorizations.sql']);
+      '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
+      '0008_annual_fee_hardening.sql','0009_annual_fee_final_integrity.sql']);
     assert.equal(manifest.table_counts.security_incident,1);
     assert.equal(manifest.table_counts.incident_audit_hold,1);
     assert.ok(manifest.table_counts.audit_event>0);
@@ -149,6 +150,19 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.ok(manifest.table_counts.payment_evidence>=1);
     assert.ok(manifest.table_counts.delegated_permission>=1);
     assert.ok(manifest.table_counts.notification_outbox>=2);
+    assert.equal(manifest.table_counts.annual_fee_round,1);
+    assert.equal(manifest.table_counts.annual_fee_payment,0);
+    for (const object of ['table:annual_fee_family_revision','table:annual_fee_family_revision_member',
+      'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
+      'trigger:annual_fee_installment_total_insert',
+      'trigger:annual_fee_installment_immutable_delete',
+      'trigger:annual_fee_obligation_installment_total_update','view:annual_fee_installment_part',
+      'view:annual_fee_payment_balance','trigger:annual_fee_payment_allocated_review_guard',
+      'trigger:annual_fee_family_member_delete_guard','index:annual_fee_family_member_binding_unique',
+      'trigger:annual_fee_family_member_binding_insert','trigger:annual_fee_obligation_member_update',
+      'table:annual_fee_issue_outbox',
+      'table:annual_fee_issue_capture'])
+      assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
     assert.equal(verifyBackup(backup,config).manifest.sql_sha256,manifest.sql_sha256);
     assert.match(runNpm('db:backup:verify',['--config',config,'--backup',backup]),/BACKUP_VERIFIED/);
     const dump=readFileSync(join(backup,'dump.sql'),'utf8');
@@ -214,6 +228,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(restoredCounts.evidence,manifest.table_counts.payment_evidence);
     assert.equal(restoredCounts.delegations,manifest.table_counts.delegated_permission);
     assert.equal(restoredCounts.outbox,manifest.table_counts.notification_outbox);
+    const restoredFeeSchema=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT (SELECT count(*) FROM annual_fee_installment_part) AS parts,(SELECT count(*) FROM annual_fee_family_revision) AS family_revisions",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredFeeSchema.status,0);
+    assert.deepEqual(JSON.parse(restoredFeeSchema.stdout)[0].results.map(row=>[row.parts,row.family_revisions]),[[0,0]]);
     worker=await startWorker(isolated,restored);
     assert.equal((await worker.request('/api/me',{cookie:group})).status,200); // hashed session persisted
     const troopRestored=await worker.login('seed-102');

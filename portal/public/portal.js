@@ -171,23 +171,29 @@
   function addChild() { if (children.children.length >= 8) return; children.appendChild(document.getElementById("child-template").content.cloneNode(true)); relabelChildren(); paintFee(); }
   function relabelChildren() { Array.from(children.children).forEach(function (card, i) { card.querySelector("h3").textContent = (lang() === "es" ? "Niño o niña " : "Xiquet o xiqueta ") + (i + 1); card.querySelector(".remove-child").hidden = children.children.length === 1; card.querySelectorAll("[data-child]").forEach(function (el) { el.name = "fills." + i + "." + el.dataset.child; el.id = "fee-child-" + i + "-" + el.dataset.child; var label = el.parentNode.querySelector("label"); if (label) label.htmlFor = el.id; }); }); }
   function paintFee() {
-    if (!feeConfig) return; var count = children.children.length || 1, total = feeConfig.totalsText && feeConfig.totalsText[count - 1];
-    document.getElementById("fee-summary").innerHTML = total ? "<p><strong>" + (lang() === "es" ? "Total para " + count + ": " : "Total per a " + count + ": ") + "</strong>" + total + "</p>" : "";
-    if (feeConfig.oberta) document.getElementById("fee-instructions").textContent = t(feeConfig.instruccions) + "\n" + (lang() === "es" ? "Fecha límite: " : "Data límit: ") + dateText(feeConfig.dataLimit);
+    if (!feeConfig || !feeConfig.oberta) return;
+    document.getElementById("fee-option-copy").textContent = (lang() === "es" ? "Pago del curso " : "Pagament del curs ") + feeConfig.curs + ".";
+    document.getElementById("fee-summary").textContent = (lang() === "es" ? "Cuota base: " : "Quota base: ") + money(feeConfig.baseCents) +
+      (lang() === "es" ? ". Desde el tercer hermano, descuento del 50 % cuando Tesorería confirme la agrupación familiar. El importe final se calcula en el servidor."
+        : ". Des del tercer germà, descompte del 50 % quan Tresoreria confirme l'agrupació familiar. L'import final es calcula al servidor.");
+    document.getElementById("fee-instructions").textContent = (lang() === "es" ? "Titular: " : "Titular: ") + feeConfig.accountHolder +
+      "\nIBAN: " + feeConfig.iban + "\n" + (lang() === "es" ? "Concepto: " : "Concepte: ") + feeConfig.conceptTemplate +
+      (feeConfig.deadlineAt ? "\n" + (lang() === "es" ? "Fecha orientativa: " : "Data orientativa: ") + dateText(feeConfig.deadlineAt) : "");
   }
   document.getElementById("add-child").addEventListener("click", addChild); children.addEventListener("click", function (event) { var button = event.target.closest(".remove-child"); if (button && children.children.length > 1) { button.closest(".child-card").remove(); relabelChildren(); paintFee(); } });
   function validateFee() {
     clearErrors(feeForm); var first = null; function fail(el, msg) { var marked = fieldError(el, msg); if (!first) first = marked; }
     children.querySelectorAll("[data-child]").forEach(function (el) { if (!el.value.trim()) fail(el, TXT.required); });
-    if (!feeForm.elements.tutor.value.trim()) fail(feeForm.elements.tutor, TXT.required); if (!validPhone(feeForm.elements.telefon.value)) fail(feeForm.elements.telefon, TXT.phone); if (!validEmail(feeForm.elements.email.value)) fail(feeForm.elements.email, TXT.email);
+    if (!feeForm.elements.tutor.value.trim()) fail(feeForm.elements.tutor, TXT.required); if (feeForm.elements.telefon.value.trim() && !validPhone(feeForm.elements.telefon.value)) fail(feeForm.elements.telefon, TXT.phone); if (!validEmail(feeForm.elements.email.value)) fail(feeForm.elements.email, TXT.email);
+    if (feeForm.elements.declaredAmount.value && (!Number.isFinite(Number(feeForm.elements.declaredAmount.value)) || Number(feeForm.elements.declaredAmount.value)<=0)) fail(feeForm.elements.declaredAmount, TXT.review);
     var ferr = fileError(feeForm.elements.comprovant.files[0]); if (ferr) fail(feeForm.elements.comprovant, ferr); if (!feeForm.elements.privacitat.checked) fail(feeForm.elements.privacitat, TXT.required); return first;
   }
   feeForm.addEventListener("submit", function (event) {
     event.preventDefault(); alertBox("fee-alert", ""); var first = validateFee(); if (first) { alertBox("fee-alert", TXT.review); first.focus(); return; }
     var button = document.getElementById("fee-submit"), x = feeForm.elements, file = x.comprovant.files[0]; button.disabled = true; alertBox("fee-alert", TXT.sending, "wait");
-    var fills = Array.from(children.children).map(function (card) { return { nom: card.querySelector('[data-child="nom"]').value.trim(), cognoms: card.querySelector('[data-child="cognoms"]').value.trim(), seccio: card.querySelector('[data-child="seccio"]').value }; });
-    fileBase64(file).then(function (base64) { return fetch("/api/cuota", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify({ fills: fills, tutor: x.tutor.value.trim(), telefon: x.telefon.value.trim(), email: x.email.value.trim(), privacitat: x.privacitat.checked, idioma: lang(), idempotencyKey: x.idempotencyKey.value, malnom: x.malnom.value, _ts: x._ts.value, comprovant: { nom: file.name, tipus: file.type, base64: base64 } }) }); }).then(parseResponse).then(function (result) {
-      if (result.status === 401) return location.reload(); if (result.status === 200 && result.body.ok) { feeForm.hidden = true; document.getElementById("fee-reference").textContent = result.body.referencia || ""; document.getElementById("fee-success-total").textContent = result.body.totalText || ""; document.getElementById("fee-success").hidden = false; document.getElementById("fee-success").focus(); return; }
+    var fills = Array.from(children.children).map(function (card) { return { nom: card.querySelector('[data-child="nom"]').value.trim(), cognoms: card.querySelector('[data-child="cognoms"]').value.trim(), naixement: card.querySelector('[data-child="naixement"]').value, seccio: card.querySelector('[data-child="seccio"]').value }; });
+    fileBase64(file).then(function (base64) { return fetch("/api/cuota", { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", "X-CSRF-Token": csrf }, body: JSON.stringify({ fills: fills, tutor: x.tutor.value.trim(), telefon: x.telefon.value.trim(), email: x.email.value.trim(), privacitat: x.privacitat.checked, idioma: lang(), roundCode: feeConfig.curs, declaredAmountCents: x.declaredAmount.value ? Math.round(Number(x.declaredAmount.value) * 100) : null, idempotencyKey: x.idempotencyKey.value, malnom: x.malnom.value, _ts: x._ts.value, comprovant: { nom: file.name, tipus: file.type, base64: base64 } }) }); }).then(parseResponse).then(function (result) {
+      if (result.status === 401) return location.reload(); if (result.status === 202 && result.body.ok) { feeForm.hidden = true; document.getElementById("fee-reference").textContent = result.body.referencia || ""; document.getElementById("fee-success").hidden = false; document.getElementById("fee-success").focus(); return; }
       clearErrors(feeForm); var marked = serverErrors(feeForm, result.body.errors); alertBox("fee-alert", result.body.message || TXT.review); (marked || document.getElementById("fee-alert")).focus();
     }).catch(function () { alertBox("fee-alert", TXT.network).focus(); }).finally(function () { button.disabled = false; });
   });
@@ -203,7 +209,8 @@
   Promise.all([fetch("/api/portal/session").then(parseResponse), fetch("/api/portal/config").then(parseResponse)]).then(function (responses) {
     if (responses[0].status !== 200 || responses[1].status !== 200) return location.reload(); csrf = responses[0].body.csrf; catalog = responses[1].body.activitats || []; feeConfig = responses[1].body.quota;
     var open = catalog.filter(function (a) { return !closed(a); }); document.getElementById("activities-loading").hidden = open.length > 0; if (!open.length) document.getElementById("activities-loading").textContent = t(TXT.noActivities); activityForm.hidden = open.length === 0; paintActivities();
-    document.getElementById("fee-closed").hidden = feeConfig.oberta; feeForm.hidden = !feeConfig.oberta; if (feeConfig.oberta) document.getElementById("fee-option-copy").innerHTML = '<span class="va">Pagament del curs ' + feeConfig.curs + '.</span><span class="es">Pago del curso ' + feeConfig.curs + '.</span>'; paintFee();
+    document.getElementById("fee-closed").hidden = feeConfig.oberta; feeForm.hidden = !feeConfig.oberta;
+    paintFee();
     togglePanel(location.hash === "#quota" ? "quota" : location.hash === "#activitats" ? "activitats" : "", false);
   }).catch(function () { location.reload(); });
 })();

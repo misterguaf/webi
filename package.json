@@ -9,7 +9,7 @@
   },
   "packageManager": "npm@11.16.0",
   "scripts": {
-    "test": "node --test test/*.test.js",
+    "test": "node --test --test-concurrency=1 test/*.test.js",
     "dev": "node scripts/dev.js",
     "dev:site": "node scripts/dev.js",
     "dev:site:fake": "node scripts/dev.js --fals",

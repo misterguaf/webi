@@ -1,3 +1,4 @@
+import { setupFees } from './fees.js';
 const $ = id => document.getElementById(id);
 const message = value => { $('message').textContent = value; };
 async function call(path, options = {}) {
@@ -7,7 +8,8 @@ async function call(path, options = {}) {
   return data;
 }
 const post = path => call(path, { method: 'POST' });
-function hide() { for (const id of ['account','sessions','participants','activityPanel','registrationPanel','paymentPanel','notificationPanel']) $(id).hidden = true; $('logout').hidden = true; $('login').hidden = false; }
+const loadFees = setupFees({call,message});
+function hide() { for (const id of ['account','sessions','participants','activityPanel','registrationPanel','paymentPanel','feePanel','notificationPanel']) $(id).hidden = true; $('logout').hidden = true; $('login').hidden = false; }
 async function refresh() {
   let me;
   try { me = await call('/api/me'); } catch { hide(); return; }
@@ -29,6 +31,7 @@ async function refresh() {
   } catch { $('participants').hidden = true; }
   await loadActivities();
   await loadPayments();
+  await loadFees();
   $('notificationPanel').hidden = !me.roles.some(role=>role.role_code==='GROUP_COORDINATOR');
 }
 async function loadDevIdentities() {

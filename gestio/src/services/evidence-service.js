@@ -9,9 +9,11 @@ const formats=[
     String.fromCharCode(...b.slice(8,12))==='WEBP'}
 ];
 export async function validateSyntheticEvidence(input) {
+  const normalizedName=typeof input?.filename==='string'?input.filename.normalize('NFKC'):'';
   if (!input || typeof input!=='object' || Array.isArray(input) ||
     Object.keys(input).some(key=>!['filename','mime','dataBase64'].includes(key)) ||
-    typeof input.filename!=='string' || input.filename.length>120 || typeof input.mime!=='string' ||
+    typeof input.filename!=='string' || !input.filename.length || input.filename.length>120 ||
+    /[/\\\u2215\u2044\u29f8\u0000-\u001f]/u.test(normalizedName) || typeof input.mime!=='string' ||
     typeof input.dataBase64!=='string' || input.dataBase64.length>Math.ceil(MAX_BYTES*4/3)+8 ||
     !/^[A-Za-z0-9+/]+={0,2}$/.test(input.dataBase64) || input.dataBase64.length%4!==0)
     throw new AppError(400,'invalid_evidence');

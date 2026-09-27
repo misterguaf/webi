@@ -26,9 +26,9 @@ api/_lib/validate.js           validació de servidor + filtre anti-spam
 api/_lib/ratelimit.js          límit de peticions
 api/_lib/sheets.js             adaptador legacy d'alta, reserva i quota
 api/_lib/handler.js            nucli de l'endpoint, independent de la plataforma
-api/_lib/quota.js              validació i càlcul de la quota anual
-portal/                        frontend familiar canònic i Worker d'activitats 3A / quota legacy
-gestio/                        serveis 3A, D1 local i plataforma interna
+api/_lib/quota.js              càlcul de quota legacy, deprecated per a nous enviaments
+portal/                        frontend familiar canònic i Worker d'activitats 3A / quota 3B
+gestio/                        serveis 3A/3B, D1 local i plataforma interna
 family/                        frontend anterior deprecated, sense ruta familiar canònica
 api/alta.js                    adaptador Vercel
 netlify/functions/alta.js      adaptador Netlify (també reserva.js)
@@ -36,18 +36,26 @@ worker.js                      adaptador Cloudflare Workers
 scripts/dev.js                 servidor local de proves
 scripts/google-apps-script.gs  script per a enganxar al projecte d'Apps Script
 data/activitats.json           fixture/catàleg legacy; no governa les activitats noves
-data/cuotes.json               configuració de la quota (tancada fins completar-la)
+data/cuotes.json               configuració de quota legacy; no governa les quotes noves
 test/alta.test.js              proves automàtiques
 docs/                          guies, textos i documentació del projecte
 Launchers/                     accessos locals per a obrir els servidors
 ```
 
-Alta, reserva i quota conserven l'adaptador legacy d'`api/_lib/`. Les activitats
+Alta i reserva conserven l'adaptador legacy d'`api/_lib/`. El codi antic de quota es
+manté deprecated, sense ruta des del portal canònic. Les activitats
 noves passen de `portal/worker.js` als serveis 3A de `gestio/`: catàleg
 `PUBLISHED` en D1, matching, revisió de pagament, abstracció de storage per als
 justificants i notification outbox. Les úniques rutes públiques de la web
 general són `POST /api/alta` i `POST /api/reserva`; `/api/inscripcio` només
 existix darrere de la sessió del portal privat.
+
+La FASE 3B porta les quotes noves de `portal/` a D1 local, storage emulat i
+outbox fictici. `gestio/` gestiona la ronda, obligacions, agrupacions explícites,
+fraccionaments i assignacions després de comprovar el banc. Tot funciona només
+amb dades sintètiques; no hi ha enviament de correu ni recursos remots. Vegeu
+[informe 3B](docs/PHASE_3B_REPORT.md). Abans de dades reals, cal verificar i
+desactivar qualsevol endpoint remot de quota legacy d'Apps Script.
 
 ---
 
@@ -55,7 +63,7 @@ existix darrere de la sessió del portal privat.
 
 | Variable | Obligatòria | Què és |
 |---|---|---|
-| `SHEETS_WEBHOOK_URL` | Per als fluxos legacy | URL d'Apps Script per a alta, reserva i quota; mai per a activitats noves. |
+| `SHEETS_WEBHOOK_URL` | Per als fluxos legacy | URL d'Apps Script per a alta i reserva; mai per a activitats o quotes noves. |
 | `SHEETS_SHARED_SECRET` | Per als fluxos legacy | Clau HMAC llarga i aleatòria. Ha de coincidir amb la propietat `WEBHOOK_HMAC_SECRET` de l'Apps Script. El servidor no l'envia en clar: firma cada petició amb caducitat curta i nonce. |
 | `ALLOWED_ORIGIN` | Sí en producció | Origen públic HTTPS exacte per a alta i reserva. Si falta amb `APP_ENV=production`, els POST es rebutgen. La quota usa `PORTAL_ALLOWED_ORIGIN`. |
 | `APP_ENV` | Sí | `development`, `staging` o `production`; els entorns no productius activen les guardes d'egress. |
@@ -79,23 +87,29 @@ Els destins estan separats:
 ```
 fersescout.html        → /api/alta       → pestanya "Sol·licituds"
 merchandising.html     → /api/reserva    → pestanya "Reserves botiga"
-portal /api/cuota      → Apps Script     → pestanya "Cuotas" + Drive de quotes
+portal /api/cuota      → serveis FASE 3B → D1 + storage abstraction + notification outbox
 portal /api/inscripcio → serveis FASE 3A → D1 + storage abstraction + notification outbox
 ```
 
-Només alta, reserva i quota passen per `scripts/google-apps-script.gs`.
+Només alta i reserva canòniques passen per `scripts/google-apps-script.gs`.
 L'Apps Script rebutja explícitament els enviaments de tipus `inscripcio`.
-La revisió de pagaments d'activitats es fa des de `gestio/`.
+La revisió de pagaments d'activitats i quotes es fa des de `gestio/`.
 Un desplegament remot antic de l'Apps Script podria conservar codi anterior:
-cal verificar i actualitzar la versió desplegada, amb autorització, abans de
+cal verificar i desactivar la ruta remota de quota, amb autorització, abans de
 tractar dades reals. Este repositori no ha modificat cap desplegament remot.
+
+Les instruccions d'Apps Script de més avall descriuen **només el flux legacy
+d'alta/reserva**. No s'han d'usar per a connectar quotes o activitats noves.
 
 No usem l'API oficial de Google Sheets a propòsit: exigeix un compte de
 servei amb una clau JSON, cosa desproporcionada per a este cas d'ús.
 Amb Apps Script tota l'autorització queda dins del compte Google que és
 propietari de la fulla; nosaltres només guardem una URL i un secret.
 
-**Passos per a preparar-ho (una sola vegada):**
+**Arxiu històric del circuit Google; NO executes estos passos per a FASE 3B
+ni desplegues recursos remots sense autorització expressa.** La llista següent
+descriu també dependències de quota antiga que encara s'han d'inventariar abans
+de retirar-les; no és la configuració de les quotes noves.
 
 1. Crea la Google Sheet on vols veure les sol·licituds. No cal preparar
    capçaleres: el script les crea la primera vegada (pestanyes "Sol·licituds",
@@ -133,8 +147,8 @@ Proves locals amb el circuit sencer simulat (sense escriure enlloc):
 
 Per al portal privat, fes doble clic a `Launchers/Abrir portal local.command`; obri el
 navegador en <http://localhost:4100> i
-entra amb la contrasenya fictícia `families-demo`. Les activitats usen D1 i
-storage emulats locals, amb outbox fake; la quota simula el webhook legacy.
+entra amb la contrasenya fictícia `families-demo`. Les activitats i quotes noves
+usen D1 i storage emulats locals, amb outbox fake; no envien res a Google.
 La guia completa de configuració és `docs/PORTAL-PRIVAT.md`.
 
 **Si edites el script més endavant:** ves a *Desplega → Gestiona desplegaments*
@@ -276,6 +290,7 @@ HTTP durant un any.
 
 La web pública de `site/` no incorpora un panell d'administració. La plataforma
 interna és `gestio/`: en local/sintètic ja disposa d'identitat, sessions i
-permisos per a la revisió de les activitats 3A. No està preparada per a
-producció. Les sol·licituds d'alta i les reserves, i la quota anual legacy,
-continuen amb els seus fluxos Google separats; no donen accés a les dades 3A.
+permisos per a activitats 3A i Tresoreria 3B. No està preparada per a
+producció. Les sol·licituds d'alta i les reserves continuen amb els seus
+fluxos Google separats; el codi de quota antiga roman deprecat, sense ser
+el destí de les quotes noves.

@@ -122,14 +122,15 @@
             <fieldset>
               <legend><span class="va">Transferència</span><span class="es">Transferencia</span></legend>
               <div id="fee-instructions" class="transfer-box"></div>
+              <div class="field"><label for="fee-declared"><span class="va">Import transferit declarat (opcional, pendent de verificació)</span><span class="es">Importe transferido declarado (opcional, pendiente de verificación)</span></label><input id="fee-declared" name="declaredAmount" type="number" min="0.01" max="100000" step="0.01" inputmode="decimal"></div>
               <div class="field field-spaced"><label for="fee-receipt"><span class="va">Foto o captura del comprovant</span><span class="es">Foto o captura del comprobante</span> <span class="req">*</span></label><input id="fee-receipt" name="comprovant" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" capture="environment" required><p class="help"><span class="va">JPG, PNG, WEBP o PDF, fins a 4 MB.</span><span class="es">JPG, PNG, WEBP o PDF, hasta 4 MB.</span></p></div>
             </fieldset>
 
             <fieldset>
               <legend><span class="va">Dades de contacte</span><span class="es">Datos de contacto</span></legend>
               <div class="field"><label for="fee-tutor"><span class="va">Nom del tutor o tutora</span><span class="es">Nombre del tutor o tutora</span> <span class="req">*</span></label><input id="fee-tutor" name="tutor" type="text" autocomplete="name" maxlength="120" required></div>
-              <div class="two"><div class="field"><label for="fee-phone"><span class="va">Telèfon</span><span class="es">Teléfono</span> <span class="req">*</span></label><input id="fee-phone" name="telefon" type="tel" autocomplete="tel" maxlength="24" required></div><div class="field"><label for="fee-email">Email <span class="req">*</span></label><input id="fee-email" name="email" type="email" autocomplete="email" maxlength="150" required></div></div>
-              <label class="check"><input name="privacitat" type="checkbox" required><span><span class="va">He llegit i accepte la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacitat</a>.</span><span class="es">He leído y acepto la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacidad</a>.</span> <span class="req">*</span></span></label>
+              <div class="two"><div class="field"><label for="fee-phone"><span class="va">Telèfon (opcional)</span><span class="es">Teléfono (opcional)</span></label><input id="fee-phone" name="telefon" type="tel" autocomplete="tel" maxlength="24"></div><div class="field"><label for="fee-email">Email <span class="req">*</span></label><input id="fee-email" name="email" type="email" autocomplete="email" maxlength="150" required></div></div>
+              <label class="check"><input name="privacitat" type="checkbox" required><span><span class="va">He llegit la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacitat</a>.</span><span class="es">He leído la <a href="https://grupscoutparpallo.com/privacitat.html" target="_blank" rel="noopener">política de privacidad</a>.</span> <span class="req">*</span></span></label>
             </fieldset>
             <button class="btn btn-primary" id="fee-submit" type="submit"><span class="va">Enviar el comprovant</span><span class="es">Enviar el comprobante</span></button>
           </form>
@@ -139,7 +140,7 @@
             <h2><span class="va">Comprovant rebut</span><span class="es">Comprobante recibido</span></h2>
             <p><span class="va">Tresoreria revisarà l'ingrés i t'enviarà un correu quan quede confirmat.</span><span class="es">Tesorería revisará el ingreso y te enviará un correo cuando quede confirmado.</span></p>
             <div class="reference"><span><span class="va">Referència de la quota</span><span class="es">Referencia de la cuota</span></span><div class="reference-row"><strong id="fee-reference"></strong><button class="btn btn-secondary btn-small copy-reference" data-target="fee-reference" type="button"><span class="va">Copiar</span><span class="es">Copiar</span></button></div></div>
-            <p><strong><span class="va">Total:</span><span class="es">Total:</span></strong> <span id="fee-success-total"></span></p>
+            <p><span class="va">L'import aplicable es confirmarà després de la revisió.</span><span class="es">El importe aplicable se confirmará después de la revisión.</span></p>
           </div>
         </div>
       </section>
@@ -154,6 +155,7 @@
     <h3></h3>
     <button class="btn btn-secondary btn-small remove-child" type="button"><span class="va">Llevar</span><span class="es">Quitar</span></button>
     <div class="two"><div class="field"><label><span class="va">Nom</span><span class="es">Nombre</span> <span class="req">*</span></label><input data-child="nom" type="text" maxlength="80" autocomplete="off" required></div><div class="field"><label><span class="va">Cognoms</span><span class="es">Apellidos</span> <span class="req">*</span></label><input data-child="cognoms" type="text" maxlength="120" autocomplete="off" required></div></div>
+    <div class="field"><label><span class="va">Data de naixement (només per a identificar l'educand)</span><span class="es">Fecha de nacimiento (solo para identificar al participante)</span> <span class="req">*</span></label><input data-child="naixement" type="date" required></div>
     <div class="field"><label><span class="va">Secció</span><span class="es">Sección</span> <span class="req">*</span></label><select data-child="seccio" required><option value="" data-va="Tria una secció" data-es="Elige una sección">Tria una secció</option><option value="EST" data-va="Estol (8-11)" data-es="Manada (8-11)">Estol (8-11)</option><option value="TRO">Tropa (11-14)</option><option value="ESC" data-va="Escoltes (14-17)" data-es="Escultas (14-17)">Escoltes (14-17)</option><option value="CLA">Clan (17-21)</option></select></div>
   </div>
 </template>

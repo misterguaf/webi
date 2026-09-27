@@ -1,8 +1,8 @@
 # Runbook: backup y restore de `gestio` local
 
-Estado: **FASE 2B/3A, solo D1 local y datos sintéticos**. No usar con datos reales ni recursos Cloudflare remotos. Requiere Node 24, dependencias instaladas (`npm ci`), `sqlite3` en `PATH` y `gestio/wrangler.toml` de desarrollo con el ID D1 ficticio. Ejecutar desde la raíz del repositorio. Los comandos no aceptan rutas relativas, no sobrescriben destinos y validan el backup antes de importarlo.
+Estado: **FASE 2B/3A/3B, solo D1 local y datos sintéticos**. No usar con datos reales ni recursos Cloudflare remotos. Requiere Node 24, dependencias instaladas (`npm ci`), `sqlite3` en `PATH` y `gestio/wrangler.toml` de desarrollo con el ID D1 ficticio. Ejecutar desde la raíz del repositorio. Los comandos no aceptan rutas relativas, no sobrescriben destinos y validan el backup antes de importarlo.
 
-**Límite 3A:** la copia cubre actividades, inscripciones, metadata de justificantes, delegaciones y outbox D1; **no copia binarios del R2 emulado**. Para recuperar descargas se necesita copia independiente de objetos y reconciliación de `object_key`/SHA-256 antes de abrir el sistema. Sin ella, la descarga falla cerrada. No declarar restauración completa de producción.
+**Límite 3A/3B:** la copia cubre actividades, inscripciones, ronda de cuota, agrupaciones familiares, obligaciones, pagos, allocations y sus historiales de cambios, fraccionamientos, incidencias, auditoría, metadata de justificantes, delegaciones y outbox D1; **no copia binarios del R2 emulado**. Para recuperar descargas de actividades o cuotas se necesita copia independiente de objetos y reconciliación de `object_key`/SHA-256 antes de abrir el sistema. Sin ella, la descarga falla cerrada. No declarar restauración completa de producción. `test/gestio-3b.test.js` prueba el restore poblado de cuota y FK.
 
 ## Crear y verificar una copia
 

@@ -79,6 +79,13 @@ test('FASE 3A: oversized or non-synthetic evidence is rejected before storage',a
   await assert.rejects(validateSyntheticEvidence({...evidence,dataBase64:huge.toString('base64')}),error=>error.status===400 || error.status===413);
   await assert.rejects(validateSyntheticEvidence({...evidence,dataBase64:Buffer.from('%PDF-1.4\nnot a demo\n').toString('base64')}),
     error=>error.code==='synthetic_evidence_required');
+  await assert.rejects(validateSyntheticEvidence({...evidence,filename:'../demo-justificant.pdf'}),
+    error=>error.code==='invalid_evidence','shared evidence storage rejects path-like names for activities and fees');
+  await assert.rejects(validateSyntheticEvidence({...evidence,filename:'..\\demo-justificant.pdf'}),
+    error=>error.code==='invalid_evidence');
+  await assert.rejects(validateSyntheticEvidence({...evidence,filename:'..／demo-justificant.pdf'}),
+    error=>error.code==='invalid_evidence');
+  assert.equal((await validateSyntheticEvidence({...evidence,filename:'justificant..pdf'})).mime,'application/pdf');
 });
 
 test('FASE 3A: activity, family intake, matching, payment, delegation, outbox and restore', {timeout:240_000},async()=>{
@@ -98,6 +105,9 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
   try{
     run(gestio,['d1','migrations','apply','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml']);
     run(gestio,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml','--file','seed.sql','--yes']);
+    // Preserve the 3A closed-quota scenario despite the new 3B synthetic open-round seed.
+    run(gestio,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml',
+      '--command','UPDATE annual_fee_round SET is_open=0','--yes']);
     worker=await start(gestio,state,'/api/dev/identities');
     const login=async subject=>{
       const result=await request(worker.base,'/api/dev/login',{method:'POST',body:{subject}});

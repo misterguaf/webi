@@ -43,5 +43,62 @@ export async function drainFake(db,context,requestId,{failSynthetic=false}={},no
       failed++;
     }
   }
+  const fees=(await db.prepare(`SELECT n.id,n.kind,n.recipient_email FROM annual_fee_notification_outbox n
+    WHERE n.status IN ('PENDING','FAILED') AND n.attempt_count<5 AND
+      (n.kind!='FEE_PAYMENT_CONFIRMED' OR (
+        NOT EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=n.payment_id AND i.status='OPEN') AND
+        NOT EXISTS(SELECT 1 FROM annual_fee_allocation a JOIN annual_fee_issue i ON i.obligation_id=a.obligation_id
+          WHERE a.payment_id=n.payment_id AND i.status='OPEN') AND
+        EXISTS(SELECT 1 FROM annual_fee_allocation a JOIN annual_fee_obligation_status o ON o.id=a.obligation_id
+          WHERE a.payment_id=n.payment_id AND o.status='PAID')))
+    ORDER BY n.created_at,n.id LIMIT 50`).all()).results;
+  for (const row of fees) {
+    const ok=!failSynthetic && row.recipient_email.endsWith('@example.test');
+    const event=statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
+      action:ok?'NOTIFICATION_SENT':'NOTIFICATION_FAILED',resourceType:'annual_fee_notification_outbox',resourceId:row.id,
+      result:ok?'SUCCESS':'ERROR',reasonCode:ok?null:'FAKE_PROVIDER_FAILURE',occurredAt:now});
+    if (ok) {
+      const content=row.kind==='FEE_SUBMISSION_RECEIVED'
+        ?{subject:'Quota anual rebuda (prova)',body:'Hem rebut el justificant. El pagament encara no està verificat.'}
+        :row.kind==='FEE_PAYMENT_CONFIRMED'
+          ?{subject:'Quota anual confirmada (prova)',body:'La quota anual assignada ha quedat confirmada.'}
+          :{subject:'Incidència de quota anual (prova)',
+            body:'Hi ha hagut un problema amb el pagament i el grup es posarà en contacte amb vosaltres tan prompte com siga possible.\n'+
+              'Ha habido un problema con el pago y el grupo se pondrá en contacto con vosotros lo antes posible.'};
+      await db.batch([
+        db.prepare(`INSERT OR IGNORE INTO annual_fee_notification_capture(outbox_id,recipient_email,subject,body,captured_at)
+          VALUES(?,?,?,?,?)`).bind(row.id,row.recipient_email,content.subject,content.body,now),
+        db.prepare(`UPDATE annual_fee_notification_outbox SET status='SENT',attempt_count=attempt_count+1,
+          sent_at=?,last_error_code=NULL WHERE id=?`).bind(now,row.id),event]);
+      sent++;
+    } else {
+      await db.batch([db.prepare(`UPDATE annual_fee_notification_outbox SET status='FAILED',
+        attempt_count=attempt_count+1,last_error_code='FAKE_PROVIDER_FAILURE' WHERE id=?`).bind(row.id),event]);
+      failed++;
+    }
+  }
+  const issueNotices=(await db.prepare(`SELECT id,recipient_email FROM annual_fee_issue_outbox
+    WHERE status IN ('PENDING','FAILED') AND attempt_count<5 ORDER BY created_at,id LIMIT 50`).all()).results;
+  for (const row of issueNotices) {
+    const ok=!failSynthetic && row.recipient_email.endsWith('@example.test');
+    const event=statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
+      action:ok?'NOTIFICATION_SENT':'NOTIFICATION_FAILED',resourceType:'annual_fee_issue_outbox',resourceId:row.id,
+      result:ok?'SUCCESS':'ERROR',reasonCode:ok?null:'FAKE_PROVIDER_FAILURE',occurredAt:now});
+    if (ok) {
+      await db.batch([
+        db.prepare(`INSERT OR IGNORE INTO annual_fee_issue_capture
+          (outbox_id,recipient_email,subject,body,captured_at) VALUES(?,?,?,?,?)`)
+          .bind(row.id,row.recipient_email,'Incidència de quota anual (prova)',
+            'Hi ha hagut un problema amb el pagament i el grup es posarà en contacte amb vosaltres tan prompte com siga possible.\n'+
+            'Ha habido un problema con el pago y el grupo se pondrá en contacto con vosotros tan pronto como sea posible.',now),
+        db.prepare(`UPDATE annual_fee_issue_outbox SET status='SENT',attempt_count=attempt_count+1,
+          sent_at=?,last_error_code=NULL WHERE id=?`).bind(now,row.id),event]);
+      sent++;
+    } else {
+      await db.batch([db.prepare(`UPDATE annual_fee_issue_outbox SET status='FAILED',
+        attempt_count=attempt_count+1,last_error_code='FAKE_PROVIDER_FAILURE' WHERE id=?`).bind(row.id),event]);
+      failed++;
+    }
+  }
   return {sent,failed};
 }

@@ -1,6 +1,19 @@
 # Matriz de trazabilidad
 
-Estado: **FASE 3A — actividades e inscripciones locales sintéticas; infraestructura remota no creada**
+Estado: **FASE 3B — cuotas y tesorería locales sintéticas sobre 3A estable; infraestructura remota no creada**
+
+| Requisito FASE 3B | Evidencia local | Estado |
+|---|---|---|
+| Ronda configurable, cuota base, deadline no bloqueante, instrucciones bancarias | `0006_annual_fees.sql`, `annual-fee-service.js`, prueba 3B | IMPLEMENTED/TESTED local |
+| Hermanos 1.º/2.º 100 %, 3.º+ 50 % sin inferencia | agrupación explícita auditada, snapshot de obligación, prueba de cinco educandos | IMPLEMENTED/TESTED local |
+| Submission familiar de varios educandos, matching neutral, justificante obligatorio | `portal/worker.js`, storage abstraction, prueba clara/ambigua/inexistente | IMPLEMENTED/TESTED local |
+| Separar obligación, pago verificado y allocations transaccionales | migración 0006, triggers, revisión/corrección auditada, test de 100/50/exceso | IMPLEMENTED/TESTED local |
+| Fraccionamiento de dos partes opcionalmente fechadas | autorización Tesorería/Coordinación, plan sin motivo, prueba 3B | IMPLEMENTED/TESTED local |
+| Revisión delegable con ratificación y alcance; TECH_ADMIN denegado | policy, seed, servicios de delegación y test de transferencia multisección | IMPLEMENTED/TESTED local |
+| Issues, métricas y outbox fake | servicio 3B, vista D1, panel funcional, captura local | IMPLEMENTED/TESTED local |
+| Backup/restore D1 3B y FK | recovery, drill y test 3B con datos poblados | IMPLEMENTED/TESTED local; binarios excluidos |
+| Cuotas nuevas sin Sheets/Drive; código legacy conservado | ruta `portal/worker.js`, inventario 3B y test de no importación | IMPLEMENTED/TESTED local |
+| Endpoint remoto Apps Script antiguo y controles de producción | verificación/desactivación autorizada; Access/MFA/Turnstile/R2 EU/backup objetos | PRODUCTION_BLOCKER / REQUIRES EXTERNAL CONFIGURATION |
 
 | Requisito FASE 3A | Evidencia local | Estado |
 |---|---|---|

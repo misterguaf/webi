@@ -53,7 +53,7 @@ function validateInput(input) {
       input.participationTermsVersion!=='DEMO-3A-PARTICIPATION-V1' ||
       input.privacyNoticeVersion!=='DEMO-3A-PRIVACY-NOTICE-V1') throw new AppError(400,'invalid_registration');
 }
-async function findMatch(db,name,birthDate,sectionId,allowedSections) {
+export async function findMatch(db,name,birthDate,sectionId,allowedSections) {
   const rows=(await db.prepare('SELECT id,display_name,current_section_id,birth_date FROM participant WHERE status=? ORDER BY id LIMIT 1001')
     .bind('ACTIVE').all()).results;
   if (rows.length>1000) return {status:'AMBIGUOUS',participant:null}; // fail closed until indexed matching exists

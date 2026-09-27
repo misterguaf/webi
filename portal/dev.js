@@ -1,6 +1,6 @@
 /* Local-only runner for the definitive family portal.
  * Activities use the shared synthetic D1/R2 state under gestio/.wrangler/state.
- * Annual-quota handling remains on its existing Worker route and is closed by default.
+ * Annual-quota handling uses the local 3B D1/storage route when a synthetic round is open.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";

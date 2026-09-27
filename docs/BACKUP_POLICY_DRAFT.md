@@ -2,6 +2,8 @@
 
 **DRAFT — NOT APPROVED FOR PRODUCTION.** No establece un plazo legal de conservación. La aprobación de frecuencia, retención, acceso y supresión es `OPERATIONAL_AND_LEGAL_DECISION_REQUIRED`.
 
+FASE 3B local añade al dump D1 la ronda, obligaciones, descuento por agrupación explícita, pagos, allocations, fraccionamientos, incidencias y avisos ficticios. No añade los binarios de justificantes: siguen fuera de D1, bajo storage emulado, sin backup de objetos. El restore de cuota no debe interpretarse como validación bancaria ni aprobación de producción.
+
 | Entorno | Datos | Mecanismo permitido ahora | Estado |
 |---|---|---|---|
 | Local | Solo fixtures sintéticos | `db:backup`, `db:backup:verify`, `db:restore` y drill en D1 local | IMPLEMENTED/TESTED; SQL sin cifrar, ignorado por Git |
