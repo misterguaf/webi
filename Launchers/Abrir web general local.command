@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# CANDIDAT A RETIRADA després de validar el launcher mestre.
 # Launcher de macOS: inicia la web pública en modo local seguro, abre la portada
 # y deja el servidor en esta ventana de Terminal. Para cerrarlo, pulsa Ctrl+C.
 # El lanzador vive en Web Parpallo/Launchers; trabaja siempre desde la raíz
