@@ -136,11 +136,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,9);
+    assert.equal(manifest.schema_version,10);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
-      '0008_annual_fee_hardening.sql','0009_annual_fee_final_integrity.sql']);
+      '0008_annual_fee_hardening.sql','0009_annual_fee_final_integrity.sql','0010_scoped_fee_status.sql']);
     assert.equal(manifest.table_counts.security_incident,1);
     assert.equal(manifest.table_counts.incident_audit_hold,1);
     assert.ok(manifest.table_counts.audit_event>0);

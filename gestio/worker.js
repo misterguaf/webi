@@ -11,6 +11,7 @@ import * as delegations from './src/services/delegation-service.js';
 import * as notifications from './src/services/notification-service.js';
 import * as fees from './src/services/annual-fee-service.js';
 import * as feeMetrics from './src/services/annual-fee-metrics.js';
+import { scopedFeeStatus } from './src/services/annual-fee-status.js';
 import { AppError, requirePermission } from './src/services/common.js';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
@@ -143,6 +144,7 @@ async function api(request,env,url,requestId) {
     return json({...await notifications.drainFake(db,context,requestId,body),requestId});
   }
 
+  if (path==='/api/fees/status' && method==='GET') return json({...await scopedFeeStatus(db,context,requestId,url.searchParams.get('roundId')),requestId});
   if (path==='/api/fees/rounds' && method==='GET') return json({rounds:await fees.listRounds(db,context,requestId),requestId});
   if (path==='/api/fees/review-rounds' && method==='GET') return json({rounds:await fees.listReviewRounds(db,context,requestId),requestId});
   if (path==='/api/fees/rounds' && method==='POST') return json({...await fees.createRound(db,context,requestId,await readJson(request)),requestId},201);

@@ -6,7 +6,7 @@ import { hasValidGrant } from './domains/health/repository.js';
 const KNOWN = new Set(['participants.profile.read','health.record.read','finance.fee.reconcile','crm.contact.read','auth.user.suspend','infra.status.read',
   'audit.event.read','auth.role.manage','auth.permission.manage','health.grant.manage','auth.user.manage','security.incident.manage',
   'activities.read','activities.manage','activities.general.manage','activities.registration.review','finance.payment.verify',
-  'finance.fee.read','finance.fee.manage','finance.fee.payment.review','finance.fee.installment.authorize',
+  'finance.fee.read','finance.fee.status.read','finance.fee.manage','finance.fee.payment.review','finance.fee.installment.authorize',
   'finance.fee.config.manage','auth.permission.authorize','auth.permission.provision','auth.permission.ratify']);
 
 export async function authorize(db, context, { permission, sectionId = null, participantId = null, purpose = null }, now = Date.now()) {

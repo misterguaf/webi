@@ -36,7 +36,9 @@
     "waitlist:check": "node scripts/check-waitlist-boundary.js",
     "secrets:check": "node scripts/check-secrets.js",
     "audit": "npm audit --audit-level=high",
-    "ci": "node scripts/ci.js"
+    "ci": "node scripts/ci.js",
+    "demo:seed": "node gestio/demo/cli.js seed",
+    "demo:reset": "node gestio/demo/cli.js reset"
   },
   "devDependencies": {
     "ajv": "8.20.0",

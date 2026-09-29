@@ -154,3 +154,13 @@ INSERT INTO annual_fee_round(id,code,is_open,base_cents,deadline_at,account_hold
 VALUES('00000000-0000-4000-8000-000000000901','2026/2027',1,10000,NULL,'Titular fictici de prova',
   'ES0000000000000000000000','Cuota Anual {Nombre educando}',
   '00000000-0000-4000-8000-000000000101','00000000-0000-4000-8000-000000000101',1700000000000,1700000000000);
+
+-- Historical 3B migration tests also load this seed before 0010 exists.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT id,user_id,'finance.fee.status.read',1700000000000,NULL,'Fixture sintético' FROM
+  (SELECT '00000000-0000-4000-8000-000000000730' AS id,'00000000-0000-4000-8000-000000000102' AS user_id
+   UNION ALL SELECT '00000000-0000-4000-8000-000000000731','00000000-0000-4000-8000-000000000103')
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.status.read');
+INSERT INTO role_permission(role_code,permission_code)
+SELECT 'SECTION_COORDINATOR','finance.fee.status.read'
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.status.read');

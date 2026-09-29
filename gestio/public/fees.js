@@ -1,5 +1,5 @@
 // Functional local/synthetic treasury controls. Values sent by a family are never bank verification.
-export function setupFees({call,message}) {
+export function setupFees({call,message,reportLoadError=()=>{}}) {
   const $=id=>document.getElementById(id);
   const euros=cents=>(cents/100).toFixed(2)+' €';
   const option=(value,label)=>{const node=document.createElement('option');node.value=value;node.textContent=label;return node;};
@@ -11,6 +11,11 @@ export function setupFees({call,message}) {
   const act=async(task)=>{await task();message('Operació registrada en l’auditoria local.');await load();};
   let rounds=[],selected='',obligations=[],reviewOnly=false;
   const roundPath=()=>`/api/fees/rounds/${selected}`;
+  function clearFinancialView(){
+    rounds=[];selected='';obligations=[];
+    $('feeRoundForm').reset();$('feeRound').replaceChildren();
+    for(const id of ['feeRoundRevisions','feeMetrics','feeSearchResults','feeGroups','feeObligations','feePayments','feeIssues','feeObligationDetail','feePaymentDetail']) $(id).replaceChildren();
+  }
   async function load() {
     try {
       let result;
@@ -29,7 +34,8 @@ export function setupFees({call,message}) {
       $('feeOpen').checked=!!round?.is_open;
       if (selected) {if(reviewOnly)await loadPayments();else await loadRound();}
       else for(const id of ['feeRoundRevisions','feeMetrics','feeSearchResults','feeGroups','feeObligations','feePayments','feeIssues','feeObligationDetail','feePaymentDetail']) $(id).replaceChildren();
-    } catch(error) {$('feePanel').hidden=true;if(error.message && !error.message.startsWith('forbidden'))message(error.message);}
+      return true;
+    } catch(error) {clearFinancialView();$('feePanel').hidden=true;reportLoadError(error);if(error.message && error.status!==0 && !(error.status>=500) && !error.message.startsWith('forbidden'))message(error.message);return false;}
   }
   async function loadRound() {
     const revisions=(await call(roundPath()+'/revisions')).revisions;

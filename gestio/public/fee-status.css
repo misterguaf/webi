@@ -1,0 +1,7 @@
+.fee-basic-list{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:8px}
+.fee-basic-list li{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:48px;padding:11px 14px;border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary)}
+.fee-basic-status{white-space:nowrap;font-size:12px;font-weight:650}
+.fee-basic-status-paid{color:var(--success)}
+.fee-basic-status-issue{color:var(--danger)}
+.fee-basic-status-partial,.fee-basic-status-pending{color:var(--text-secondary)}
+@media(max-width:550px){.fee-basic-list li{align-items:flex-start;flex-direction:column;gap:5px}}
