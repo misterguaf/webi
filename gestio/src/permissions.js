@@ -22,7 +22,7 @@ export const PERMISSIONS = Object.freeze({
   'participants.profile.read': { kind: 'SCOPED' },
   'health.record.read': { kind: 'SCOPED', note: 'Section derived from participantId; also needs a health grant.' },
 
-  'activities.read': { kind: 'SCOPED' },
+  'activities.read': { kind: 'SCOPED', note: 'Any scope also reads GENERAL activities (3.5D); managing them needs activities.general.manage.' },
   'activities.manage': { kind: 'SCOPED' },
   'activities.general.manage': { kind: 'GLOBAL', scopedHolders: 'ALLOWED',
     note: 'Product decision 2026-09-29: section coordinators may create, edit, publish and close GENERAL activities.' },

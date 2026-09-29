@@ -117,9 +117,10 @@ async function api(request,env,url,requestId) {
   match=path.match(/^\/api\/activities\/([^/]+)$/);
   if (match && method==='PATCH') return json({...await activities.updateActivity(db,context,requestId,match[1],await readJson(request)),requestId});
   if (match && method==='GET') return json({activity:await activities.activityDetail(db,context,requestId,match[1]),requestId});
+  if (match && method==='DELETE') return json({...await activities.discardActivity(db,context,requestId,match[1],await readJson(request)),requestId});
   match=path.match(/^\/api\/activities\/([^/]+)\/(publish|close)$/);
   if (match && method==='POST') return json({...await activities.transitionActivity(db,context,requestId,match[1],
-    match[2]==='publish'?'PUBLISHED':'CLOSED'),requestId});
+    match[2]==='publish'?'PUBLISHED':'CLOSED',await readJson(request)),requestId});
   match=path.match(/^\/api\/activities\/([^/]+)\/registrations$/);
   if (match && method==='GET') return json({...await registrations.listRegistrations(db,context,requestId,match[1],url.searchParams),requestId});
   match=path.match(/^\/api\/registrations\/([^/]+)\/review$/);

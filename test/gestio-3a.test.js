@@ -128,13 +128,14 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     assert.equal((await create(tech,activity('SECTIONS',[id(2)]))).status,403);
     const general=await create(group,activity('GENERAL',[]));assert.equal(general.status,201);
     assert.equal((await request(worker.base,'/api/activities/'+general.data.id,{method:'PATCH',cookie:troop,
-      body:{...activity('GENERAL',[]),name:'General editada per Tropa (fictícia)'}})).status,200);
+      body:{...activity('GENERAL',[]),name:'General editada per Tropa (fictícia)',expectedVersion:1}})).status,200);
     assert.equal((await create(troop,activity('GENERAL',[]))).status,201);
     const paid=await create(troop,activity('SECTIONS',[id(2)],1200,[{code:'GROUP',adjustmentCents:300},{code:'FAMILY',adjustmentCents:0}]));
     assert.equal(paid.status,201);
     const closed=await create(troop,activity('SECTIONS',[id(2)]));assert.equal(closed.status,201);
-    for(const item of [free,paid,closed])assert.equal((await request(worker.base,`/api/activities/${item.data.id}/publish`,{method:'POST',cookie:troop})).status,200);
-    assert.equal((await request(worker.base,`/api/activities/${closed.data.id}/close`,{method:'POST',cookie:troop})).status,200);
+    for(const item of [free,paid,closed])assert.equal((await request(worker.base,`/api/activities/${item.data.id}/publish`,{method:'POST',cookie:troop,
+      body:{expectedVersion:1}})).status,200);
+    assert.equal((await request(worker.base,`/api/activities/${closed.data.id}/close`,{method:'POST',cookie:troop,body:{expectedVersion:2}})).status,200);
     assert.equal((await request(worker.base,'/api/delegations',{method:'POST',cookie:tech,body:{userId:id(105),permissionCode:'finance.payment.verify',
       sectionId:id(2),authorizedBy:id(107),authorizationReference:'DEMO-UNAUTH-001',expiresAt:later(10)}})).status,403);
     const delegated=await request(worker.base,'/api/delegations',{method:'POST',cookie:tech,body:{userId:id(105),
@@ -157,7 +158,8 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
       ('${id(901)}','Participant Doble (ficticio)','${id(2)}','ACTIVE','2013-05-18'),
       ('${id(902)}','Participant Doble (ficticio)','${id(2)}','ACTIVE','2013-05-18')`,'--yes']);
     run(gestio,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml','--command',
-      `INSERT INTO activity SELECT '${id(906)}','DEMO-EXPIRED',name,'PUBLISHED',audience,location,starts_at,ends_at,${Date.now()-1000},price_cents,currency,short_description,materials,special_notice,created_by,created_at,updated_at FROM activity WHERE public_code='DEMO-DRAFT'`,'--yes']);
+      `INSERT INTO activity(id,public_code,name,status,audience,location,starts_at,ends_at,registration_deadline,price_cents,currency,
+        short_description,materials,special_notice,created_by,created_at,updated_at) SELECT '${id(906)}','DEMO-EXPIRED',name,'PUBLISHED',audience,location,starts_at,ends_at,${Date.now()-1000},price_cents,currency,short_description,materials,special_notice,created_by,created_at,updated_at FROM activity WHERE public_code='DEMO-DRAFT'`,'--yes']);
     run(gestio,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml','--command',
       `INSERT INTO activity_section(activity_id,section_id) VALUES('${id(906)}','${id(2)}')`,'--yes']);
     assert.match(readFileSync(resolve(family,'README.md'),'utf8'),/DEPRECATED \/ CANDIDATE_FOR_REMOVAL/);

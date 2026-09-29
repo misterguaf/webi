@@ -152,10 +152,12 @@ test('section coordinators manage GENERAL activities through the route; without 
     const created = await f.request(102, '/api/activities', { method: 'POST', body });
     assert.equal(created.status, 201);
     assert.equal((await f.request(102, `/api/activities/${created.data.id}`)).status, 200);
-    assert.equal((await f.request(102, `/api/activities/${created.data.id}/publish`, { method: 'POST', body: {} })).status, 200);
-    assert.equal((await f.request(102, `/api/activities/${created.data.id}/close`, { method: 'POST', body: {} })).status, 200);
+    assert.equal((await f.request(102, `/api/activities/${created.data.id}/publish`, { method: 'POST', body: { expectedVersion: 1 } })).status, 200);
     assert.equal((await f.request(103, '/api/activities', { method: 'POST', body })).status, 403);
-    assert.equal((await f.request(103, `/api/activities/${created.data.id}`)).status, 403);
+    // 3.5D (B4): reading a GENERAL activity needs only activities.read; managing it still needs the grant.
+    assert.equal((await f.request(103, `/api/activities/${created.data.id}`)).status, 200);
+    assert.equal((await f.request(103, `/api/activities/${created.data.id}/close`, { method: 'POST', body: { expectedVersion: 2 } })).status, 403);
+    assert.equal((await f.request(102, `/api/activities/${created.data.id}/close`, { method: 'POST', body: { expectedVersion: 2 } })).status, 200);
   } finally { f.close(); }
 });
 
