@@ -1,12 +1,13 @@
+import { synthetic } from '../environment-policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireGroupWide, requirePermission, requireUuid, validUuid } from './common.js';
 import { evidenceKey, readEvidence, storeEvidence, validateSyntheticEvidence } from './evidence-service.js';
-import { findMatch, matchKey } from './registration-service.js';
+import { findMatch, matchCandidates, matchKey } from './registration-service.js';
 
 const uuid=()=>crypto.randomUUID();
 const cents=value=>Number.isSafeInteger(value) && value>0 && value<=10000000;
 const roundCode=value=>typeof value==='string' && /^20\d\d\/20\d\d$/.test(value) && Number(value.slice(5))===Number(value.slice(0,4))+1;
-const email=value=>typeof value==='string' && /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(value) && value.length<=254 && value.endsWith('@example.test');
+const email=value=>typeof value==='string' && /^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(value) && value.length<=254 && synthetic.email(value);
 const nowDate=value=>typeof value==='string' && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
   !Number.isNaN(Date.parse(value+'T00:00:00Z')) && new Date(value+'T00:00:00Z').toISOString().slice(0,10)===value &&
   Date.parse(value+'T00:00:00Z')<=Date.now();
@@ -110,7 +111,7 @@ export async function updateRound(db,context,requestId,id,input,now=Date.now()) 
 export async function createFamilyGroup(db,context,requestId,input,now=Date.now()) {
   await globalPermission(db,context,requestId,'finance.fee.manage','annual_fee_family_group');
   if (!keysOnly(input,['roundId','reference','participantIds']) || !validUuid(input.roundId) ||
-    typeof input.reference!=='string' || !/^DEMO-[A-Z0-9-]{3,75}$/.test(input.reference) ||
+    !synthetic.reference(input.reference,{min:3,max:75}) ||
     !Array.isArray(input.participantIds) || input.participantIds.length<2 || input.participantIds.length>20 ||
     new Set(input.participantIds).size!==input.participantIds.length || input.participantIds.some(id=>!validUuid(id))) fail('invalid_family_group');
   await roundById(db,input.roundId);
@@ -320,7 +321,7 @@ function validSubmission(input) {
       (input.contactPhone.trim() && (!/^[0-9+()\s.\-]{6,24}$/.test(input.contactPhone.trim()) ||
         input.contactPhone.replace(/\D/g,'').length<6 || input.contactPhone.replace(/\D/g,'').length>15)))) ||
     (input.declaredAmountCents!=null && !cents(input.declaredAmountCents)) ||
-    input.privacyAcknowledged!==true || input.privacyNoticeVersion!=='DEMO-3B-PRIVACY-NOTICE-V1' ||
+    input.privacyAcknowledged!==true || input.privacyNoticeVersion!==synthetic.terms.feePrivacy ||
     typeof input.idempotencyKey!=='string' || !/^[A-Za-z0-9_-]{16,100}$/.test(input.idempotencyKey))
     fail('invalid_fee_submission');
   const names=input.children.map(child=>[matchKey(child.name),child.birthDate,child.sectionCode].join('|'));
@@ -488,15 +489,15 @@ export async function reviewFeeMatch(db,context,requestId,id,input,now=Date.now(
   ]);
   return {id,status:participant?'RESOLVED':'REJECTED'};
 }
-export async function feeMatchCandidates(db,context,requestId,id) {
-  const row=await db.prepare('SELECT payment_id,section_id,match_status FROM annual_fee_submission_person WHERE id=?')
-    .bind(requireUuid(id)).first();
+export async function feeMatchCandidates(db,context,requestId,id,search=null) {
+  const row=await db.prepare(`SELECT payment_id,section_id,match_status,submitted_name,submitted_birth_date
+    FROM annual_fee_submission_person WHERE id=?`).bind(requireUuid(id)).first();
   if (!row) throw new AppError(404,'not_found');
   await paymentAccess(db,context,requestId,row.payment_id);
   if (!['AMBIGUOUS','NONE'].includes(row.match_status)) throw new AppError(409,'invalid_transition');
-  return (await db.prepare(`SELECT id,display_name,birth_date FROM participant
-    WHERE status='ACTIVE' AND current_section_id=? ORDER BY display_name,id LIMIT 100`)
-    .bind(row.section_id).all()).results;
+  // Resolution must stay in the declared section (reviewFeeMatch enforces the same rule).
+  return matchCandidates(db,context,{submittedName:row.submitted_name,submittedBirthDate:row.submitted_birth_date,
+    sectionIds:[row.section_id],search});
 }
 export async function feeEvidenceDownload(db,storage,context,requestId,id) {
   const row=await db.prepare('SELECT id,payment_id,object_key FROM annual_fee_evidence WHERE id=?').bind(requireUuid(id)).first();

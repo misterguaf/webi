@@ -30,6 +30,18 @@ for (const relative of ["wrangler.toml", "portal/wrangler.toml"]) {
   }
 }
 
+// Audit A1: the public portal must never hold a D1/R2 binding (in any environment) and must reach
+// Gestió only through the PortalIntake service entrypoint.
+const portal = readFileSync(join(root, 'portal/wrangler.toml'), 'utf8');
+if (/d1_databases|r2_buckets|kv_namespaces|durable_objects/.test(portal)) {
+  errors.push('portal/wrangler.toml: el portal no pot tindre bindings de dades (D1/R2/KV/DO); usa GESTIO_INTAKE.');
+}
+const intakeBindings = portal.match(/\[\[(?:env\.[a-z]+\.)?services\]\][^[]*/g) || [];
+if (intakeBindings.length < 2 || intakeBindings.some(block => !/binding\s*=\s*"GESTIO_INTAKE"/.test(block) ||
+    !/entrypoint\s*=\s*"PortalIntake"/.test(block))) {
+  errors.push('portal/wrangler.toml: cal un service binding GESTIO_INTAKE amb entrypoint PortalIntake a producció i a local.');
+}
+
 const gestio = readFileSync(join(root, 'gestio/wrangler.toml'), 'utf8');
 const gestioD1 = gestio.split('[[d1_databases]]')[1]?.split('[[r2_buckets]]')[0] || '';
 if (!/database_id\s*=\s*"00000000-0000-0000-0000-000000000001"/.test(gestio) ||

@@ -3,7 +3,7 @@ main = "worker.js"
 compatibility_date = "2026-09-19"
 
 [vars]
-PORTAL_ALLOWED_ORIGIN = "https://inscripciones.grupscoutparpallo.com"
+PORTAL_ALLOWED_ORIGIN = "https://inscripcions.grupscoutparpallo.com"
 PORTAL_SESSION_VERSION = "2026-2027"
 APP_ENV = "production"
 
@@ -12,6 +12,14 @@ directory = "./public"
 binding = "ASSETS"
 run_worker_first = true
 html_handling = "none"
+
+# Audit A1: the portal has no D1/R2 binding. Gestió data is reachable only through the
+# narrow PortalIntake entrypoint. The production Gestió Worker does not exist yet (deploy
+# is blocked), so this binding fails closed until it is provisioned and reviewed.
+[[services]]
+binding = "GESTIO_INTAKE"
+service = "parpallo-gestio"
+entrypoint = "PortalIntake"
 
 [[ratelimits]]
 name = "PORTAL_LOGIN_LIMITER"
@@ -27,9 +35,9 @@ namespace_id = "270901"
 # El portal 3B no necessita SHEETS_WEBHOOK_URL ni SHEETS_SHARED_SECRET;
 # els noms legacy queden documentats al backend públic fins retirar-ne dependències.
 
-# Local synthetic environment. It shares the same local D1/R2 state as gestio;
-# the all-zero D1 ID is only a Wrangler local-development placeholder. No
-# production D1/R2 resource is bound or provisioned by this configuration.
+# Local synthetic environment. The portal reaches the local Gestió Worker
+# (parpallo-gestio-local, started by `npm run dev:gestio`) through the same
+# PortalIntake service binding; it has no local D1/R2 binding either.
 [env.local]
 name = "parpallo-inscripcions-local"
 
@@ -47,13 +55,7 @@ binding = "ASSETS"
 run_worker_first = true
 html_handling = "none"
 
-[[env.local.d1_databases]]
-binding = "DB"
-database_name = "parpallo-gestio-local"
-database_id = "00000000-0000-0000-0000-000000000001"
-migrations_dir = "../gestio/migrations"
-
-[[env.local.r2_buckets]]
-binding = "EVIDENCE_STORAGE"
-bucket_name = "parpallo-evidence-local"
-jurisdiction = "eu"
+[[env.local.services]]
+binding = "GESTIO_INTAKE"
+service = "parpallo-gestio-local"
+entrypoint = "PortalIntake"

@@ -1,19 +1,12 @@
+import { assertRuntime, isLocalHost } from './environment-policy.js';
 const encoder = new TextEncoder();
 import { createSessionStatement, findSession, touchSession } from './domains/auth/repository.js';
 export const IDLE_MS = 30 * 60 * 1000;
 export const ABSOLUTE_MS = 8 * 60 * 60 * 1000;
 export const DEV_ISSUER = 'urn:parpallo:local-synthetic';
 
-export function assertEnvironment(env) {
-  if (env.APP_ENV === 'production' && env.DEV_IDENTITY_PROVIDER === 'enabled') {
-    throw new Error('DEV_IDENTITY_PROVIDER cannot be enabled in production');
-  }
-  if (!['development', 'production'].includes(env.APP_ENV)) throw new Error('APP_ENV invalid');
-  if (!env.DB) throw new Error('D1 binding missing');
-  if (env.APP_ENV === 'production' && (!env.ACCESS_ISSUER || !env.ACCESS_AUDIENCE)) {
-    throw new Error('Access issuer/audience missing');
-  }
-}
+// Kept for existing callers; the rules live in environment-policy.js.
+export function assertEnvironment(env) { return assertRuntime(env); }
 
 const b64url = (bytes) => btoa(String.fromCharCode(...bytes)).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 const unb64url = (value) => Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - value.length % 4) % 4)), c => c.charCodeAt(0));
@@ -55,7 +48,7 @@ export async function verifyAccessRequest(request, env, now = Date.now()) {
   return verifyAccessJwt(token, { issuer: issuer.origin, audience: env.ACCESS_AUDIENCE, jwks, now });
 }
 
-export function cookieName(url) { return ['localhost', '127.0.0.1'].includes(url.hostname) ? 'gestio_session' : '__Host-gestio_session'; }
+export function cookieName(url) { return isLocalHost(url) ? 'gestio_session' : '__Host-gestio_session'; }
 export function cookieHeader(url, token, maxAge = Math.floor(ABSOLUTE_MS / 1000)) {
   const secure = cookieName(url).startsWith('__Host-') ? '; Secure' : '';
   return `${cookieName(url)}=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${secure}`;

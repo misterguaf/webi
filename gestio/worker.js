@@ -14,13 +14,16 @@ import * as feeMetrics from './src/services/annual-fee-metrics.js';
 import { scopedFeeStatus } from './src/services/annual-fee-status.js';
 import * as capabilityService from './src/services/capability-service.js';
 import { AppError } from './src/services/common.js';
+import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
+
+// Named entrypoint for the portal service binding only; never routed from the public handler below.
+export { PortalIntake } from './src/intake.js';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
     'X-Content-Type-Options':'nosniff',...headers }
 });
-const local = url => ['localhost','127.0.0.1'].includes(url.hostname);
-const devEnabled = (env,url) => env.APP_ENV==='development' && env.DEV_IDENTITY_PROVIDER==='enabled' && local(url);
+const devEnabled = (env,url) => devIdentityEnabled(env,url);
 
 async function readJson(request) {
   if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new AppError(400,'invalid_request');
@@ -66,7 +69,7 @@ async function api(request,env,url,requestId) {
     return sessionResponse(db,user,requestId,url);
   }
   if (path==='/api/auth/access' && method==='POST') {
-    if (env.APP_ENV!=='production') throw new AppError(404,'not_found');
+    if (runtimeEnvironment(env)!=='production') throw new AppError(404,'not_found');
     let identity;
     try {identity=await verifyAccessRequest(request,env);} catch {await auth.loginFailed(db,requestId);throw new AppError(401,'invalid_identity');}
     const user=await identities.findIdentityUser(db,identity.issuer,identity.subject);
@@ -115,7 +118,7 @@ async function api(request,env,url,requestId) {
   match=path.match(/^\/api\/registrations\/([^/]+)\/review$/);
   if (match && method==='POST') return json({...await registrations.reviewMatch(db,context,requestId,match[1],await readJson(request)),requestId});
   match=path.match(/^\/api\/registrations\/([^/]+)\/candidates$/);
-  if (match && method==='GET') return json({candidates:await registrations.reviewCandidates(db,context,requestId,match[1]),requestId});
+  if (match && method==='GET') return json({...await registrations.reviewCandidates(db,context,requestId,match[1],url.searchParams.get('search')),requestId});
   if (path==='/api/payments' && method==='GET') return json({payments:await registrations.listPayments(db,context,requestId),requestId});
   match=path.match(/^\/api\/payments\/([^/]+)\/review$/);
   if (match && method==='POST') {
@@ -180,7 +183,7 @@ async function api(request,env,url,requestId) {
   match=path.match(/^\/api\/fees\/people\/([^/]+)\/review$/);
   if (match && method==='POST') return json({...await fees.reviewFeeMatch(db,context,requestId,match[1],await readJson(request)),requestId});
   match=path.match(/^\/api\/fees\/people\/([^/]+)\/candidates$/);
-  if (match && method==='GET') return json({candidates:await fees.feeMatchCandidates(db,context,requestId,match[1]),requestId});
+  if (match && method==='GET') return json({...await fees.feeMatchCandidates(db,context,requestId,match[1],url.searchParams.get('search')),requestId});
   match=path.match(/^\/api\/fees\/evidence\/([^/]+)$/);
   if (match && method==='GET') return fees.feeEvidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1]);
   if (path==='/api/fees/issues' && method==='POST') return json({...await fees.openFeeIssue(db,context,requestId,await readJson(request)),requestId},201);
@@ -218,7 +221,7 @@ export default {
     try {
       assertEnvironment(env);
       const url=new URL(request.url);
-      if (env.APP_ENV==='development' && !local(url)) throw new AppError(403,'local_only');
+      if (!hostAllowed(env,url)) throw new AppError(403,'local_only');
       if (url.pathname.startsWith('/api/')) {
         const response=await api(request,env,url,requestId);
         response.headers.set('X-Request-ID',requestId);

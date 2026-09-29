@@ -100,7 +100,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
       if(['AMBIGUOUS','NONE'].includes(row.match_status)){
         const candidates=(await call(`/api/fees/people/${row.id}/candidates`)).candidates;
         const pick=document.createElement('select');pick.append(option('','Selecciona educand'));
-        pick.append(...candidates.map(person=>option(person.id,`${person.display_name} · naixement ${person.birth_date||'no consta'}`)));
+        pick.append(...candidates.map(person=>option(person.id,`${person.display_name} · ${person.birth_date_matches?'naixement coincideix':'naixement no coincideix'}${person.birth_date?` (${person.birth_date})`:''}`)));
         line.append(pick,button('Vincula',()=>act(()=>send(`/api/fees/people/${row.id}/review`,'POST',{decision:'MATCH',participantId:pick.value}))),
           button('Rebutja',()=>act(()=>send(`/api/fees/people/${row.id}/review`,'POST',{decision:'REJECT'}))));
       }

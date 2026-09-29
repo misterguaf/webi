@@ -26,13 +26,15 @@ async function freePort() {
   const server=createServer();await new Promise(resolveReady=>server.listen(0,'127.0.0.1',resolveReady));
   const port=server.address().port;await new Promise(resolveReady=>server.close(resolveReady));return port;
 }
-async function start(cwd,state,readyPath,environment=null) {
+async function start(cwd,state,readyPath,environment=null,registry=null) {
   const port=await freePort(),base='http://127.0.0.1:'+port;
+  let inspectorPort=await freePort();while(inspectorPort===port)inspectorPort=await freePort();
   const args=['dev','--local','--persist-to',state,'--config','wrangler.toml'];
   if(environment)args.push('--env',environment);
-  args.push('--ip','127.0.0.1','--port',String(port));
+  args.push('--ip','127.0.0.1','--port',String(port),'--inspector-port',String(inspectorPort));
+  // A private dev registry makes the portal's service binding resolve to this test's Gestió only.
   const child=spawn(wrangler,args,
-    {cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    {cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false',...(registry?{WRANGLER_REGISTRY_PATH:registry}:{})}});
   let logs='';child.stdout.on('data',chunk=>{logs+=chunk.toString();});child.stderr.on('data',chunk=>{logs+=chunk.toString();});
   const deadline=Date.now()+25_000;
   while(Date.now()<deadline){
@@ -47,6 +49,13 @@ async function stop(worker) {
   await new Promise(resolveReady=>{if(worker.child.exitCode!==null)return resolveReady();
     const timer=setTimeout(()=>worker.child.kill('SIGKILL'),5000);
     worker.child.once('exit',()=>{clearTimeout(timer);resolveReady();});});
+  await stop(worker.host);
+}
+// The portal has no D1/R2 binding (audit A1): it needs the Gestió PortalIntake entrypoint running.
+async function startPortal(portalDir,gestioDir,state,registry) {
+  const host=await start(gestioDir,state,'/api/dev/identities',null,registry);
+  try {return {...await start(portalDir,state,'/','local',registry),host};}
+  catch(error){await stop(host);throw error;}
 }
 async function request(base,path,{method='GET',cookie='',csrf='',body,origin=base,ip}={}) {
   let response;
@@ -148,7 +157,7 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
       `INSERT INTO activity_section(activity_id,section_id) VALUES('${id(906)}','${id(2)}')`,'--yes']);
     assert.match(readFileSync(resolve(family,'README.md'),'utf8'),/DEPRECATED \/ CANDIDATE_FOR_REMOVAL/);
     assert.match(readFileSync(resolve(family,'worker.js'),'utf8'),/DEPRECATED/);
-    worker=await start(portal,state,'/','local');
+    worker=await startPortal(portal,gestio,state,join(temp,'wrangler-registry'));
     const page=await fetch(worker.base+'/',{signal:AbortSignal.timeout(15000)});assert.equal(page.status,200);
     const pageHtml=await page.text();assert.match(pageHtml,/Grup Scout Parpalló/);
     const activityHtml=readFileSync(resolve(portal,'public/index.html'),'utf8');

@@ -1,8 +1,9 @@
+import { synthetic } from '../environment-policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requirePermission } from './common.js';
 
 export function queueStatement(db,registrationId,kind,recipient,now=Date.now()) {
-  if (!recipient?.endsWith('@example.test')) throw new AppError(400,'synthetic_email_required');
+  if (!synthetic.email(recipient)) throw new AppError(400,'synthetic_email_required');
   const id=crypto.randomUUID();
   return {id,statement:db.prepare(`INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at)
     VALUES(?,?,?,?,'PENDING',?)`).bind(id,registrationId,kind,recipient,now)};
@@ -25,7 +26,7 @@ export async function drainFake(db,context,requestId,{failSynthetic=false}={},no
     WHERE o.status IN ('PENDING','FAILED') AND o.attempt_count<5 ORDER BY o.created_at,o.id LIMIT 50`).all()).results;
   let sent=0,failed=0;
   for (const row of pending) {
-    const ok=!failSynthetic && row.recipient_email.endsWith('@example.test');
+    const ok=!failSynthetic && synthetic.email(row.recipient_email);
     const event=statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
       action:ok?'NOTIFICATION_SENT':'NOTIFICATION_FAILED',resourceType:'notification_outbox',resourceId:row.id,
       result:ok?'SUCCESS':'ERROR',reasonCode:ok?null:'FAKE_PROVIDER_FAILURE',occurredAt:now});
@@ -53,7 +54,7 @@ export async function drainFake(db,context,requestId,{failSynthetic=false}={},no
           WHERE a.payment_id=n.payment_id AND o.status='PAID')))
     ORDER BY n.created_at,n.id LIMIT 50`).all()).results;
   for (const row of fees) {
-    const ok=!failSynthetic && row.recipient_email.endsWith('@example.test');
+    const ok=!failSynthetic && synthetic.email(row.recipient_email);
     const event=statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
       action:ok?'NOTIFICATION_SENT':'NOTIFICATION_FAILED',resourceType:'annual_fee_notification_outbox',resourceId:row.id,
       result:ok?'SUCCESS':'ERROR',reasonCode:ok?null:'FAKE_PROVIDER_FAILURE',occurredAt:now});
@@ -80,7 +81,7 @@ export async function drainFake(db,context,requestId,{failSynthetic=false}={},no
   const issueNotices=(await db.prepare(`SELECT id,recipient_email FROM annual_fee_issue_outbox
     WHERE status IN ('PENDING','FAILED') AND attempt_count<5 ORDER BY created_at,id LIMIT 50`).all()).results;
   for (const row of issueNotices) {
-    const ok=!failSynthetic && row.recipient_email.endsWith('@example.test');
+    const ok=!failSynthetic && synthetic.email(row.recipient_email);
     const event=statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
       action:ok?'NOTIFICATION_SENT':'NOTIFICATION_FAILED',resourceType:'annual_fee_issue_outbox',resourceId:row.id,
       result:ok?'SUCCESS':'ERROR',reasonCode:ok?null:'FAKE_PROVIDER_FAILURE',occurredAt:now});

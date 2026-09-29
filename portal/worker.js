@@ -1,9 +1,8 @@
+/* Public family portal. It has NO database or object-storage binding: every read or write of
+ * Gestió data goes through the narrow PortalIntake service binding (env.GESTIO_INTAKE), which
+ * exposes only the catalogue, activity registration and annual-fee declaration (audit A1). */
 import { check as rateCheck } from "../api/_lib/ratelimit.js";
 import { isSpam } from "../api/_lib/validate.js";
-import { publicActivities } from "../gestio/src/services/activity-service.js";
-import { submitRegistration } from "../gestio/src/services/registration-service.js";
-import { publicRound, submitFee } from "../gestio/src/services/annual-fee-service.js";
-import { AppError } from "../gestio/src/services/common.js";
 import {
   capcaleraCookie,
   contrasenyaCorrecta,
@@ -151,9 +150,24 @@ async function gestionaSessio(request, env) {
   }
 }
 
-function portalLocalSintetic(request,env) {
-  return env.APP_ENV === "development" && ["localhost","127.0.0.1"].includes(new URL(request.url).hostname) &&
-    !!env.DB && !!env.EVIDENCE_STORAGE;
+const INTAKE_ORIGIN = "https://gestio-intake.internal/v1";
+
+// Gestió decides whether intake is open (environment policy); the portal only fails closed when the
+// binding is missing. The response body is Gestió's { ok, code, ... } contract.
+async function intake(env, operation, body) {
+  if (!env.GESTIO_INTAKE?.fetch) return { status: 503, data: { ok: false, code: "INTAKE_UNAVAILABLE" } };
+  let response;
+  try {
+    response = await env.GESTIO_INTAKE.fetch(new Request(`${INTAKE_ORIGIN}/${operation}`, {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body ?? {}),
+    }));
+  } catch (error) {
+    console.error("[portal] intake unavailable", { name: error?.name });
+    return { status: 503, data: { ok: false, code: "INTAKE_UNAVAILABLE" } };
+  }
+  let data = null;
+  try { data = await response.json(); } catch { data = { ok: false, code: "internal_error" }; }
+  return { status: response.status, data };
 }
 
 async function passaInscripcioFase3A(request,env,sessio) {
@@ -161,7 +175,6 @@ async function passaInscripcioFase3A(request,env,sessio) {
   if (!origenCorrecte(request,env)) return respostaJson(403,{ok:false,message:ACTIVITY_REVIEW});
   if (request.headers.get("x-csrf-token") !== sessio.csrf) return respostaJson(403,{ok:false,message:ACTIVITY_REVIEW});
   if (!isJsonContentType(request.headers.get("content-type"))) return respostaJson(415,{ok:false,message:ACTIVITY_REVIEW});
-  if (!portalLocalSintetic(request,env)) return respostaJson(503,{ok:false,code:"LOCAL_SYNTHETIC_ONLY"});
 
   let body;
   try {
@@ -193,25 +206,22 @@ async function passaInscripcioFase3A(request,env,sessio) {
     contactPhone:body.telefon,
     sectionCode,
     transportCode:body.transportCode||null,
-    participationTermsVersion:"DEMO-3A-PARTICIPATION-V1",
-    privacyNoticeVersion:"DEMO-3A-PRIVACY-NOTICE-V1",
     receiptEmail:body.email,
     idempotencyKey:body.idempotencyKey,
+    participationAccepted:body.participacio===true,
+    privacyAcknowledged:body.privacitat===true,
     ...(evidence?{evidence}:{}),
   };
-  try {
-    await submitRegistration(env.DB,env.EVIDENCE_STORAGE,input,crypto.randomUUID());
-    return respostaJson(202,{ok:true,message:ACTIVITY_RECEIVED});
-  } catch(error) {
-    if (!(error instanceof AppError)) console.error("[portal] activity submission failed",{name:error?.name});
-    const message=error.code==="evidence_required"
-      ? {va:"Esta activitat requerix el justificant de pagament.",es:"Esta actividad requiere el justificante de pago."}
-      : error.code==="invalid_evidence" || error.code==="evidence_too_large" || error.code==="synthetic_evidence_required"
-        ? {va:"No hem pogut acceptar el fitxer de prova. Revisa el tipus, la mida i que siga un fixture sintètic.",
-          es:"No hemos podido aceptar el archivo de prueba. Revisa el tipo, el tamaño y que sea un fixture sintético."}
-        : ACTIVITY_REVIEW;
-    return respostaJson(error instanceof AppError?error.status:500,{ok:false,code:error instanceof AppError?error.code:"internal_error",message});
-  }
+  const result=await intake(env,"registrations",input);
+  if (result.data?.ok) return respostaJson(202,{ok:true,message:ACTIVITY_RECEIVED});
+  const code=result.data?.code||"internal_error";
+  const message=code==="evidence_required"
+    ? {va:"Esta activitat requerix el justificant de pagament.",es:"Esta actividad requiere el justificante de pago."}
+    : code==="invalid_evidence" || code==="evidence_too_large" || code==="synthetic_evidence_required"
+      ? {va:"No hem pogut acceptar el fitxer de prova. Revisa el tipus, la mida i que siga un fixture sintètic.",
+        es:"No hemos podido aceptar el archivo de prueba. Revisa el tipo, el tamaño y que sea un fixture sintético."}
+      : ACTIVITY_REVIEW;
+  return respostaJson(result.status,{ok:false,code,message});
 }
 
 async function passaQuotaFase3B(request,env,sessio) {
@@ -219,7 +229,6 @@ async function passaQuotaFase3B(request,env,sessio) {
   if (!origenCorrecte(request,env) || request.headers.get("x-csrf-token")!==sessio.csrf)
     return respostaJson(403,{ok:false,message:ACTIVITY_REVIEW});
   if (!isJsonContentType(request.headers.get("content-type"))) return respostaJson(415,{ok:false,message:ACTIVITY_REVIEW});
-  if (!portalLocalSintetic(request,env)) return respostaJson(503,{ok:false,code:"LOCAL_SYNTHETIC_ONLY"});
   let body;
   try {body=JSON.parse(await readRequestBody(request,MAX_PRIVATE_FORM_BODY));}
   catch(error) {return respostaJson(error instanceof BodyTooLargeError?413:400,{ok:false,message:ACTIVITY_REVIEW});}
@@ -236,17 +245,12 @@ async function passaQuotaFase3B(request,env,sessio) {
       birthDate:person.naixement,sectionCode:ACTIVITY_SECTION_CODES[person.seccio]})),
     submittedByName:body.tutor,contactPhone:body.telefon,receiptEmail:body.email,
     declaredAmountCents:body.declaredAmountCents??null,privacyAcknowledged:body.privacitat,
-    privacyNoticeVersion:"DEMO-3B-PRIVACY-NOTICE-V1",idempotencyKey:body.idempotencyKey,
+    idempotencyKey:body.idempotencyKey,
     evidence:body.comprovant && typeof body.comprovant==="object"
       ?{filename:body.comprovant.nom,mime:body.comprovant.tipus,dataBase64:body.comprovant.base64}:undefined};
-  try {
-    const result=await submitFee(env.DB,env.EVIDENCE_STORAGE,input,crypto.randomUUID());
-    return respostaJson(202,{ok:true,referencia:result.reference,message:FEE_RECEIVED});
-  } catch(error) {
-    if (!(error instanceof AppError)) console.error("[portal] fee submission failed",{name:error?.name});
-    return respostaJson(error instanceof AppError?error.status:500,
-      {ok:false,code:error instanceof AppError?error.code:"internal_error",message:ACTIVITY_REVIEW});
-  }
+  const result=await intake(env,"fees",input);
+  if (result.data?.ok) return respostaJson(202,{ok:true,referencia:result.data.reference,message:FEE_RECEIVED});
+  return respostaJson(result.status,{ok:false,code:result.data?.code||"internal_error",message:ACTIVITY_REVIEW});
 }
 
 export default {
@@ -265,13 +269,9 @@ export default {
     }
 
     if (url.pathname === "/api/portal/config" && request.method === "GET") {
-      if (!portalLocalSintetic(request,env)) return respostaJson(503,{ok:false,code:"LOCAL_SYNTHETIC_ONLY"});
-      try {
-        return respostaJson(200,{ok:true,activitats:await publicActivities(env.DB),quota:await publicRound(env.DB)});
-      } catch(error) {
-        if (!(error instanceof AppError)) console.error("[portal] activity catalogue unavailable",{name:error?.name});
-        return respostaJson(error instanceof AppError?error.status:503,{ok:false,code:error.code||"CATALOG_UNAVAILABLE"});
-      }
+      const result=await intake(env,"catalog");
+      if (!result.data?.ok) return respostaJson(result.status>=500?503:result.status,{ok:false,code:result.data?.code||"CATALOG_UNAVAILABLE"});
+      return respostaJson(200,{ok:true,activitats:result.data.activitats,quota:result.data.quota});
     }
     if (url.pathname === "/api/inscripcio") return passaInscripcioFase3A(request,env,sessio);
     if (url.pathname === "/api/cuota") return passaQuotaFase3B(request,env,sessio);

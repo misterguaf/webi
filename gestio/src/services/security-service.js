@@ -1,3 +1,4 @@
+import { synthetic } from '../environment-policy.js';
 import * as auth from '../domains/auth/repository.js';
 import * as organization from '../domains/organization/repository.js';
 import * as health from '../domains/health/repository.js';
@@ -45,7 +46,7 @@ export async function assignRole(db,context,session,requestId,input,now=Date.now
   if ((await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(404,'not_found');
   const expiresAt=expiry(input.expiresAt??null,now,{required:roleCode==='SECTION_DELEGATE'});
   const id=crypto.randomUUID();
-  await db.batch([organization.assignRoleStatement(db,{id,userId,roleCode,sectionId,validFrom:now,expiresAt,actorId:context.userId,justification:'SYNTHETIC_PHASE_2A'}),
+  await db.batch([organization.assignRoleStatement(db,{id,userId,roleCode,sectionId,validFrom:now,expiresAt,actorId:context.userId,justification:synthetic.adminJustification}),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_ASSIGNED',
       resourceType:'user_role',resourceId:id,occurredAt:now})]);
   return {id};
@@ -67,7 +68,7 @@ export async function grantPermission(db,context,session,requestId,input,now=Dat
       !await organization.roleAllowsPermission(db,userId,permissionCode,now)) throw new AppError(400,'invalid_permission');
   const expiresAt=expiry(input.expiresAt??null,now);
   const id=crypto.randomUUID();
-  await db.batch([organization.grantPermissionStatement(db,{id,userId,permissionCode,validFrom:now,expiresAt,actorId:context.userId,justification:'SYNTHETIC_PHASE_2A'}),
+  await db.batch([organization.grantPermissionStatement(db,{id,userId,permissionCode,validFrom:now,expiresAt,actorId:context.userId,justification:synthetic.adminJustification}),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'PERMISSION_GRANTED',
       resourceType:'user_permission_grant',resourceId:id,occurredAt:now})]);
   return {id};
@@ -88,7 +89,7 @@ export async function grantHealth(db,context,session,requestId,input,now=Date.no
   const limitedExpiry=expiry(expiresAt,now,{required:true,maxMs:24*60*60*1000});
   const id=crypto.randomUUID();
   await db.batch([health.grantStatement(db,{id,userId,participantId,purpose,validFrom:now,expiresAt:limitedExpiry,
-    actorId:context.userId,justification:'SYNTHETIC_PHASE_2A'}),
+    actorId:context.userId,justification:synthetic.adminJustification}),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'HEALTH_ACCESS_GRANTED',
       resourceType:'health_access_grant',resourceId:id,occurredAt:now})]);
   return {id};

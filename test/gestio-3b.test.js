@@ -24,13 +24,15 @@ function rows(cwd,state,sql) {
 }
 async function freePort() {const server=createServer();await new Promise(done=>server.listen(0,'127.0.0.1',done));
   const port=server.address().port;await new Promise(done=>server.close(done));return port;}
-async function start(cwd,state,path,environment=null) {
+async function start(cwd,state,path,environment=null,registry=null) {
   const port=await freePort(),base='http://127.0.0.1:'+port;
   let inspectorPort=await freePort();while(inspectorPort===port)inspectorPort=await freePort();
   const args=['dev','--local','--persist-to',state,'--config','wrangler.toml'];
   if(environment)args.push('--env',environment);
   args.push('--ip','127.0.0.1','--port',String(port),'--inspector-port',String(inspectorPort));
-  const child=spawn(wrangler,args,{cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+  // A private dev registry makes the portal's service binding resolve to this test's Gestió only.
+  const child=spawn(wrangler,args,{cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false',
+    ...(registry?{WRANGLER_REGISTRY_PATH:registry}:{})}});
   let logs='';child.stdout.on('data',chunk=>{logs+=chunk.toString();});child.stderr.on('data',chunk=>{logs+=chunk.toString();});
   const until=Date.now()+25_000;
   while(Date.now()<until){if(child.exitCode!==null)break;
@@ -42,7 +44,14 @@ async function start(cwd,state,path,environment=null) {
 }
 async function stop(worker) {if(!worker)return;running.delete(worker.base);worker.child.kill('SIGTERM');
   await new Promise(done=>{if(worker.child.exitCode!==null)return done();
-    const timer=setTimeout(()=>worker.child.kill('SIGKILL'),5000);worker.child.once('exit',()=>{clearTimeout(timer);done();});});}
+    const timer=setTimeout(()=>worker.child.kill('SIGKILL'),5000);worker.child.once('exit',()=>{clearTimeout(timer);done();});});
+  await stop(worker.host);}
+// The portal has no D1/R2 binding (audit A1): it needs the Gestió PortalIntake entrypoint running.
+async function startPortal(portalDir,gestioDir,state,registry) {
+  const host=await start(gestioDir,state,'/api/dev/identities',null,registry);
+  try {return {...await start(portalDir,state,'/','local',registry),host};}
+  catch(error){await stop(host);throw error;}
+}
 async function request(base,path,{method='GET',cookie='',csrf='',body,origin=base,ip='192.0.2.1'}={}) {
   let response;
   try {response=await fetch(base+path,{method,signal:AbortSignal.timeout(15_000),headers:{
@@ -71,7 +80,7 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
   cpSync(resolve(root,'portal'),portal,{recursive:true});
   mkdirSync(join(temp,'api'),{recursive:true});
   cpSync(resolve(root,'api/_lib'),join(temp,'api/_lib'),{recursive:true});
-  const state=join(gestio,'.wrangler','state');let worker;
+  const state=join(gestio,'.wrangler','state'),registry=join(temp,'wrangler-registry');let worker;
   try {
     run(gestio,['d1','migrations','apply','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml']);
     run(gestio,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml','--file','seed.sql','--yes']);
@@ -149,7 +158,7 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
     assert.equal([...firstPlan.parts,...secondPlan.parts].filter(part=>part.target_at===null).length,4);
     await stop(worker);worker=null;
 
-    worker=await start(portal,state,'/','local');
+    worker=await startPortal(portal,gestio,state,registry);
     assert.equal((await getText(worker.base,'/')).status,200);
     assert.match(readFileSync(join(portal,'public/index.html'),'utf8'),/fee-form|quota/);
     const auth=await request(worker.base,'/api/portal/session',{method:'POST',body:{password:'families-demo'}});
@@ -177,7 +186,7 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
       `INSERT INTO participant(id,display_name,current_section_id,status,birth_date) VALUES
       ('${id(951)}','${ambiguousName}','${id(2)}','ACTIVE','2013-05-18'),
       ('${id(952)}','${ambiguousName}','${id(2)}','ACTIVE','2013-05-18')`,'--yes']);
-    worker=await start(portal,state,'/','local');
+    worker=await startPortal(portal,gestio,state,registry);
     const again=await request(worker.base,'/api/portal/session',{method:'POST',body:{password:'families-demo'}});
     const cookie2=again.cookie.split(';')[0],csrf2=again.data.csrf;
     const send2=(body,ip)=>request(worker.base,'/api/cuota',{method:'POST',cookie:cookie2,csrf:csrf2,ip,body});

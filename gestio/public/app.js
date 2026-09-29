@@ -98,6 +98,8 @@ const statusLabel={DRAFT:'Esborrany',PUBLISHED:'Publicada',CLOSED:'Tancada',GENE
   CONFIRMED:'Confirmada',REJECTED:'Rebutjada',CLEAR:'Coincidència clara',AMBIGUOUS:'Coincidència ambigua',
   NONE:'Sense coincidència',RESOLVED:'Vinculada',PENDING_REVIEW:'Pendent de revisió',VERIFIED:'Verificat',ISSUE:'Incidència'};
 const label=value=>statusLabel[value]??value;
+// Candidates carry match signals; the full birth date is present only with participant-profile access.
+const candidateLabel=person=>`${person.display_name} · ${person.section_code} · ${person.birth_date_matches?'naixement coincideix':'naixement no coincideix'}${person.birth_date?` (${person.birth_date})`:''}`;
 const dateInput=value=>{const d=new Date(value),two=n=>String(n).padStart(2,'0');
   return `${d.getFullYear()}-${two(d.getMonth()+1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;};
 const dateValue=id=>new Date($(id).value).getTime();
@@ -176,7 +178,7 @@ async function loadRegistrations(activityId,pendingOnly=false,activityName=''){
       if(registration.status==='NEEDS_PARTICIPANT_REVIEW'){
         const candidates=document.createElement('select');const empty=document.createElement('option');empty.value='';empty.textContent='Tria educand';candidates.append(empty);
         call(`/api/registrations/${registration.id}/candidates`).then(data=>{
-          candidates.append(...data.candidates.map(person=>{const option=document.createElement('option');option.value=person.id;option.textContent=`${person.display_name} · ${person.section_code} · Naixement: ${person.birth_date||'no consta'}`;return option;}));
+          candidates.append(...data.candidates.map(person=>{const option=document.createElement('option');option.value=person.id;option.textContent=candidateLabel(person);return option;}));
         }).catch(()=>{});
         const match=document.createElement('button');match.textContent='Vincula';match.addEventListener('click',async()=>{
           if(!candidates.value)return;try{await call(`/api/registrations/${registration.id}/review`,

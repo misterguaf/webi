@@ -1,3 +1,5 @@
+import { synthetic } from '../environment-policy.js';
+import { authorize } from '../policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requirePermission, requireUuid } from './common.js';
 import { evidenceKey, readEvidence, storeEvidence, validateSyntheticEvidence } from './evidence-service.js';
@@ -49,8 +51,8 @@ function validateInput(input) {
       (input.transportCode!=null && !['GROUP','FAMILY'].includes(input.transportCode)) ||
       typeof input.receiptEmail!=='string' || !/^[^\s@]+@[^\s@.]+(\.[^\s@.]+)+$/.test(input.receiptEmail) || input.receiptEmail.length>254 ||
       typeof input.idempotencyKey!=='string' || !/^[A-Za-z0-9_-]{16,100}$/.test(input.idempotencyKey) ||
-      input.participationTermsVersion!=='DEMO-3A-PARTICIPATION-V1' ||
-      input.privacyNoticeVersion!=='DEMO-3A-PRIVACY-NOTICE-V1') throw new AppError(400,'invalid_registration');
+      input.participationTermsVersion!==synthetic.terms.activityParticipation ||
+      input.privacyNoticeVersion!==synthetic.terms.activityPrivacy) throw new AppError(400,'invalid_registration');
 }
 export async function findMatch(db,name,birthDate,sectionId,allowedSections) {
   const rows=(await db.prepare('SELECT id,display_name,current_section_id,birth_date FROM participant WHERE status=? ORDER BY id LIMIT 1001')
@@ -182,17 +184,45 @@ export async function listRegistrations(db,context,requestId,activityId) {
     .bind(activityId,...(decision.sections??[])).all();
   return rows.results;
 }
-export async function reviewCandidates(db,context,requestId,id) {
+// Audit M4: reviewers get match signals, not the master data of every participant. The server
+// compares the declared birth date; the full date is included only for candidates whose section
+// the reviewer may read through participants.profile.read. Default list = plausible matches
+// (shared name token or same birth date); anything else needs an explicit name search.
+const CANDIDATE_LIMIT=20;
+// Particles and fixture markers are too common to signal the same person.
+const IGNORED_NAME_TOKENS=new Set(['de','del','la','les','el','els','los','las','i','y','da','dos',...synthetic.nameMarkers]);
+const nameTokens=value=>matchKey(value||'').split(' ').filter(token=>token.length>1 && !IGNORED_NAME_TOKENS.has(token));
+export async function matchCandidates(db,context,{submittedName,submittedBirthDate,sectionIds,search=null}) {
+  if (sectionIds!==null && !sectionIds.length) return {candidates:[],truncated:false};
+  if (search!==null && (typeof search!=='string' || search.trim().length<2 || search.length>80)) throw new AppError(400,'invalid_filter');
+  const filter=sectionIds===null?'':` AND p.current_section_id IN (${sectionIds.map(()=>'?').join(',')})`;
+  const people=(await db.prepare(`SELECT p.id,p.display_name,p.birth_date,p.current_section_id,s.code AS section_code
+    FROM participant p JOIN section s ON s.id=p.current_section_id WHERE p.status='ACTIVE'${filter}
+    ORDER BY p.display_name,p.id`).bind(...(sectionIds??[])).all()).results;
+  const submittedTokens=new Set(nameTokens(submittedName));
+  const query=search===null?null:matchKey(search);
+  const profile=await authorize(db,context,{permission:'participants.profile.read',mode:'list'});
+  const canSeeBirthDate=sectionId=>profile.allow && (profile.sections===null || profile.sections.includes(sectionId));
+  const scored=people.map(person=>{
+    const key=matchKey(person.display_name);
+    return {person,key,nameMatches:nameTokens(person.display_name).some(token=>submittedTokens.has(token)),
+      birthDateMatches:!!submittedBirthDate && person.birth_date===submittedBirthDate};
+  }).filter(row=>query!==null?row.key.includes(query):row.nameMatches||row.birthDateMatches)
+    .sort((a,b)=>(Number(b.nameMatches)+Number(b.birthDateMatches))-(Number(a.nameMatches)+Number(a.birthDateMatches)));
+  return {truncated:scored.length>CANDIDATE_LIMIT,candidates:scored.slice(0,CANDIDATE_LIMIT).map(row=>({
+    id:row.person.id,display_name:row.person.display_name,section_code:row.person.section_code,
+    name_matches:row.nameMatches,birth_date_matches:row.birthDateMatches,
+    ...(canSeeBirthDate(row.person.current_section_id)?{birth_date:row.person.birth_date}:{})}))};
+}
+export async function reviewCandidates(db,context,requestId,id,search=null) {
   const row=await registration(db,id);
   if (row.status!=='NEEDS_PARTICIPANT_REVIEW') throw new AppError(409,'invalid_transition');
   const decision=await reviewDecision(db,context,requestId,row,'activities.registration.review');
   const allowed=row.audience==='GENERAL'?[]:await audienceSections(db,row.activity_id);
-  const scoped=decision.sections===null?allowed:allowed.length?allowed.filter(sectionId=>decision.sections.includes(sectionId)):decision.sections;
-  if (decision.sections!==null && !scoped.length) return [];
-  const filter=scoped.length?` AND p.current_section_id IN (${scoped.map(()=>'?').join(',')})`:'';
-  const rows=await db.prepare(`SELECT p.id,p.display_name,p.birth_date,s.code AS section_code FROM participant p JOIN section s ON s.id=p.current_section_id
-    WHERE p.status='ACTIVE'${filter} ORDER BY p.display_name LIMIT 100`).bind(...scoped).all();
-  return rows.results;
+  const scoped=decision.sections===null?(allowed.length?allowed:null)
+    :allowed.length?allowed.filter(sectionId=>decision.sections.includes(sectionId)):decision.sections;
+  return matchCandidates(db,context,{submittedName:row.submitted_name,submittedBirthDate:row.submitted_birth_date,
+    sectionIds:scoped,search});
 }
 export async function reviewMatch(db,context,requestId,id,input,now=Date.now()) {
   const row=await registration(db,id);

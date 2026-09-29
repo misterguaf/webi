@@ -226,12 +226,13 @@ async function main() {
   checkProject();
   console.log('Parpalló local · dades sintètiques');
   while (!exitRequested) {
-    console.log('\n1. Web pública\n2. Portal d\u0027inscripcions\n3. Gestió\n4. Obrir les tres\n5. Eixir');
+    console.log('\n1. Web pública\n2. Portal d\u0027inscripcions (amb Gestió)\n3. Gestió\n4. Obrir les tres\n5. Eixir');
     let answer;
     try { answer=(await rl.question('Tria una opció: ')).trim(); }
     catch { break; }
     if (answer==='5') break;
-    const byChoice={'1':['site'],'2':['portal'],'3':['gestio'],'4':['site','gestio','portal']};
+    // The portal has no database binding; it needs Gestió running for its PortalIntake service binding.
+    const byChoice={'1':['site'],'2':['gestio','portal'],'3':['gestio'],'4':['site','gestio','portal']};
     const keys=byChoice[answer];
     if (!keys) { console.log('Opció no vàlida.'); continue; }
     await runSelection(services.filter(service=>keys.includes(service.key)));

@@ -1,3 +1,4 @@
+import { synthetic } from '../environment-policy.js';
 import { AppError } from './common.js';
 
 const MAX_BYTES=4*1024*1024;
@@ -26,13 +27,12 @@ export async function validateSyntheticEvidence(input) {
   const filename=input.filename.toLowerCase();
   if (!filename.endsWith(detected.extension) && !(detected.mime==='image/jpeg' && filename.endsWith('.jpeg')))
     throw new AppError(400,'invalid_evidence');
-  // This Worker is local-only. Reject fixtures without a synthetic marker before storage.
-  const sample=new TextDecoder('latin1').decode(bytes.slice(0,Math.min(bytes.length,1024))).toLowerCase();
-  if (!sample.includes('synthetic')) throw new AppError(400,'synthetic_evidence_required');
+  // DATA_MODE is SYNTHETIC_ONLY: reject fixtures without a synthetic marker before storage.
+  if (!synthetic.evidence(bytes)) throw new AppError(400,'synthetic_evidence_required');
   const digest=await crypto.subtle.digest('SHA-256',bytes);
   return {bytes,mime:detected.mime,sha256:[...new Uint8Array(digest)].map(n=>n.toString(16).padStart(2,'0')).join('')};
 }
-export function evidenceKey() {return 'synthetic/'+crypto.randomUUID();}
+export function evidenceKey() {return synthetic.evidenceKeyPrefix+crypto.randomUUID();}
 export async function storeEvidence(storage,key,validated) {
   if (!storage?.put) throw new AppError(503,'evidence_storage_unavailable');
   await storage.put(key,validated.bytes,{httpMetadata:{contentType:'application/octet-stream'}});
