@@ -1,3 +1,4 @@
+import { fetchAllPages } from './api.js';
 import { setupFees } from './fees.js';
 import { setupFeeStatus } from './fee-status.js';
 import { setupDashboard } from './dashboard.js';
@@ -68,7 +69,7 @@ async function refresh() {
   $('participants').hidden = true;
   if (caps.participants.read) {
     try {
-      const data = await call('/api/participants'); $('participants').hidden = false;
+      const data = await fetchAllPages(call,'/api/participants','participants'); $('participants').hidden = false;
       $('participantList').replaceChildren(...data.participants.map(person => { const li=document.createElement('li'); li.textContent=`${person.display_name} · ${person.current_section_id}`; return li; }));
     } catch(error) { $('participants').hidden = true; reportLoadError(error); if(error.status===401) return; }
   }
@@ -105,7 +106,7 @@ const dateInput=value=>{const d=new Date(value),two=n=>String(n).padStart(2,'0')
 const dateValue=id=>new Date($(id).value).getTime();
 async function loadActivities(){
   try{
-    const data=await call('/api/activities');$('activityPanel').hidden=false;
+    const data=await fetchAllPages(call,'/api/activities','activities');$('activityPanel').hidden=false;
     $('activityList').replaceChildren(...data.activities.map(activity=>{
       const li=document.createElement('li');li.textContent=`${activity.name} · ${label(activity.status)} · ${activity.audience==='GENERAL'?label('GENERAL'):activity.sections} · ${(activity.price_cents/100).toFixed(2)} € `;
       const edit=document.createElement('button');edit.textContent=activity.status==='CLOSED'?'Consulta':'Edita';edit.addEventListener('click',()=>editActivity(activity.id));
@@ -168,7 +169,7 @@ for(const [button,action] of [['publishActivity','publish'],['closeActivity','cl
 }
 async function loadRegistrations(activityId,pendingOnly=false,activityName=''){
   try{
-    const data=await call(`/api/activities/${activityId}/registrations`);$('registrationPanel').hidden=false;navigateTo('inscripcions');
+    const data=await fetchAllPages(call,`/api/activities/${activityId}/registrations`,'registrations');$('registrationPanel').hidden=false;navigateTo('inscripcions');
     $('registrationPanel').querySelector('p').textContent=activityName
       ? `${pendingOnly?'Pendents de revisar':'Inscripcions'} · ${activityName}`
       :'Inscripcions de l’activitat seleccionada.';
@@ -178,6 +179,7 @@ async function loadRegistrations(activityId,pendingOnly=false,activityName=''){
       if(registration.status==='NEEDS_PARTICIPANT_REVIEW'){
         const candidates=document.createElement('select');const empty=document.createElement('option');empty.value='';empty.textContent='Tria educand';candidates.append(empty);
         call(`/api/registrations/${registration.id}/candidates`).then(data=>{
+          if(data.truncated)message('Hi ha més candidats plausibles dels que es mostren.');
           candidates.append(...data.candidates.map(person=>{const option=document.createElement('option');option.value=person.id;option.textContent=candidateLabel(person);return option;}));
         }).catch(()=>{});
         const match=document.createElement('button');match.textContent='Vincula';match.addEventListener('click',async()=>{
@@ -196,7 +198,7 @@ async function loadRegistrations(activityId,pendingOnly=false,activityName=''){
 }
 async function loadPayments(){
   try{
-    const data=await call('/api/payments');$('paymentPanel').hidden=false;
+    const data=await fetchAllPages(call,'/api/payments','payments');$('paymentPanel').hidden=false;
     $('paymentList').replaceChildren(...data.payments.map(payment=>{
       const li=document.createElement('li');li.textContent=`${payment.activity_name} · ${payment.submitted_name} · ${label(payment.review_status)} · ${(payment.expected_amount_cents/100).toFixed(2)} € `;
       const download=document.createElement('a');download.href=`/api/payments/${payment.id}/evidence`;download.textContent='Baixa justificant';download.download='justificant.bin';

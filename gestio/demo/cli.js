@@ -90,7 +90,8 @@ function seed() {
     return;
   }
   let base = baseCounts();
-  if (Object.values(base).every(value => value === 0)) {
+  // Sections are reference data created by migration 0012; "empty" means no people or business rows.
+  if (Object.entries(base).every(([table, value]) => table === 'section' || value === 0)) {
     run(localD1Args(['execute', '--file', resolve(root, 'seed.sql'), '--yes']), { capture: true });
     base = baseCounts();
   }

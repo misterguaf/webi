@@ -175,6 +175,85 @@ contenen `@example.test`, `DEMO-`, `'synthetic'` ni `APP_ENV`.
 
 **Estat: FET** per a Gestió. El portal manté només comprovacions d'origen/cookie pròpies (HTTP, no dades).
 
-## Batch 3 · Batch 4
+## Batch 3
 
-Pendents.
+### A2 — Base del domini de participants (migració 0011)
+
+**Evidència.** `participant` només tenia id, nom, secció actual, estat i data de naixement; `participant_contact`
+un únic correu. Sense tutors, contactes extensibles, historial de secció ni consentiments.
+
+**Anàlisi de FAMILY/HOUSEHOLD.** No es crea cap entitat persistent de família. El domini actual queda cobert per:
+(a) `participant_guardian` N:M, que representa qui té relació legal/de cura; (b) `annual_fee_family_group`,
+l'agrupament explícit i auditable de germans per ronda que usa la regla de descompte. Compartir tutor no
+s'utilitza per a inferir germans (regla 3B: mai inferir família). Si en el futur cal una llar persistent
+(p. ex. comunicacions per llar), serà una decisió de producte nova.
+
+**Solució.**
+- `participant_section_membership`: participant, secció, `started_at`/`ended_at`, motiu d'inici/fi. Triggers
+  la mantenen coherent amb `participant.current_section_id` (projecció ràpida que continua governant l'abast):
+  alta → ENROLMENT; canvi de secció → tanca TRANSFER i obri; baixa → DEACTIVATION; reactivació → REACTIVATION.
+  Historial només de tancament: no es pot reescriure ni esborrar; una fila oberta incoherent amb la projecció és
+  rebutjada. Backfill d'una fila `BACKFILL` per participant existent.
+- `guardian` + `participant_guardian` (N:M; relació `PARENT|LEGAL_GUARDIAN|OTHER`, representant legal, vigència).
+- `contact_point`: propietari únic (participant o tutor), `EMAIL|PHONE`, finalitat `GENERAL|NOTIFICATIONS`,
+  un sol principal vigent per propietari/tipus/finalitat, validació de format. `participant_contact` queda
+  DEPRECATED: s'ha migrat i es manté reflectit per triggers perquè demo i fixtures continuen funcionant.
+- `consent_record` append-only + vista `participant_consent_current` (última decisió per participant i codi).
+- Detall de participant (`GET /api/participants/:id`) inclou `sectionHistory`; l'abast continua sent la secció actual.
+- Backup/restore (`recovery.js`) inclou les taules noves, els objectes obligatoris, tanques sintètiques
+  (contactes, tutors, invitacions) i invariants de coherència historial↔projecció.
+
+**No inclòs (per disseny).** Salut; UI de Participants; endpoints d'escriptura de tutors/contactes/consentiments.
+
+**DECISION REQUIRED.**
+- Quin permís governa llegir contactes i tutors (`participants.profile.read` o un de nou `participants.contact.read`).
+- Catàleg definitiu de `consent_code` i textos/versions legals associats.
+- Taxonomia final de relacions de tutor (hui mínima i reversible).
+
+**Proves.** `test/gestio-participant-domain.test.js` (instal·lació neta, backfill en BD existent, historial,
+immutabilitat, abast per secció actual, N:M, contactes, consentiments). `gestio-recovery` verifica backup i
+restore en D1 local real amb els nous triggers.
+
+**Estat: FET** (base de domini). Alta individual i importació: DIFERIT a 3.5E (reutilitzaran aquest model).
+
+### Provisió d'identitats (migració 0012)
+
+**Evidència.** Usuaris, identitats, rols, permisos, matriu i seccions només existien via `seed.sql`: una
+instal·lació neta no tenia política i donar d'alta algú requeria SQL manual.
+
+**Solució.**
+- 0012 insereix (idempotent) seccions, rols, permisos i la matriu rol→permís per defecte; el seed passa a
+  `INSERT OR IGNORE`. Test: instal·lació sense seed = mateix catàleg.
+- API protegida per `auth.user.manage` (GLOBAL), amb sessió recent: `GET/POST /api/users`,
+  `GET /api/users/:id`, `POST /api/users/:id/invitations`, `DELETE .../invitations/:id`,
+  `DELETE .../identities/:id`. Rols i grants continuen amb les rutes existents.
+- Invitació per correu verificat per a l'emissor configurat (`identityIssuer`: Access a producció, IdP
+  sintètic en local). El primer login d'Access amb eixe correu lliga el `sub` estable i consumeix la
+  invitació en un batch atòmic; l'auditoria `IDENTITY_LINKED` només s'escriu si el lligam existeix.
+- No hi ha autoregistre: sense invitació, 401. No hi ha auto-provisió: ningú es pot convidar a si mateix
+  (també CHECK en BD). Una identitat revocada no es torna a lligar en silenci i en revocar-la es tanquen les
+  sessions. Mentre `DATA_MODE=SYNTHETIC_ONLY`, noms i correus han de ser sintètics.
+
+**Proves.** `test/gestio-identity.test.js`, inclòs un login Access RS256 extrem a extrem en mode producció.
+
+**Estat: FET** en local. Producció: depén d'Access/MFA reals (PRODUCTION_BLOCKER existent).
+
+### M6 — Paginació
+
+**Solució.** `gestio/src/pagination.js` (cursor opac, keyset, límit 1–200, per defecte 100, validació
+estricta). Llistats paginats amb `nextCursor`: participants, activitats, inscripcions, pagaments d'activitat,
+obligacions, estat bàsic de quotes, pagaments de quota, incidències, agrupacions familiars, delegacions,
+usuaris. Cerques limitades retornen `truncated` (participants per a quota, candidats de matching).
+Frontend: `public/api.js::fetchAllPages` segueix el cursor i, si una llista supera 50 pàgines, ho diu en
+lloc de mostrar-la incompleta.
+
+Límits que queden, documentats: històrics de revisions (50/100 files), catàleg públic d'activitats (100
+publicades), rondes (30). No són llistats operatius on el truncament amague feina pendent.
+
+**Proves.** `test/gestio-pagination.test.js` amb >100 participants, obligacions, estats i inscripcions.
+
+**Estat: FET.**
+
+## Batch 4
+
+Pendent.

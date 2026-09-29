@@ -1,3 +1,4 @@
+import { fetchAllPages } from './api.js';
 // Functional local/synthetic treasury controls. Values sent by a family are never bank verification.
 export function setupFees({call,message,reportLoadError=()=>{}}) {
   const $=id=>document.getElementById(id);
@@ -56,7 +57,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     if($('feeSectionFilter').value)params.set('sectionId',$('feeSectionFilter').value);
     if($('feeStatusFilter').value)params.set('status',$('feeStatusFilter').value);
     if($('feeObligationSearch').value.trim())params.set('search',$('feeObligationSearch').value.trim());
-    obligations=(await call(roundPath()+'/obligations?'+params)).obligations;
+    obligations=(await fetchAllPages(call,roundPath()+'/obligations?'+params,'obligations')).obligations;
     $('feeObligations').replaceChildren(...obligations.map(row=>item(
       `${row.display_name} · ${row.status} · deu ${euros(row.amount_due_cents)} · assignat ${euros(row.allocated_cents)} `,
       button('Detall',()=>showObligation(row.id)))));
@@ -83,7 +84,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
       if(issue.status==='OPEN')line.append(button('Resol',()=>act(()=>send(`/api/fees/issues/${issue.id}/resolve`,'POST',{}))));box.append(line);}
   }
   async function loadPayments() {
-    try {const rows=(await call(roundPath()+'/payments')).payments;
+    try {const rows=(await fetchAllPages(call,roundPath()+'/payments','payments')).payments;
       $('feePayments').replaceChildren(...rows.map(row=>item(
         `${row.submitted_by_name} · ${row.review_status} · declarat ${row.declared_amount_cents==null?'no consta':euros(row.declared_amount_cents)} · coincidències pendents ${row.pending_matches} `,
         button('Revisa',()=>showPayment(row.id)))));
@@ -94,11 +95,12 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     const box=$('feePaymentDetail');box.replaceChildren();
     const title=document.createElement('h4');title.textContent=`Transferència ${id} · ${payment.review_status}`;box.append(title);
     const info=document.createElement('p');info.textContent=`Enviat per ${payment.submitted_by_name} · correu de rebut ${payment.receipt_email} · verificat ${payment.verified_amount_cents==null?'no':euros(payment.verified_amount_cents)} · verificat sense assignar ${payment.verified_amount_cents==null?'no':euros(payment.unallocated_cents)}.`;box.append(info);
-    const evidence=(await call(roundPath()+'/payments')).payments.find(row=>row.id===id)?.evidence_id;
+    const evidence=(await fetchAllPages(call,roundPath()+'/payments','payments')).payments.find(row=>row.id===id)?.evidence_id;
     if(evidence){const link=document.createElement('a');link.href=`/api/fees/evidence/${evidence}`;link.textContent='Consulta el justificant de prova';link.download='justificant-sintetic';box.append(link);}
     for(const row of people){const line=document.createElement('p');line.textContent=`${row.submitted_name} · ${row.match_status} `;box.append(line);
       if(['AMBIGUOUS','NONE'].includes(row.match_status)){
-        const candidates=(await call(`/api/fees/people/${row.id}/candidates`)).candidates;
+        const found=await call(`/api/fees/people/${row.id}/candidates`),candidates=found.candidates;
+        if(found.truncated)message('Hi ha més candidats plausibles dels que es mostren.');
         const pick=document.createElement('select');pick.append(option('','Selecciona educand'));
         pick.append(...candidates.map(person=>option(person.id,`${person.display_name} · ${person.birth_date_matches?'naixement coincideix':'naixement no coincideix'}${person.birth_date?` (${person.birth_date})`:''}`)));
         line.append(pick,button('Vincula',()=>act(()=>send(`/api/fees/people/${row.id}/review`,'POST',{decision:'MATCH',participantId:pick.value}))),
@@ -130,12 +132,12 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     box.append(button('Marca incidència',()=>act(()=>send('/api/fees/issues','POST',{paymentId:id,code:'BANK_NOT_FOUND'}))));
   }
   async function loadGroups() {
-    try {const rows=(await call(roundPath()+'/groups')).groups;
+    try {const rows=(await fetchAllPages(call,roundPath()+'/groups','groups')).groups;
       $('feeGroups').replaceChildren(...rows.map(row=>item(`${row.reference} · ${row.sibling_ordinal}. ${row.display_name}`)));
     }catch{$('feeGroups').textContent='Agrupacions no disponibles amb este permís.';}
   }
   async function loadIssues() {
-    try {const rows=(await call(roundPath()+'/issues')).issues;
+    try {const rows=(await fetchAllPages(call,roundPath()+'/issues','issues')).issues;
       $('feeIssues').replaceChildren(...rows.map(row=>item(`${row.code} · ${row.status} · ${row.payment_id||row.obligation_id} `,
         ...(row.status==='OPEN'?[button('Resol',()=>act(()=>send(`/api/fees/issues/${row.id}/resolve`,'POST',{})))]:[]))));
     }catch{$('feeIssues').textContent='Incidències no disponibles amb este permís.';}
@@ -151,8 +153,9 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     const existing=!!selected;if(!existing)body.code=$('feeRoundCode').value;
     act(()=>send(existing?`/api/fees/rounds/${selected}`:'/api/fees/rounds',existing?'PATCH':'POST',body))
       .catch(error=>message(error.message));});
-  $('feeSearchButton').addEventListener('click',async()=>{try {const rows=(await call(roundPath()+'/participants?search='+
-    encodeURIComponent($('feePersonSearch').value.trim()))).participants;
+  $('feeSearchButton').addEventListener('click',async()=>{try {const found=await call(roundPath()+'/participants?search='+
+    encodeURIComponent($('feePersonSearch').value.trim()));const rows=found.participants;
+    if(found.truncated)message('Hi ha més resultats dels que es mostren: afina la cerca.');
     $('feeSearchResults').replaceChildren(...rows.map(row=>{const check=input('checkbox','');check.value=row.id;
       return item(`${row.display_name} · ${row.section_code} `,check,button('Crea obligació',()=>act(()=>
         send('/api/fees/obligations','POST',{roundId:selected,participantId:row.id}))));}));

@@ -138,7 +138,8 @@ function prepareLocalDatabase() {
   if (counts.some(count=>!Number.isSafeInteger(count)||count<0)) {
     throw new Error('D1 ha retornat recomptes invàlids; no he carregat el seed.');
   }
-  if (counts.every(count=>count===0)) {
+  // Sections are reference data created by migration 0012; they do not make the database non-empty.
+  if (Object.entries(state).every(([key,count])=>key==='sections'||Number(count)===0)) {
     console.log('D1 no té identitats locals; carregant el seed sintètic canònic una sola vegada.');
     runNpmScript('gestio:seed');
   } else if (Number(state.users)===0) {

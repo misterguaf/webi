@@ -1,3 +1,4 @@
+import { pageRequest, pageResult } from '../pagination.js';
 import { authorize } from '../policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requirePermission, requireUuid, validUuid } from './common.js';
@@ -124,21 +125,25 @@ export async function activityDetail(db,context,requestId,id) {
     {sectionId,resourceType:'activity',resourceId:activity.id});
   return activity;
 }
-export async function listAdminActivities(db,context,requestId) {
+export async function listAdminActivities(db,context,requestId,params) {
+  const page=pageRequest(params,['number','string']);
   const scoped=await authorize(db,context,{permission:'activities.read',mode:'list'});
   const general=await authorize(db,context,{permission:'activities.general.manage'});
   if (!scoped.allow && !general.allow) throw new AppError(403,'forbidden');
-  const clauses=[],params=[];
+  const clauses=[],values=[];
   if (scoped.allow && scoped.sections===null) clauses.push('1=1');
   else if (scoped.allow && scoped.sections.length) {
     clauses.push(`EXISTS(SELECT 1 FROM activity_section x WHERE x.activity_id=a.id AND x.section_id IN (${scoped.sections.map(()=>'?').join(',')}))`);
-    params.push(...scoped.sections);
+    values.push(...scoped.sections);
   }
   if (general.allow) clauses.push("a.audience='GENERAL'");
   const rows=await db.prepare(`SELECT a.id,a.public_code,a.name,a.status,a.audience,a.starts_at,a.ends_at,a.registration_deadline,
     a.price_cents,a.location,(SELECT group_concat(s.code,', ') FROM activity_section x JOIN section s ON s.id=x.section_id WHERE x.activity_id=a.id) AS sections
-    FROM activity a WHERE (${clauses.join(' OR ')}) ORDER BY a.starts_at DESC LIMIT 100`).bind(...params).all();
-  return rows.results;
+    FROM activity a WHERE (${clauses.join(' OR ')})${page.after?' AND (a.starts_at<? OR (a.starts_at=? AND a.id<?))':''}
+    ORDER BY a.starts_at DESC,a.id DESC LIMIT ?`)
+    .bind(...values,...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all();
+  const result=pageResult(rows.results,page.limit,row=>[row.starts_at,row.id]);
+  return {activities:result.items,nextCursor:result.nextCursor};
 }
 export async function publicActivities(db) {
   const rows=await db.prepare(`SELECT a.public_code,a.name,a.audience,a.starts_at,a.ends_at,a.registration_deadline,a.price_cents,a.currency,

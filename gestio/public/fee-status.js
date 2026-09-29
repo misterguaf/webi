@@ -1,3 +1,4 @@
+import { fetchAllPages } from './api.js';
 // Read-only section view. The server supplies both the scope and the status.
 export function setupFeeStatus({call,reportLoadError=()=>{}}){
   const $=id=>document.getElementById(id);
@@ -9,7 +10,7 @@ export function setupFeeStatus({call,reportLoadError=()=>{}}){
     try{
       if(resetSelection)selected='';
       const query=selected?`?roundId=${encodeURIComponent(selected)}`:'';
-      const result=await call('/api/fees/status'+query);
+      const result=await fetchAllPages(call,'/api/fees/status'+query,'statuses');
       selected=result.selectedRoundId??'';
       $('feeStatusRound').replaceChildren(...result.rounds.map(round=>option(round.id,round.code)));
       $('feeStatusRound').value=selected;

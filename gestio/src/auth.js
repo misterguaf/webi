@@ -1,9 +1,9 @@
-import { assertRuntime, isLocalHost } from './environment-policy.js';
+import { assertRuntime, isLocalHost, LOCAL_IDENTITY_ISSUER } from './environment-policy.js';
 const encoder = new TextEncoder();
 import { createSessionStatement, findSession, touchSession } from './domains/auth/repository.js';
 export const IDLE_MS = 30 * 60 * 1000;
 export const ABSOLUTE_MS = 8 * 60 * 60 * 1000;
-export const DEV_ISSUER = 'urn:parpallo:local-synthetic';
+export const DEV_ISSUER = LOCAL_IDENTITY_ISSUER;
 
 // Kept for existing callers; the rules live in environment-policy.js.
 export function assertEnvironment(env) { return assertRuntime(env); }

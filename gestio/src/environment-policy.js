@@ -58,6 +58,20 @@ export function portalIntakeEnabled(env) {
   catch { return false; }
 }
 
+// Issuer whose identities may be provisioned by invitation: Cloudflare Access in production, the
+// local synthetic identity provider elsewhere. A production binding depends on Access being
+// configured (PRODUCTION_BLOCKER until Access/MFA exists).
+export const LOCAL_IDENTITY_ISSUER = 'urn:parpallo:local-synthetic';
+export function identityIssuer(env) {
+  if (runtimeEnvironment(env) !== 'production') return LOCAL_IDENTITY_ISSUER;
+  return new URL(env.ACCESS_ISSUER).origin;
+}
+
+// Production re-authentication hook for high-impact administration. Today: the Gestió session must
+// have been created in the last five minutes. PRODUCTION REQUIREMENT (not verifiable locally): the
+// session must come from a fresh Cloudflare Access login with MFA; tighten here when Access exists.
+export const RECENT_AUTHENTICATION_MS = 5 * 60 * 1000;
+
 // ---- Synthetic data fences (DATA_MODE = SYNTHETIC_ONLY) ----
 
 const SYNTHETIC_EMAIL_DOMAIN = '@example.test';
@@ -81,6 +95,8 @@ export const synthetic = Object.freeze({
   }),
   /** Normalised name tokens that only mark fixtures as synthetic; they never count as a name match. */
   nameMarkers: Object.freeze(['ficticio', 'ficticia', 'fictici', 'demo']),
+  /** People created in Gestió while synthetic-only must be visibly fictitious. */
+  personName: value => typeof value === 'string' && /\(fict[ií]ci[ao]?\)/i.test(value),
   /** Justification stored with administrative grants while no real governance record exists. */
   adminJustification: 'SYNTHETIC_PHASE_2A'
 });

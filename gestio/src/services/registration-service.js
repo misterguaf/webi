@@ -1,3 +1,4 @@
+import { pageRequest, pageResult } from '../pagination.js';
 import { synthetic } from '../environment-policy.js';
 import { authorize } from '../policy.js';
 import { statement } from '../domains/audit/repository.js';
@@ -168,7 +169,8 @@ async function reviewDecision(db,context,requestId,row,permission,sectionId=row.
   return requirePermission(db,context,requestId,permission,
     {...(sectionId?{sectionId}:{mode:'all-sections'}),resourceType:'activity_registration',resourceId:row.id});
 }
-export async function listRegistrations(db,context,requestId,activityId) {
+export async function listRegistrations(db,context,requestId,activityId,params) {
+  const page=pageRequest(params,['number','string']);
   requireUuid(activityId);
   const activity=await db.prepare('SELECT id,audience FROM activity WHERE id=?').bind(activityId).first();
   if (!activity) throw new AppError(404,'not_found');
@@ -180,9 +182,11 @@ export async function listRegistrations(db,context,requestId,activityId) {
   const rows=await db.prepare(`SELECT r.id,r.submitted_name,r.submitted_by_name,r.contact_phone,r.receipt_email,
     r.submitted_birth_date,r.submitted_section_id,r.participant_id,r.match_status,r.status,
     r.expected_amount_cents,r.created_at,p.review_status AS payment_status FROM activity_registration r
-    LEFT JOIN payment_evidence p ON p.registration_id=r.id WHERE r.activity_id=?${scope} ORDER BY r.created_at DESC LIMIT 100`)
-    .bind(activityId,...(decision.sections??[])).all();
-  return rows.results;
+    LEFT JOIN payment_evidence p ON p.registration_id=r.id WHERE r.activity_id=?${scope}
+    ${page.after?'AND (r.created_at<? OR (r.created_at=? AND r.id<?))':''} ORDER BY r.created_at DESC,r.id DESC LIMIT ?`)
+    .bind(activityId,...(decision.sections??[]),...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all();
+  const result=pageResult(rows.results,page.limit,row=>[row.created_at,row.id]);
+  return {registrations:result.items,nextCursor:result.nextCursor};
 }
 // Audit M4: reviewers get match signals, not the master data of every participant. The server
 // compares the declared birth date; the full date is included only for candidates whose section
@@ -256,15 +260,18 @@ export async function reviewMatch(db,context,requestId,id,input,now=Date.now()) 
   ]);
   return {id,status:next};
 }
-export async function listPayments(db,context,requestId) {
+export async function listPayments(db,context,requestId,params) {
+  const page=pageRequest(params,['number','string']);
   const decision=await requirePermission(db,context,requestId,'finance.payment.verify',{mode:'list',resourceType:'payment_evidence'});
   const scope=decision.sections===null?'':` AND p.current_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
   const rows=await db.prepare(`SELECT e.id,e.review_status,e.size_bytes,e.detected_mime,r.id AS registration_id,r.status AS registration_status,
-    r.submitted_name,r.expected_amount_cents,a.name AS activity_name,p.current_section_id FROM payment_evidence e
+    r.submitted_name,r.expected_amount_cents,a.name AS activity_name,p.current_section_id,r.created_at FROM payment_evidence e
     JOIN activity_registration r ON r.id=e.registration_id JOIN activity a ON a.id=r.activity_id
     LEFT JOIN participant p ON p.id=r.participant_id WHERE r.status='AWAITING_PAYMENT_REVIEW'${scope}
-    ORDER BY r.created_at DESC LIMIT 100`).bind(...(decision.sections??[])).all();
-  return rows.results;
+    ${page.after?'AND (r.created_at<? OR (r.created_at=? AND e.id<?))':''} ORDER BY r.created_at DESC,e.id DESC LIMIT ?`)
+    .bind(...(decision.sections??[]),...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all();
+  const result=pageResult(rows.results,page.limit,row=>[row.created_at,row.id]);
+  return {payments:result.items,nextCursor:result.nextCursor};
 }
 async function payment(db,id) {
   requireUuid(id);

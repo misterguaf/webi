@@ -1,9 +1,11 @@
+import { pageRequest, pageResult } from '../pagination.js';
 import { AppError, requirePermission, requireUuid } from './common.js';
 
 async function scope(db,context,requestId) {
   return requirePermission(db,context,requestId,'finance.fee.read',{mode:'list',resourceType:'annual_fee_obligation'});
 }
-export async function listObligations(db,context,requestId,{roundId,sectionId=null,status=null,search=''}={}) {
+export async function listObligations(db,context,requestId,{roundId,sectionId=null,status=null,search='',params=null}={}) {
+  const page=pageRequest(params,['string','string']);
   requireUuid(roundId);
   const decision=await scope(db,context,requestId);
   if (sectionId!==null) requireUuid(sectionId);
@@ -15,8 +17,11 @@ export async function listObligations(db,context,requestId,{roundId,sectionId=nu
   if (sectionId) {clauses.push('current_section_id=?');values.push(sectionId);}
   if (status) {clauses.push('status=?');values.push(status);}
   if (search.trim()) {clauses.push("display_name LIKE ? ESCAPE '\\'");values.push('%'+search.trim().replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%');}
-  return (await db.prepare(`SELECT * FROM annual_fee_obligation_status WHERE ${clauses.join(' AND ')}
-    ORDER BY display_name,id LIMIT 100`).bind(...values).all()).results;
+  if (page.after) {clauses.push('(display_name>? OR (display_name=? AND id>?))');values.push(page.after[0],page.after[0],page.after[1]);}
+  const rows=(await db.prepare(`SELECT * FROM annual_fee_obligation_status WHERE ${clauses.join(' AND ')}
+    ORDER BY display_name,id LIMIT ?`).bind(...values,page.limit+1).all()).results;
+  const result=pageResult(rows,page.limit,row=>[row.display_name,row.id]);
+  return {obligations:result.items,nextCursor:result.nextCursor};
 }
 export async function feeMetrics(db,context,requestId,roundId) {
   requireUuid(roundId);

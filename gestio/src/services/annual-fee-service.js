@@ -1,3 +1,4 @@
+import { pageRequest, pageResult } from '../pagination.js';
 import { synthetic } from '../environment-policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireGroupWide, requirePermission, requireUuid, validUuid } from './common.js';
@@ -430,7 +431,8 @@ async function fundedObligationAccess(db,context,requestId,paymentId,permission=
     {sectionId:row.current_section_id,resourceType:'annual_fee_obligation',resourceId:row.id});
   return funded;
 }
-export async function listFeePayments(db,context,requestId,roundId) {
+export async function listFeePayments(db,context,requestId,roundId,params=null) {
+  const page=pageRequest(params,['number','string']);
   const decision=await requirePermission(db,context,requestId,'finance.fee.payment.review',{mode:'list',resourceType:'annual_fee_payment'});
   requireUuid(roundId);
   const scoped=decision.sections!==null;
@@ -444,11 +446,15 @@ export async function listFeePayments(db,context,requestId,roundId) {
       JOIN annual_fee_obligation o ON o.id=a.obligation_id
       JOIN participant person ON person.id=o.participant_id WHERE a.payment_id=p.id
       AND person.current_section_id NOT IN (${sections}))`;
-  return (await db.prepare(`SELECT p.id,p.round_id,p.review_status,p.declared_amount_cents,p.verified_amount_cents,
+  const rows=(await db.prepare(`SELECT p.id,p.round_id,p.review_status,p.declared_amount_cents,p.verified_amount_cents,
     p.submitted_by_name,p.receipt_email,p.created_at,e.id AS evidence_id,
     (SELECT count(*) FROM annual_fee_submission_person s WHERE s.payment_id=p.id AND s.match_status IN ('AMBIGUOUS','NONE')) AS pending_matches
     FROM annual_fee_payment p JOIN annual_fee_evidence e ON e.payment_id=p.id WHERE p.round_id=?${scope}
-    ORDER BY p.created_at DESC LIMIT 100`).bind(roundId,...(decision.sections??[]),...(decision.sections??[])).all()).results;
+    ${page.after?'AND (p.created_at<? OR (p.created_at=? AND p.id<?))':''}
+    ORDER BY p.created_at DESC,p.id DESC LIMIT ?`).bind(roundId,...(decision.sections??[]),...(decision.sections??[]),
+      ...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
+  const result=pageResult(rows,page.limit,row=>[row.created_at,row.id]);
+  return {payments:result.items,nextCursor:result.nextCursor};
 }
 export async function feePaymentDetail(db,context,requestId,id) {
   const payment=await paymentAccess(db,context,requestId,id);
@@ -724,18 +730,25 @@ export async function searchFeeParticipants(db,context,requestId,roundId,search=
   const decision=await requirePermission(db,context,requestId,'finance.fee.manage',{mode:'list',resourceType:'participant'});
   if (typeof search!=='string' || search.length<2 || search.length>80) fail('invalid_fee_filter');
   const scope=decision.sections===null?'':` AND p.current_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
-  return (await db.prepare(`SELECT p.id,p.display_name,p.current_section_id,s.code AS section_code
+  const rows=(await db.prepare(`SELECT p.id,p.display_name,p.current_section_id,s.code AS section_code
     FROM participant p JOIN section s ON s.id=p.current_section_id
-    WHERE p.status='ACTIVE' AND p.display_name LIKE ?${scope} ORDER BY p.display_name LIMIT 30`)
-    .bind('%'+search.trim()+'%',...(decision.sections??[])).all()).results;
+    WHERE p.status='ACTIVE' AND p.display_name LIKE ? ESCAPE '\\'${scope} ORDER BY p.display_name,p.id LIMIT 31`)
+    .bind('%'+search.trim().replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%',...(decision.sections??[])).all()).results;
+  // Search results are capped, never silently: the caller refines the query when truncated.
+  return {participants:rows.slice(0,30),truncated:rows.length>30};
 }
-export async function listFamilyGroups(db,context,requestId,roundId) {
+export async function listFamilyGroups(db,context,requestId,roundId,params=null) {
   await globalPermission(db,context,requestId,'finance.fee.read','annual_fee_family_group');
   await roundById(db,roundId);
-  return (await db.prepare(`SELECT g.id,g.reference,m.participant_id,m.sibling_ordinal,p.display_name
+  const page=pageRequest(params,['string','number']);
+  const rows=(await db.prepare(`SELECT g.id,g.reference,m.participant_id,m.sibling_ordinal,p.display_name
     FROM annual_fee_family_group g JOIN annual_fee_family_member m ON m.group_id=g.id
     JOIN participant p ON p.id=m.participant_id WHERE g.round_id=?
-    ORDER BY g.reference,m.sibling_ordinal LIMIT 100`).bind(roundId).all()).results;
+    ${page.after?'AND (g.reference>? OR (g.reference=? AND m.sibling_ordinal>?))':''}
+    ORDER BY g.reference,m.sibling_ordinal LIMIT ?`)
+    .bind(roundId,...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
+  const result=pageResult(rows,page.limit,row=>[row.reference,row.sibling_ordinal]);
+  return {groups:result.items,nextCursor:result.nextCursor};
 }
 export async function feeObligationDetail(db,context,requestId,id) {
   const row=await db.prepare('SELECT * FROM annual_fee_obligation_status WHERE id=?').bind(requireUuid(id)).first();
@@ -756,9 +769,14 @@ export async function feeObligationDetail(db,context,requestId,id) {
     .bind(id).all()).results;
   return {obligation:row,allocations,installmentPlan:plan?{...plan,parts}:null,issues,amountRevisions};
 }
-export async function listFeeIssues(db,context,requestId,roundId) {
+export async function listFeeIssues(db,context,requestId,roundId,params=null) {
   await globalPermission(db,context,requestId,'finance.fee.read','annual_fee_issue');
   await roundById(db,roundId);
-  return (await db.prepare(`SELECT id,payment_id,obligation_id,code,status,created_at,resolved_at
-    FROM annual_fee_issue WHERE round_id=? ORDER BY created_at DESC LIMIT 100`).bind(roundId).all()).results;
+  const page=pageRequest(params,['number','string']);
+  const rows=(await db.prepare(`SELECT id,payment_id,obligation_id,code,status,created_at,resolved_at
+    FROM annual_fee_issue WHERE round_id=? ${page.after?'AND (created_at<? OR (created_at=? AND id<?))':''}
+    ORDER BY created_at DESC,id DESC LIMIT ?`)
+    .bind(roundId,...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
+  const result=pageResult(rows,page.limit,row=>[row.created_at,row.id]);
+  return {issues:result.items,nextCursor:result.nextCursor};
 }

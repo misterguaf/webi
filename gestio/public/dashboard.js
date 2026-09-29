@@ -1,3 +1,4 @@
+import {fetchAllPages} from './api.js';
 import {attentionPhrase,basicFeeSummary,canReviewActivity,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
   paymentAttention,registrationAttention,sectionLabel,upcomingActivities} from './dashboard-model.js';
 
@@ -99,7 +100,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
   }
   async function loadBasicFees(token){
     try{
-      const result=await call('/api/fees/status');
+      const result=await fetchAllPages(call,'/api/fees/status','statuses');
       if(token!==generation)return;
       if(!result.rounds.length)return;
       renderBasicFees(result.statuses);
@@ -111,11 +112,11 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
   }
   async function loadActivities(token,caps){
     try{
-      const rows=(await call('/api/activities')).activities;
+      const rows=(await fetchAllPages(call,'/api/activities','activities')).activities;
       if(token!==generation)return;
       // Only ask for registrations the reviewer scope can return; the server still authorises each call.
       const reviewable=rows.filter(row=>canReviewActivity(row,caps.activities.reviewRegistrations));
-      const result=await Promise.allSettled(reviewable.map(row=>call(`/api/activities/${row.id}/registrations`)));
+      const result=await Promise.allSettled(reviewable.map(row=>fetchAllPages(call,`/api/activities/${row.id}/registrations`,'registrations')));
       if(token!==generation)return;
       const counts=new Map();attention.registrations=[];
       result.forEach((entry,index)=>{
@@ -133,7 +134,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     }
   }
   async function loadPayments(token){
-    try{const payments=(await call('/api/payments')).payments;
+    try{const payments=(await fetchAllPages(call,'/api/payments','payments')).payments;
       if(token===generation)attention.payments=paymentAttention(payments);
     }catch(error){if(token===generation && !isUnavailable(error))errors.add('payments');}
   }
@@ -148,7 +149,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       if(!rounds.length){$('dashboardFeesPanel').hidden=true;return;}
       const id=rounds[0].id;
       const [metricResult,issueResult]=await Promise.allSettled([
-        call(`/api/fees/rounds/${id}/metrics`),call(`/api/fees/rounds/${id}/issues`)]);
+        call(`/api/fees/rounds/${id}/metrics`),fetchAllPages(call,`/api/fees/rounds/${id}/issues`,'issues')]);
       if(token!==generation)return;
       if(metricResult.status==='fulfilled')renderFees(metricResult.value.metrics);
       else if(!isUnavailable(metricResult.reason)){

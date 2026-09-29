@@ -1,6 +1,7 @@
 import { authorize } from '../policy.js';
 import { append } from '../domains/audit/repository.js';
 import { permissionDefinition } from '../permissions.js';
+import { RECENT_AUTHENTICATION_MS } from '../environment-policy.js';
 export class AppError extends Error {
   constructor(status,code) { super(code); this.status=status; this.code=code; }
 }
@@ -21,6 +22,7 @@ export async function requireGroupWide(db,context,requestId,permission,details={
   const mode=permissionDefinition(permission)?.kind==='SCOPED'?'all-sections':null;
   return requirePermission(db,context,requestId,permission,{...details,mode});
 }
+// Recent-authentication hook for high-impact administration (see environment-policy.js).
 export function requireFresh(session, now=Date.now()) {
-  if (now-session.created_at>5*60*1000) throw new AppError(403,'fresh_session_required');
+  if (now-session.created_at>RECENT_AUTHENTICATION_MS) throw new AppError(403,'fresh_session_required');
 }

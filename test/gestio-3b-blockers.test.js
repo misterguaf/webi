@@ -276,7 +276,7 @@ test('3B final: current section controls fee payment listing, detail and review'
     const created=await submitFee(f.db,f.storage,
       {...submission(),children:[children[1]]},crypto.randomUUID());
     f.sql.prepare('UPDATE participant SET current_section_id=? WHERE id=?').run(id(3),id(502));
-    assert.ok(!(await listFeePayments(f.db,f.contexts[105],crypto.randomUUID(),id(901)))
+    assert.ok(!(await listFeePayments(f.db,f.contexts[105],crypto.randomUUID(),id(901))).payments
       .some(row=>row.id===created.reference));
     await assert.rejects(feePaymentDetail(f.db,f.contexts[105],crypto.randomUUID(),created.reference),
       error=>error.status===403);
@@ -298,7 +298,7 @@ test('3B final: current section controls fee payment listing, detail and review'
       .run(crypto.randomUUID(),id(105),'finance.fee.payment.review',id(3),id(101),id(107),
         'DEMO-FEE-ESCOLTA-FINAL',1700000000000,4102444800000,1700000000001,id(101),
         'DEMO-FEE-ESCOLTA-RATIFIED');
-    assert.ok((await listFeePayments(f.db,f.contexts[105],crypto.randomUUID(),id(901)))
+    assert.ok((await listFeePayments(f.db,f.contexts[105],crypto.randomUUID(),id(901))).payments
       .some(row=>row.id===created.reference));
     assert.equal((await feePaymentDetail(f.db,f.contexts[105],crypto.randomUUID(),created.reference))
       .eligibleObligations[0].id,obligation);

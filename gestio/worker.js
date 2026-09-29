@@ -13,6 +13,7 @@ import * as fees from './src/services/annual-fee-service.js';
 import * as feeMetrics from './src/services/annual-fee-metrics.js';
 import { scopedFeeStatus } from './src/services/annual-fee-status.js';
 import * as capabilityService from './src/services/capability-service.js';
+import * as identityService from './src/services/identity-service.js';
 import { AppError } from './src/services/common.js';
 import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
 
@@ -72,7 +73,9 @@ async function api(request,env,url,requestId) {
     if (runtimeEnvironment(env)!=='production') throw new AppError(404,'not_found');
     let identity;
     try {identity=await verifyAccessRequest(request,env);} catch {await auth.loginFailed(db,requestId);throw new AppError(401,'invalid_identity');}
-    const user=await identities.findIdentityUser(db,identity.issuer,identity.subject);
+    // Unknown subject: bind it only through an open invitation for the same verified e-mail.
+    const user=await identities.findIdentityUser(db,identity.issuer,identity.subject)??
+      await identityService.claimInvitedIdentity(db,requestId,identity);
     if (!user) {await auth.loginFailed(db,requestId);throw new AppError(401,'invalid_identity');}
     await identities.markIdentitySeen(db,{issuer:identity.issuer,subject:identity.subject,email:identity.email,now:Date.now()});
     return sessionResponse(db,user,requestId,url);
@@ -96,7 +99,7 @@ async function api(request,env,url,requestId) {
     await auth.revokeOne(db,context,requestId,match[1]);
     return json({ok:true,requestId},200,match[1]===context.sessionId?{'Set-Cookie':cookieHeader(url,'',0)}:{});
   }
-  if (path==='/api/participants' && method==='GET') return json({participants:await participants.list(db,context,requestId),requestId});
+  if (path==='/api/participants' && method==='GET') return json({...await participants.list(db,context,requestId,url.searchParams),requestId});
   match=path.match(/^\/api\/participants\/([^/]+)$/);
   if (match && method==='GET') return json({participant:await participants.find(db,context,requestId,match[1]),requestId});
   if (path==='/api/dev/policy/health' && method==='POST' && devEnabled(env,url)) {
@@ -105,7 +108,7 @@ async function api(request,env,url,requestId) {
   }
   if (path==='/api/audit/events' && method==='GET') return json({...await audit.readAudit(db,context,requestId,url.searchParams),requestId});
 
-  if (path==='/api/activities' && method==='GET') return json({activities:await activities.listAdminActivities(db,context,requestId),requestId});
+  if (path==='/api/activities' && method==='GET') return json({...await activities.listAdminActivities(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/activities' && method==='POST') return json({...await activities.createActivity(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/activities\/([^/]+)$/);
   if (match && method==='PATCH') return json({...await activities.updateActivity(db,context,requestId,match[1],await readJson(request)),requestId});
@@ -114,12 +117,12 @@ async function api(request,env,url,requestId) {
   if (match && method==='POST') return json({...await activities.transitionActivity(db,context,requestId,match[1],
     match[2]==='publish'?'PUBLISHED':'CLOSED'),requestId});
   match=path.match(/^\/api\/activities\/([^/]+)\/registrations$/);
-  if (match && method==='GET') return json({registrations:await registrations.listRegistrations(db,context,requestId,match[1]),requestId});
+  if (match && method==='GET') return json({...await registrations.listRegistrations(db,context,requestId,match[1],url.searchParams),requestId});
   match=path.match(/^\/api\/registrations\/([^/]+)\/review$/);
   if (match && method==='POST') return json({...await registrations.reviewMatch(db,context,requestId,match[1],await readJson(request)),requestId});
   match=path.match(/^\/api\/registrations\/([^/]+)\/candidates$/);
   if (match && method==='GET') return json({...await registrations.reviewCandidates(db,context,requestId,match[1],url.searchParams.get('search')),requestId});
-  if (path==='/api/payments' && method==='GET') return json({payments:await registrations.listPayments(db,context,requestId),requestId});
+  if (path==='/api/payments' && method==='GET') return json({...await registrations.listPayments(db,context,requestId,url.searchParams),requestId});
   match=path.match(/^\/api\/payments\/([^/]+)\/review$/);
   if (match && method==='POST') {
     const body=await readJson(request);
@@ -128,7 +131,7 @@ async function api(request,env,url,requestId) {
   }
   match=path.match(/^\/api\/payments\/([^/]+)\/evidence$/);
   if (match && method==='GET') return registrations.evidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1]);
-  if (path==='/api/delegations' && method==='GET') return json({delegations:await delegations.listDelegations(db,context,requestId),requestId});
+  if (path==='/api/delegations' && method==='GET') return json({...await delegations.listDelegations(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/delegations' && method==='POST') return json({...await delegations.grantDelegation(db,context,session,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/delegations\/([^/]+)\/(ratify|revoke)$/);
   if (match && method==='POST') return json({...await (match[2]==='ratify'
@@ -142,7 +145,7 @@ async function api(request,env,url,requestId) {
     return json({...await notifications.drainFake(db,context,requestId,body),requestId});
   }
 
-  if (path==='/api/fees/status' && method==='GET') return json({...await scopedFeeStatus(db,context,requestId,url.searchParams.get('roundId')),requestId});
+  if (path==='/api/fees/status' && method==='GET') return json({...await scopedFeeStatus(db,context,requestId,url.searchParams.get('roundId'),url.searchParams),requestId});
   if (path==='/api/fees/rounds' && method==='GET') return json({rounds:await fees.listRounds(db,context,requestId),requestId});
   if (path==='/api/fees/review-rounds' && method==='GET') return json({rounds:await fees.listReviewRounds(db,context,requestId),requestId});
   if (path==='/api/fees/rounds' && method==='POST') return json({...await fees.createRound(db,context,requestId,await readJson(request)),requestId},201);
@@ -153,15 +156,15 @@ async function api(request,env,url,requestId) {
   match=path.match(/^\/api\/fees\/rounds\/([^/]+)\/(obligations|metrics|payments|participants|groups|issues)$/);
   if (match && method==='GET') {
     const id=match[1],kind=match[2];
-    if (kind==='obligations') return json({obligations:await feeMetrics.listObligations(db,context,requestId,
+    if (kind==='obligations') return json({...await feeMetrics.listObligations(db,context,requestId,
       {roundId:id,sectionId:url.searchParams.get('sectionId'),status:url.searchParams.get('status'),
-        search:url.searchParams.get('search')??''}),requestId});
+        search:url.searchParams.get('search')??'',params:url.searchParams}),requestId});
     if (kind==='metrics') return json({metrics:await feeMetrics.feeMetrics(db,context,requestId,id),requestId});
-    if (kind==='payments') return json({payments:await fees.listFeePayments(db,context,requestId,id),requestId});
-    if (kind==='participants') return json({participants:await fees.searchFeeParticipants(db,context,requestId,id,
+    if (kind==='payments') return json({...await fees.listFeePayments(db,context,requestId,id,url.searchParams),requestId});
+    if (kind==='participants') return json({...await fees.searchFeeParticipants(db,context,requestId,id,
       url.searchParams.get('search')??''),requestId});
-    if (kind==='groups') return json({groups:await fees.listFamilyGroups(db,context,requestId,id),requestId});
-    return json({issues:await fees.listFeeIssues(db,context,requestId,id),requestId});
+    if (kind==='groups') return json({...await fees.listFamilyGroups(db,context,requestId,id,url.searchParams),requestId});
+    return json({...await fees.listFeeIssues(db,context,requestId,id,url.searchParams),requestId});
   }
   if (path==='/api/fees/groups' && method==='POST') return json({...await fees.createFamilyGroup(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/fees\/groups\/([^/]+)$/);
@@ -190,6 +193,16 @@ async function api(request,env,url,requestId) {
   match=path.match(/^\/api\/fees\/issues\/([^/]+)\/resolve$/);
   if (match && method==='POST') return json({...await fees.resolveFeeIssue(db,context,requestId,match[1]),requestId});
 
+  if (path==='/api/users' && method==='GET') return json({...await identityService.listUsers(db,context,requestId,url.searchParams),requestId});
+  if (path==='/api/users' && method==='POST') return json({...await identityService.createUser(db,context,session,requestId,await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/users\/([^/]+)$/);
+  if (match && method==='GET') return json({...await identityService.userDetail(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/users\/([^/]+)\/invitations$/);
+  if (match && method==='POST') return json({...await identityService.inviteIdentity(db,context,session,requestId,env,match[1],await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/users\/([^/]+)\/invitations\/([^/]+)$/);
+  if (match && method==='DELETE') {await identityService.revokeInvitation(db,context,session,requestId,match[1],match[2]);return json({ok:true,requestId});}
+  match=path.match(/^\/api\/users\/([^/]+)\/identities\/([^/]+)$/);
+  if (match && method==='DELETE') {await identityService.revokeIdentity(db,context,session,requestId,match[1],match[2]);return json({ok:true,requestId});}
   match=path.match(/^\/api\/users\/([^/]+)\/(suspend|disable|enable)$/);
   if (match && method==='POST') {
     if (match[2]==='suspend') await security.suspendUser(db,context,session,requestId,match[1]);

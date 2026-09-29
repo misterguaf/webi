@@ -1,3 +1,4 @@
+import { pageRequest, pageResult } from '../pagination.js';
 import { synthetic } from '../environment-policy.js';
 import { effectiveSections } from '../domains/organization/repository.js';
 import { statement } from '../domains/audit/repository.js';
@@ -71,9 +72,13 @@ export async function revokeDelegation(db,context,session,requestId,id,now=Date.
   ]);
   return {id,ratificationStatus:'REVOKED'};
 }
-export async function listDelegations(db,context,requestId) {
+export async function listDelegations(db,context,requestId,params) {
   await requirePermission(db,context,requestId,'auth.permission.provision',{resourceType:'delegated_permission'});
-  return (await db.prepare(`SELECT id,user_id,permission_code,section_id,authorized_by,provisioned_by,
+  const page=pageRequest(params,['number','string']);
+  const rows=(await db.prepare(`SELECT id,user_id,permission_code,section_id,authorized_by,provisioned_by,
     authorization_reference,granted_at,expires_at,ratification_status,ratified_at,revoked_at
-    FROM delegated_permission ORDER BY granted_at DESC LIMIT 100`).all()).results;
+    FROM delegated_permission ${page.after?'WHERE (granted_at<? OR (granted_at=? AND id<?))':''}
+    ORDER BY granted_at DESC,id DESC LIMIT ?`).bind(...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
+  const result=pageResult(rows,page.limit,row=>[row.granted_at,row.id]);
+  return {delegations:result.items,nextCursor:result.nextCursor};
 }

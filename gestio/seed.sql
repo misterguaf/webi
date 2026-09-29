@@ -1,19 +1,20 @@
 -- Solo identidades y participantes ficticios. IDs estables para pruebas locales.
-INSERT INTO section VALUES
+-- Catálogo (secciones, roles, permisos, matriz) también vive en la migración 0012; aquí es idempotente.
+INSERT OR IGNORE INTO section VALUES
 ('00000000-0000-4000-8000-000000000001','MANADA','Manada'),
 ('00000000-0000-4000-8000-000000000002','TROPA','Tropa'),
 ('00000000-0000-4000-8000-000000000003','ESCOLTA','Escolta'),
 ('00000000-0000-4000-8000-000000000004','CLAN','Clan');
-INSERT INTO role(code) VALUES ('GROUP_COORDINATOR'),('SECTION_COORDINATOR'),('SECTION_DELEGATE'),('TREASURY'),('SECRETARY'),('CRM_MANAGER'),('TECH_ADMIN');
-INSERT INTO permission(code) VALUES
+INSERT OR IGNORE INTO role(code) VALUES ('GROUP_COORDINATOR'),('SECTION_COORDINATOR'),('SECTION_DELEGATE'),('TREASURY'),('SECRETARY'),('CRM_MANAGER'),('TECH_ADMIN');
+INSERT OR IGNORE INTO permission(code) VALUES
 ('participants.profile.read'),('health.record.read'),('finance.fee.reconcile'),
 ('crm.contact.read'),('auth.user.suspend'),('infra.status.read');
-INSERT INTO role_permission VALUES
+INSERT OR IGNORE INTO role_permission VALUES
 ('GROUP_COORDINATOR','participants.profile.read'),('GROUP_COORDINATOR','health.record.read'),('GROUP_COORDINATOR','auth.user.suspend'),
 ('SECTION_COORDINATOR','participants.profile.read'),('SECTION_COORDINATOR','health.record.read'),
 ('SECTION_DELEGATE','participants.profile.read'),('SECRETARY','participants.profile.read'),
 ('TREASURY','finance.fee.reconcile'),('CRM_MANAGER','crm.contact.read'),('TECH_ADMIN','infra.status.read');
-INSERT INTO role_permission VALUES
+INSERT OR IGNORE INTO role_permission VALUES
 ('GROUP_COORDINATOR','audit.event.read'),('GROUP_COORDINATOR','auth.role.manage'),
 ('GROUP_COORDINATOR','auth.permission.manage'),('GROUP_COORDINATOR','health.grant.manage'),
 ('GROUP_COORDINATOR','auth.user.manage'),('GROUP_COORDINATOR','security.incident.manage');
@@ -64,7 +65,7 @@ INSERT INTO health_access_grant VALUES
 ('00000000-0000-4000-8000-000000000602','00000000-0000-4000-8000-000000000102','00000000-0000-4000-8000-000000000503','activity-safety',1700000000000,1700000001000,NULL,NULL,'Grant expirado sintético');
 
 -- FASE 3A: fixtures de negocio exclusivamente ficticios; no son actividades del grupo.
-INSERT INTO role_permission(role_code,permission_code) VALUES
+INSERT OR IGNORE INTO role_permission(role_code,permission_code) VALUES
   ('GROUP_COORDINATOR','activities.read'),('GROUP_COORDINATOR','activities.manage'),
   ('GROUP_COORDINATOR','activities.general.manage'),('GROUP_COORDINATOR','activities.registration.review'),
   ('GROUP_COORDINATOR','finance.payment.verify'),('GROUP_COORDINATOR','auth.permission.authorize'),
@@ -131,7 +132,7 @@ INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,c
 ('00000000-0000-4000-8000-000000000842','00000000-0000-4000-8000-000000000822','PENDING_PAYMENT','demo822@example.test','PENDING',1700000000000);
 
 -- FASE 3B: only synthetic round instructions and explicit internal permissions.
-INSERT INTO role_permission(role_code,permission_code) VALUES
+INSERT OR IGNORE INTO role_permission(role_code,permission_code) VALUES
 ('GROUP_COORDINATOR','finance.fee.read'),('GROUP_COORDINATOR','finance.fee.manage'),
 ('GROUP_COORDINATOR','finance.fee.payment.review'),('GROUP_COORDINATOR','finance.fee.installment.authorize'),
 ('GROUP_COORDINATOR','finance.fee.config.manage'),
@@ -161,6 +162,6 @@ SELECT id,user_id,'finance.fee.status.read',1700000000000,NULL,'Fixture sintéti
   (SELECT '00000000-0000-4000-8000-000000000730' AS id,'00000000-0000-4000-8000-000000000102' AS user_id
    UNION ALL SELECT '00000000-0000-4000-8000-000000000731','00000000-0000-4000-8000-000000000103')
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.status.read');
-INSERT INTO role_permission(role_code,permission_code)
+INSERT OR IGNORE INTO role_permission(role_code,permission_code)
 SELECT 'SECTION_COORDINATOR','finance.fee.status.read'
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.status.read');

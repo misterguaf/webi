@@ -28,7 +28,9 @@ const TABLES=[
   'annual_fee_allocation_revision',
   'annual_fee_installment_plan','annual_fee_issue',
   'annual_fee_notification_outbox','annual_fee_notification_capture',
-  'annual_fee_issue_outbox','annual_fee_issue_capture','d1_migrations'
+  'annual_fee_issue_outbox','annual_fee_issue_capture','d1_migrations',
+  'participant_section_membership','guardian','participant_guardian','contact_point','consent_record',
+  'auth_identity_invitation'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -63,7 +65,14 @@ const REQUIRED_OBJECTS=[
   'trigger:annual_fee_family_member_delete_guard','index:annual_fee_issue_outbox_pending_idx',
   'index:annual_fee_family_member_binding_unique',
   'trigger:annual_fee_family_member_binding_insert','trigger:annual_fee_family_member_binding_update',
-  'trigger:annual_fee_obligation_member_update'
+  'trigger:annual_fee_obligation_member_update',
+  'index:participant_membership_open_unique','trigger:participant_membership_on_insert',
+  'trigger:participant_membership_on_transfer','trigger:participant_membership_on_status',
+  'trigger:participant_membership_open_consistent','trigger:participant_membership_close_only',
+  'trigger:participant_membership_no_delete','index:contact_point_participant_primary',
+  'index:contact_point_guardian_primary','trigger:participant_contact_mirror_insert',
+  'trigger:consent_record_no_update','trigger:consent_record_no_delete','view:participant_consent_current',
+  'index:auth_identity_invitation_open_unique','trigger:auth_identity_invitation_recipient_active'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};
@@ -111,15 +120,18 @@ function sqliteQuery(database,sql) {
   const output=run('sqlite3',['-json',database,sql]);
   try {return output.trim()?JSON.parse(output):[];} catch {fail('SQLITE_QUERY_INVALID');}
 }
+// Seed people must be present and every person/identity must be visibly synthetic. Users and
+// identities provisioned locally through the identity API are allowed if they are synthetic too.
 function checkFixtures(database) {
   const users=sqliteQuery(database,'SELECT id,display_name FROM app_user ORDER BY id');
   const people=sqliteQuery(database,'SELECT id,display_name FROM participant ORDER BY id');
   const identities=sqliteQuery(database,'SELECT issuer,verified_email FROM auth_identity');
-  if (users.length!==7 || people.length<5 || identities.length!==7) fail('SYNTHETIC_FIXTURE_REQUIRED');
-  if (users.some((row,index)=>row.id!=='00000000-0000-4000-8000-'+String(101+index).padStart(12,'0') ||
-      !row.display_name.includes('(fictici')) ||
-      people.some((row,index)=>!row.display_name.includes('(ficticio)') ||
-        (index<5 && row.id!=='00000000-0000-4000-8000-'+String(501+index).padStart(12,'0'))) ||
+  const seedUsers=Array.from({length:7},(_,index)=>'00000000-0000-4000-8000-'+String(101+index).padStart(12,'0'));
+  const seedPeople=Array.from({length:5},(_,index)=>'00000000-0000-4000-8000-'+String(501+index).padStart(12,'0'));
+  if (users.length<7 || people.length<5 || identities.length<7 ||
+      seedUsers.some(id=>!users.some(row=>row.id===id)) || seedPeople.some(id=>!people.some(row=>row.id===id))) fail('SYNTHETIC_FIXTURE_REQUIRED');
+  if (users.some(row=>!/\(fict[ií]ci[ao]?\)/i.test(row.display_name)) ||
+      people.some(row=>!row.display_name.includes('(ficticio)')) ||
       identities.some(row=>row.issuer!=='urn:parpallo:local-synthetic' ||
         !row.verified_email?.endsWith('@example.test'))) fail('SYNTHETIC_FIXTURE_REQUIRED');
 }
@@ -166,7 +178,10 @@ function inspectSql(sqlPath,info) {
       "(SELECT count(*) FROM delegated_permission WHERE authorization_reference NOT LIKE 'DEMO-%') AS external_delegation,"+
       "(SELECT count(*) FROM annual_fee_payment WHERE receipt_email NOT LIKE '%@example.test') AS external_fee_mail,"+
       "(SELECT count(*) FROM annual_fee_evidence WHERE object_key NOT LIKE 'synthetic/%') AS external_fee_object,"+
-      "(SELECT count(*) FROM annual_fee_notification_outbox WHERE recipient_email NOT LIKE '%@example.test') AS external_fee_notice")[0];
+      "(SELECT count(*) FROM annual_fee_notification_outbox WHERE recipient_email NOT LIKE '%@example.test') AS external_fee_notice,"+
+      "(SELECT count(*) FROM contact_point WHERE kind='EMAIL' AND value NOT LIKE '%@example.test') AS external_contact_point,"+
+      "(SELECT count(*) FROM guardian WHERE display_name NOT LIKE '%(fictici%') AS external_guardian,"+
+      "(SELECT count(*) FROM auth_identity_invitation WHERE email NOT LIKE '%@example.test') AS external_invitation")[0];
     if (Object.values(syntheticBusiness).some(value=>value!==0)) fail('SYNTHETIC_BUSINESS_REQUIRED');
     const sessionColumns=sqliteQuery(database,'PRAGMA table_info(app_session)').map(row=>row.name);
     if (sessionColumns.includes('token') || !sessionColumns.includes('token_hash')) fail('PLAINTEXT_SESSION_SCHEMA');
@@ -279,6 +294,8 @@ function verifyRestoredState(info,state,manifest) {
     "(SELECT count(*) FROM annual_fee_installment_plan p JOIN annual_fee_obligation o ON o.id=p.obligation_id WHERE p.first_cents<1 OR p.second_cents<1 OR p.first_cents+p.second_cents!=o.amount_due_cents) AS bad_fee_installment,"+
     "(SELECT count(*) FROM annual_fee_obligation o WHERE o.discount_cents!=CASE WHEN o.sibling_ordinal>=3 THEN CAST(o.base_cents/2 AS INTEGER) ELSE 0 END OR NOT EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id AND m.group_id=o.family_group_id AND m.sibling_ordinal=o.sibling_ordinal) AND o.family_group_id IS NOT NULL OR o.family_group_id IS NULL AND (o.sibling_ordinal!=1 OR EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id))) AS bad_fee_family,"+
     "(SELECT count(*) FROM annual_fee_family_correction_gate) AS open_family_gate,"+
+    "(SELECT count(*) FROM participant p WHERE p.status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM participant_section_membership m WHERE m.participant_id=p.id AND m.ended_at IS NULL AND m.section_id=p.current_section_id)) AS membership_projection_gap,"+
+    "(SELECT count(*) FROM participant_section_membership m JOIN participant p ON p.id=m.participant_id WHERE m.ended_at IS NULL AND (p.status!='ACTIVE' OR m.section_id!=p.current_section_id)) AS membership_projection_mismatch,"+
     "(SELECT count(*) FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id WHERE p.review_status!='VERIFIED' OR p.reviewed_by IS NULL OR p.reviewed_at IS NULL) AS unreviewed_fee_allocation,"+
     "(SELECT count(*) FROM annual_fee_payment_balance b WHERE b.unallocated_cents>0 AND b.review_status='VERIFIED' AND NOT EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=b.id AND i.code='ALLOCATION_UNCLEAR' AND i.status='OPEN')) AS unexplained_fee_balance")[0];
   if (Object.values(business).some(value=>value!==0)) fail('D1_BUSINESS_INVARIANT_FAILED');

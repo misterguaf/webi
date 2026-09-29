@@ -1,3 +1,4 @@
+import { pageRequest, pageResult } from '../pagination.js';
 import { authorize } from '../policy.js';
 import * as participants from '../domains/participants/repository.js';
 import { append } from '../domains/audit/repository.js';
@@ -7,15 +8,17 @@ async function decisionEvent(db,context,requestId,allow,reasonCode,resourceId=nu
   await append(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
     action:allow?'AUTHZ_ALLOW':'AUTHZ_DENY',result:allow?'ALLOW':'DENY',resourceType:'participant',resourceId,reasonCode});
 }
-export async function list(db,context,requestId) {
+export async function list(db,context,requestId,params) {
   const decision=await authorize(db,context,{permission:'participants.profile.read',mode:'list'});
   if (!decision.allow) {
     await decisionEvent(db,context,requestId,false,decision.reason);
     throw new AppError(403,'forbidden');
   }
-  const rows=await participants.listScoped(db,decision);
+  const page=pageRequest(params,['string','string']);
+  const rows=await participants.listScoped(db,decision,page);
   await decisionEvent(db,context,requestId,true,'ALLOW'); // no data leaves Worker if audit fails
-  return rows;
+  const result=pageResult(rows,page.limit,row=>[row.display_name,row.id]);
+  return {participants:result.items,nextCursor:result.nextCursor};
 }
 export async function find(db,context,requestId,id) {
   requireUuid(id);
@@ -26,7 +29,7 @@ export async function find(db,context,requestId,id) {
     throw new AppError(404,'not_found');
   }
   await decisionEvent(db,context,requestId,true,'ALLOW',id);
-  return row;
+  return {...row,sectionHistory:await participants.sectionHistory(db,id)};
 }
 export async function healthPolicyCheck(db,context,requestId,participantId,purpose) {
   requireUuid(participantId);

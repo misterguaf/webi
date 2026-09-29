@@ -19,13 +19,16 @@ export const ACTIONS = new Set([
   'FEE_FAMILY_GROUP_CREATED','FEE_FAMILY_CORRECTED','FEE_DISCOUNT_APPLIED','FEE_DISCOUNT_RECALCULATED',
   'FEE_OBLIGATION_CREATED','FEE_AMOUNT_OVERRIDDEN','FEE_SUBMISSION_RECEIVED','FEE_MATCH_REVIEWED',
   'FEE_EVIDENCE_RECEIVED','FEE_PAYMENT_VERIFIED','FEE_ALLOCATION_CREATED','FEE_ALLOCATION_REVISED','FEE_ISSUE_OPENED',
-  'FEE_ISSUE_RESOLVED','FEE_INSTALLMENT_AUTHORIZED'
+  'FEE_ISSUE_RESOLVED','FEE_INSTALLMENT_AUTHORIZED',
+  'IDENTITY_INVITED','IDENTITY_INVITATION_REVOKED','IDENTITY_LINKED','IDENTITY_REVOKED',
+  'DELEGATION_AUTHORIZATION_CONFIRMED'
 ]);
 const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
   'activity','activity_registration','payment_evidence','delegated_permission','notification_outbox',
   'annual_fee_round','annual_fee_family_group','annual_fee_obligation','annual_fee_payment',
   'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',
-  'annual_fee_evidence','annual_fee_notification_outbox','annual_fee_issue_outbox']);
+  'annual_fee_evidence','annual_fee_notification_outbox','annual_fee_issue_outbox',
+  'auth_identity','auth_identity_invitation']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);
 const SOURCES = new Set(['local-fixture','retention-job']);
 const safeId = value => value === null || (typeof value === 'string' && UUID.test(value));
@@ -40,20 +43,27 @@ function safeMetadata(value) {
   return JSON.stringify(value);
 }
 
-export function statement(db, detail) {
+function validated(detail) {
   const { requestId, actorUserId=null, sessionId=null, action, resourceType=null, resourceId=null,
     result='SUCCESS', reasonCode=null, metadata=null, securityRelevant=true, occurredAt=Date.now() }=detail;
   if (!UUID.test(requestId || '') || !safeId(actorUserId) || !safeId(sessionId) || !safeId(resourceId) ||
       !ACTIONS.has(action) || (resourceType !== null && !RESOURCE_TYPES.has(resourceType)) ||
       !RESULTS.has(result) || (reasonCode !== null && !/^[A-Z0-9_]{1,64}$/.test(reasonCode)) ||
       !Number.isSafeInteger(occurredAt) || typeof securityRelevant !== 'boolean') throw new Error('AUDIT_EVENT_REJECTED');
-  const metadataJson=safeMetadata(metadata);
-  return db.prepare(`INSERT INTO audit_event
-    (id,occurred_at,created_at,request_id,actor_user_id,session_id,action,resource_type,resource_id,result,reason_code,metadata_json,security_relevant)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`)
-    .bind(crypto.randomUUID(),occurredAt,Date.now(),requestId,actorUserId,sessionId,action,resourceType,resourceId,result,reasonCode,metadataJson,securityRelevant?1:0);
+  return [crypto.randomUUID(),occurredAt,Date.now(),requestId,actorUserId,sessionId,action,resourceType,resourceId,result,reasonCode,
+    safeMetadata(metadata),securityRelevant?1:0];
+}
+const COLUMNS='(id,occurred_at,created_at,request_id,actor_user_id,session_id,action,resource_type,resource_id,result,reason_code,metadata_json,security_relevant)';
+export function statement(db, detail) {
+  return db.prepare(`INSERT INTO audit_event ${COLUMNS} VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(...validated(detail));
 }
 export async function append(db, detail) { return statement(db,detail).run(); }
+// Same validation as statement(), but the row is written only if `existsSql` matches, so a batch can
+// audit an effect that a compare-and-set statement earlier in the same batch may not have produced.
+export function conditionalStatement(db, detail, existsSql, existsParams=[]) {
+  return db.prepare(`INSERT INTO audit_event ${COLUMNS} SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE EXISTS(${existsSql})`)
+    .bind(...validated(detail),...existsParams);
+}
 
 const FILTERS = {
   actorId: ['actor_user_id', value => UUID.test(value)],
