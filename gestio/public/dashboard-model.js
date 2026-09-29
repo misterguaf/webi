@@ -73,3 +73,12 @@ export function basicFeeSummary(statuses) {
   for(const row of statuses)if(Object.hasOwn(counts,row.status))counts[row.status]++;
   return counts;
 }
+
+// Mirrors listRegistrations scope: GENERAL activities are reviewable by any reviewer (rows are
+// filtered server-side by section); section activities need an overlapping section.
+export function canReviewActivity(activity,scope) {
+  if(!scope)return false;
+  if(scope.all || activity.audience==='GENERAL')return true;
+  const codes=String(activity.sections||'').split(',').map(code=>code.trim());
+  return scope.sections.some(section=>codes.includes(section.code));
+}

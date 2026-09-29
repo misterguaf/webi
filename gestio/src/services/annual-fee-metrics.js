@@ -1,7 +1,7 @@
 import { AppError, requirePermission, requireUuid } from './common.js';
 
 async function scope(db,context,requestId) {
-  return requirePermission(db,context,requestId,'finance.fee.read',{resourceType:'annual_fee_obligation'});
+  return requirePermission(db,context,requestId,'finance.fee.read',{mode:'list',resourceType:'annual_fee_obligation'});
 }
 export async function listObligations(db,context,requestId,{roundId,sectionId=null,status=null,search=''}={}) {
   requireUuid(roundId);

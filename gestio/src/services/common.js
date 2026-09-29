@@ -1,5 +1,6 @@
 import { authorize } from '../policy.js';
 import { append } from '../domains/audit/repository.js';
+import { permissionDefinition } from '../permissions.js';
 export class AppError extends Error {
   constructor(status,code) { super(code); this.status=status; this.code=code; }
 }
@@ -14,6 +15,11 @@ export async function requirePermission(db,context,requestId,permission,details=
     throw new AppError(403,'forbidden');
   }
   return decision;
+}
+// Group-wide authority: GLOBAL permissions evaluate as themselves, SCOPED ones need 'all-sections'.
+export async function requireGroupWide(db,context,requestId,permission,details={}) {
+  const mode=permissionDefinition(permission)?.kind==='SCOPED'?'all-sections':null;
+  return requirePermission(db,context,requestId,permission,{...details,mode});
 }
 export function requireFresh(session, now=Date.now()) {
   if (now-session.created_at>5*60*1000) throw new AppError(403,'fresh_session_required');

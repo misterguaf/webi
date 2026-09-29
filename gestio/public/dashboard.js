@@ -1,4 +1,4 @@
-import {attentionPhrase,basicFeeSummary,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
+import {attentionPhrase,basicFeeSummary,canReviewActivity,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
   paymentAttention,registrationAttention,sectionLabel,upcomingActivities} from './dashboard-model.js';
 
 const $=id=>document.getElementById(id);
@@ -109,27 +109,23 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       sectionError($('dashboardFees'),'No s’ha pogut carregar l’estat de les quotes.');
     }
   }
-  async function loadActivities(token){
+  async function loadActivities(token,caps){
     try{
       const rows=(await call('/api/activities')).activities;
       if(token!==generation)return;
-      const result=await Promise.allSettled(rows.map(row=>call(`/api/activities/${row.id}/registrations`)));
+      // Only ask for registrations the reviewer scope can return; the server still authorises each call.
+      const reviewable=rows.filter(row=>canReviewActivity(row,caps.activities.reviewRegistrations));
+      const result=await Promise.allSettled(reviewable.map(row=>call(`/api/activities/${row.id}/registrations`)));
       if(token!==generation)return;
       const counts=new Map();attention.registrations=[];
       result.forEach((entry,index)=>{
         if(entry.status==='fulfilled'){
           const registrations=entry.value.registrations;
-          counts.set(rows[index].id,registrations.length);
-          const item=registrationAttention(rows[index],registrations);if(item)attention.registrations.push(item);
+          counts.set(reviewable[index].id,registrations.length);
+          const item=registrationAttention(reviewable[index],registrations);if(item)attention.registrations.push(item);
         }else if(!isUnavailable(entry.reason))errors.add('registrations');
       });
       renderActivities(rows,counts);
-      const general=rows.find(row=>row.audience==='GENERAL');
-      if(general){
-        try{await call(`/api/activities/${general.id}`);
-          if(token===generation)$('dashboardNewActivity').hidden=false;
-        }catch{/* Existing detail read requires effective general manage; keep action hidden. */}
-      }
     }catch(error){
       if(token!==generation)return;
       if(!isUnavailable(error)){errors.add('activities');sectionError($('dashboardActivities'),'No s’han pogut carregar les pròximes activitats.');}
@@ -141,7 +137,11 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       if(token===generation)attention.payments=paymentAttention(payments);
     }catch(error){if(token===generation && !isUnavailable(error))errors.add('payments');}
   }
-  async function loadFees(token){
+  async function loadFees(token,caps){
+    if(!caps.fees.read?.all){
+      if(caps.fees.status)await loadBasicFees(token);
+      return;
+    }
     try{
       const rounds=(await call('/api/fees/rounds')).rounds;
       if(token!==generation)return;
@@ -159,7 +159,6 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       else if(!isUnavailable(issueResult.reason))errors.add('fees-issues');
     }catch(error){
       if(token!==generation)return;
-      if(error?.status===403){await loadBasicFees(token);return;}
       if(!isUnavailable(error)){
         errors.add('fees');$('dashboardFeesPanel').hidden=false;
         sectionError($('dashboardFees'),'No s’ha pogut carregar el resum de quotes.');
@@ -169,8 +168,11 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
   async function load(me){
     identity=me;const token=++generation;
     attention={registrations:[],payments:null,fees:null};errors=new Set();
-    $('dashboard').hidden=false;$('dashboardNewActivity').hidden=true;
-    $('dashboardActivitiesPanel').hidden=false;$('dashboardFeesPanel').hidden=true;
+    const caps=me.capabilities;
+    const activityAccess=!!(caps.activities.read || caps.activities.manage || caps.activities.manageGeneral);
+    $('dashboard').hidden=false;
+    $('dashboardNewActivity').hidden=!(caps.activities.manage || caps.activities.manageGeneral);
+    $('dashboardActivitiesPanel').hidden=!activityAccess;$('dashboardFeesPanel').hidden=true;
     $('dashboardFees').replaceChildren();$('dashboardFeesTitle').textContent='Quotes anuals';
     $('dashboardSeeFees').textContent='Veure quotes →';
     $('dashboardGreeting').textContent=greeting(me.user.displayName);
@@ -181,7 +183,8 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     $('dashboardAttentionPanel').setAttribute('aria-busy','true');
     $('dashboardAttention').replaceChildren(make('div','dashboard-skeleton dashboard-skeleton-attention'));
     $('dashboardActivities').replaceChildren(make('div','dashboard-skeleton dashboard-skeleton-activity'));
-    await Promise.allSettled([loadActivities(token),loadPayments(token),loadFees(token)]);
+    await Promise.allSettled([activityAccess?loadActivities(token,caps):null,
+      caps.activities.verifyPayments?loadPayments(token):null,loadFees(token,caps)]);
     if(token===generation)renderAttention();
   }
   function hide(){generation++;identity=null;$('dashboard').hidden=true;$('dashboardNewActivity').hidden=true;$('dashboardFees').replaceChildren();}

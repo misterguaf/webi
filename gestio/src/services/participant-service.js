@@ -8,7 +8,7 @@ async function decisionEvent(db,context,requestId,allow,reasonCode,resourceId=nu
     action:allow?'AUTHZ_ALLOW':'AUTHZ_DENY',result:allow?'ALLOW':'DENY',resourceType:'participant',resourceId,reasonCode});
 }
 export async function list(db,context,requestId) {
-  const decision=await authorize(db,context,{permission:'participants.profile.read'});
+  const decision=await authorize(db,context,{permission:'participants.profile.read',mode:'list'});
   if (!decision.allow) {
     await decisionEvent(db,context,requestId,false,decision.reason);
     throw new AppError(403,'forbidden');
@@ -19,7 +19,7 @@ export async function list(db,context,requestId) {
 }
 export async function find(db,context,requestId,id) {
   requireUuid(id);
-  const decision=await authorize(db,context,{permission:'participants.profile.read'});
+  const decision=await authorize(db,context,{permission:'participants.profile.read',mode:'list'});
   const row=decision.allow?await participants.findScoped(db,decision,id):null;
   if (!row) {
     await decisionEvent(db,context,requestId,false,'NOT_FOUND_OR_OUT_OF_SCOPE',id);

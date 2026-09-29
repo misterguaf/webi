@@ -50,7 +50,9 @@ test('shell guards unavailable controls, closed activities and invalid payment r
       const activity=fixture==='ui'&&path==='/api/activities/closed-activity';
       const payments=fixture==='ui'&&path==='/api/payments';
       return {ok:identities||me||activities||activity||payments,status:identities||me||activities||activity||payments?200:401,
-        json:async()=>identities?{identities:[]}:me?{user:{displayName:'Synthetic Coordinator',status:'ACTIVE'},roles:[{role_code:'GROUP_COORDINATOR'}]}:
+        json:async()=>identities?{identities:[]}:me?{user:{displayName:'Synthetic Coordinator',status:'ACTIVE'},roles:[{role_code:'GROUP_COORDINATOR'}],
+          capabilities:{version:1,participants:{read:{all:true,sections:[]}},activities:{read:{all:true,sections:[]},manageGeneral:true},
+            fees:{read:{all:true,sections:[]}},administration:{audit:true}}}:
           activities?{activities:[{id:'closed-activity',name:'Activitat sintètica',status:'CLOSED',audience:'GENERAL',sections:'',price_cents:0}]}:
             activity?{activity:{name:'Activitat sintètica',status:'CLOSED',audience:'GENERAL',sectionIds:[],location:'Lloc fictici',
               starts_at:Date.parse('2026-10-20T09:00:00Z'),ends_at:Date.parse('2026-10-20T17:00:00Z'),

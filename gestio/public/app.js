@@ -62,18 +62,28 @@ async function refresh() {
     button.addEventListener('click', async () => { try { await call(`/api/me/sessions/${session.id}`, { method: 'DELETE' }); await refresh(); } catch(e) { message(e.message); } });
     li.append(button); return li;
   }));
-  try {
-    const data = await call('/api/participants'); $('participants').hidden = false;
-    $('participantList').replaceChildren(...data.participants.map(person => { const li=document.createElement('li'); li.textContent=`${person.display_name} · ${person.current_section_id}`; return li; }));
-  } catch(error) { $('participants').hidden = true; reportLoadError(error); if(error.status===401) return; }
-  await loadActivities();
+  // Modules are requested only when /api/me says they are usable, so ordinary navigation does
+  // not produce AUTHZ_DENY noise. Capabilities are advisory; the server authorises every call.
+  const caps = me.capabilities;
+  $('participants').hidden = true;
+  if (caps.participants.read) {
+    try {
+      const data = await call('/api/participants'); $('participants').hidden = false;
+      $('participantList').replaceChildren(...data.participants.map(person => { const li=document.createElement('li'); li.textContent=`${person.display_name} · ${person.current_section_id}`; return li; }));
+    } catch(error) { $('participants').hidden = true; reportLoadError(error); if(error.status===401) return; }
+  }
+  $('activityPanel').hidden = true;
+  if (caps.activities.read || caps.activities.manage || caps.activities.manageGeneral) await loadActivities();
   if (!document.body.classList.contains('shell-authenticated')) return;
-  await loadPayments();
+  $('paymentPanel').hidden = true;
+  if (caps.activities.verifyPayments) await loadPayments();
   if (!document.body.classList.contains('shell-authenticated')) return;
-  if(!await loadFees())await loadFeeStatus(true);
-  else $('feeStatusPanel').hidden=true;
+  const fullFees = !!caps.fees.read?.all;
+  $('feePanel').hidden = true; $('feeStatusPanel').hidden = true;
+  if (fullFees || caps.fees.reviewPayments) await loadFees({ reviewOnly: !fullFees });
+  if (!fullFees && caps.fees.status) await loadFeeStatus(true);
   if (!document.body.classList.contains('shell-authenticated')) return;
-  $('notificationPanel').hidden = !me.roles.some(role=>role.role_code==='GROUP_COORDINATOR');
+  $('notificationPanel').hidden = !caps.administration.audit;
 }
 async function loadDevIdentities() {
   try { const data = await call('/api/dev/identities'); $('demoIndicator').hidden=false; $('localDataNotice').hidden=false; $('login').querySelector('p').textContent='Selector disponible únicament en desenvolupament local.'; $('loginButton').disabled=false; $('identity').replaceChildren(...data.identities.map(identity => { const option=document.createElement('option'); option.value=identity.subject; option.textContent=identity.display_name; return option; })); }

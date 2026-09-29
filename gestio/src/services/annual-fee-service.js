@@ -1,5 +1,5 @@
 import { statement } from '../domains/audit/repository.js';
-import { AppError, requirePermission, requireUuid, validUuid } from './common.js';
+import { AppError, requireGroupWide, requirePermission, requireUuid, validUuid } from './common.js';
 import { evidenceKey, readEvidence, storeEvidence, validateSyntheticEvidence } from './evidence-service.js';
 import { findMatch, matchKey } from './registration-service.js';
 
@@ -19,8 +19,7 @@ function audit(db,context,requestId,action,resourceType,resourceId,now) {
     action,resourceType,resourceId,occurredAt:now});
 }
 async function globalPermission(db,context,requestId,permission,resourceType,resourceId=null) {
-  const decision=await requirePermission(db,context,requestId,permission,{resourceType,resourceId});
-  if (decision.sections!==null) throw new AppError(403,'forbidden');
+  await requireGroupWide(db,context,requestId,permission,{resourceType,resourceId});
 }
 async function roundById(db,id) {
   requireUuid(id);
@@ -41,7 +40,7 @@ export async function listRounds(db,context,requestId) {
   return (await db.prepare('SELECT * FROM annual_fee_round ORDER BY code DESC LIMIT 30').all()).results;
 }
 export async function listReviewRounds(db,context,requestId) {
-  await requirePermission(db,context,requestId,'finance.fee.payment.review',{resourceType:'annual_fee_payment'});
+  await requirePermission(db,context,requestId,'finance.fee.payment.review',{mode:'list',resourceType:'annual_fee_payment'});
   return (await db.prepare('SELECT id,code FROM annual_fee_round ORDER BY code DESC LIMIT 30').all()).results;
 }
 export async function roundRevisions(db,context,requestId,id) {
@@ -408,7 +407,7 @@ async function paymentAccess(db,context,requestId,paymentId,permission='finance.
   const row=await db.prepare('SELECT * FROM annual_fee_payment WHERE id=?').bind(paymentId).first();
   if (!row) throw new AppError(404,'not_found');
   await requirePermission(db,context,requestId,permission,
-    {resourceType:'annual_fee_payment',resourceId:paymentId});
+    {mode:'list',resourceType:'annual_fee_payment',resourceId:paymentId});
   const people=(await db.prepare(`SELECT s.id,s.section_id,s.participant_id,p.current_section_id
     FROM annual_fee_submission_person s LEFT JOIN participant p ON p.id=s.participant_id
     WHERE s.payment_id=?`).bind(paymentId).all()).results;
@@ -431,7 +430,7 @@ async function fundedObligationAccess(db,context,requestId,paymentId,permission=
   return funded;
 }
 export async function listFeePayments(db,context,requestId,roundId) {
-  const decision=await requirePermission(db,context,requestId,'finance.fee.payment.review',{resourceType:'annual_fee_payment'});
+  const decision=await requirePermission(db,context,requestId,'finance.fee.payment.review',{mode:'list',resourceType:'annual_fee_payment'});
   requireUuid(roundId);
   const scoped=decision.sections!==null;
   const sections=scoped?decision.sections.map(()=>'?').join(','):'';
@@ -721,7 +720,7 @@ export async function authorizeInstallments(db,context,requestId,id,input,now=Da
 
 export async function searchFeeParticipants(db,context,requestId,roundId,search='') {
   await roundById(db,roundId);
-  const decision=await requirePermission(db,context,requestId,'finance.fee.manage',{resourceType:'participant'});
+  const decision=await requirePermission(db,context,requestId,'finance.fee.manage',{mode:'list',resourceType:'participant'});
   if (typeof search!=='string' || search.length<2 || search.length>80) fail('invalid_fee_filter');
   const scope=decision.sections===null?'':` AND p.current_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
   return (await db.prepare(`SELECT p.id,p.display_name,p.current_section_id,s.code AS section_code

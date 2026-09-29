@@ -12,7 +12,8 @@ import * as notifications from './src/services/notification-service.js';
 import * as fees from './src/services/annual-fee-service.js';
 import * as feeMetrics from './src/services/annual-fee-metrics.js';
 import { scopedFeeStatus } from './src/services/annual-fee-status.js';
-import { AppError, requirePermission } from './src/services/common.js';
+import * as capabilityService from './src/services/capability-service.js';
+import { AppError } from './src/services/common.js';
 
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
@@ -78,7 +79,8 @@ async function api(request,env,url,requestId) {
   if (!session) throw new AppError(401,'unauthenticated');
   const context={userId:session.user_id,sessionId:session.session_id,status:session.status};
   if (path==='/api/me' && method==='GET') return json({user:{id:context.userId,displayName:session.display_name,status:session.status},
-    roles:await organization.currentRoles(db,context.userId,Date.now()),requestId});
+    roles:await organization.currentRoles(db,context.userId,Date.now()),
+    capabilities:await capabilityService.capabilities(db,context),requestId});
   if (path==='/api/me/sessions' && method==='GET') return json({sessions:await auth.listOwnSessions(db,context),requestId});
   if (path==='/api/logout' && method==='POST') {
     await auth.logout(db,context,requestId);return json({ok:true,requestId},200,{'Set-Cookie':cookieHeader(url,'',0)});
@@ -104,14 +106,7 @@ async function api(request,env,url,requestId) {
   if (path==='/api/activities' && method==='POST') return json({...await activities.createActivity(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/activities\/([^/]+)$/);
   if (match && method==='PATCH') return json({...await activities.updateActivity(db,context,requestId,match[1],await readJson(request)),requestId});
-  if (match && method==='GET') {
-    const activity=await activities.activityById(db,match[1]);
-    const permission=activity.audience==='GENERAL'?'activities.general.manage':'activities.read';
-    const sections=activity.sectionIds.length?activity.sectionIds:[null];
-    for (const sectionId of sections) await requirePermission(db,context,requestId,permission,
-      {sectionId,resourceType:'activity',resourceId:activity.id});
-    return json({activity,requestId});
-  }
+  if (match && method==='GET') return json({activity:await activities.activityDetail(db,context,requestId,match[1]),requestId});
   match=path.match(/^\/api\/activities\/([^/]+)\/(publish|close)$/);
   if (match && method==='POST') return json({...await activities.transitionActivity(db,context,requestId,match[1],
     match[2]==='publish'?'PUBLISHED':'CLOSED'),requestId});

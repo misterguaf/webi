@@ -1,4 +1,3 @@
-import { authorize } from '../policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requirePermission, requireUuid } from './common.js';
 import { evidenceKey, readEvidence, storeEvidence, validateSyntheticEvidence } from './evidence-service.js';
@@ -162,16 +161,16 @@ async function registration(db,id) {
   if (!row) throw new AppError(404,'not_found');
   return row;
 }
+// A registration without a known section can only be reviewed with group-wide authority.
 async function reviewDecision(db,context,requestId,row,permission,sectionId=row.submitted_section_id) {
-  const decision=await requirePermission(db,context,requestId,permission,{sectionId,resourceType:'activity_registration',resourceId:row.id});
-  if (!sectionId && decision.sections!==null) throw new AppError(403,'forbidden');
-  return decision;
+  return requirePermission(db,context,requestId,permission,
+    {...(sectionId?{sectionId}:{mode:'all-sections'}),resourceType:'activity_registration',resourceId:row.id});
 }
 export async function listRegistrations(db,context,requestId,activityId) {
   requireUuid(activityId);
   const activity=await db.prepare('SELECT id,audience FROM activity WHERE id=?').bind(activityId).first();
   if (!activity) throw new AppError(404,'not_found');
-  const decision=await requirePermission(db,context,requestId,'activities.registration.review',{resourceType:'activity',resourceId:activityId});
+  const decision=await requirePermission(db,context,requestId,'activities.registration.review',{mode:'list',resourceType:'activity',resourceId:activityId});
   const activitySections=await audienceSections(db,activityId);
   if (activity.audience==='SECTIONS' && decision.sections!==null &&
       !activitySections.some(sectionId=>decision.sections.includes(sectionId))) throw new AppError(403,'forbidden');
@@ -228,7 +227,7 @@ export async function reviewMatch(db,context,requestId,id,input,now=Date.now()) 
   return {id,status:next};
 }
 export async function listPayments(db,context,requestId) {
-  const decision=await requirePermission(db,context,requestId,'finance.payment.verify',{resourceType:'payment_evidence'});
+  const decision=await requirePermission(db,context,requestId,'finance.payment.verify',{mode:'list',resourceType:'payment_evidence'});
   const scope=decision.sections===null?'':` AND p.current_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
   const rows=await db.prepare(`SELECT e.id,e.review_status,e.size_bytes,e.detected_mime,r.id AS registration_id,r.status AS registration_status,
     r.submitted_name,r.expected_amount_cents,a.name AS activity_name,p.current_section_id FROM payment_evidence e

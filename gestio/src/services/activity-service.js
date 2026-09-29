@@ -114,8 +114,18 @@ export async function transitionActivity(db,context,requestId,id,target,now=Date
   ]);
   return {id,status:target};
 }
+// Detail read: GENERAL activities belong to the group-wide manage permission; section
+// activities require read scope over every section they target.
+export async function activityDetail(db,context,requestId,id) {
+  const activity=await activityById(db,id);
+  if (activity.audience==='GENERAL') await requirePermission(db,context,requestId,'activities.general.manage',
+    {resourceType:'activity',resourceId:activity.id});
+  else for (const sectionId of activity.sectionIds) await requirePermission(db,context,requestId,'activities.read',
+    {sectionId,resourceType:'activity',resourceId:activity.id});
+  return activity;
+}
 export async function listAdminActivities(db,context,requestId) {
-  const scoped=await authorize(db,context,{permission:'activities.read'});
+  const scoped=await authorize(db,context,{permission:'activities.read',mode:'list'});
   const general=await authorize(db,context,{permission:'activities.general.manage'});
   if (!scoped.allow && !general.allow) throw new AppError(403,'forbidden');
   const clauses=[],params=[];

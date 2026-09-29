@@ -16,11 +16,12 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     $('feeRoundForm').reset();$('feeRound').replaceChildren();
     for(const id of ['feeRoundRevisions','feeMetrics','feeSearchResults','feeGroups','feeObligations','feePayments','feeIssues','feeObligationDetail','feePaymentDetail']) $(id).replaceChildren();
   }
-  async function load() {
+  // `options.reviewOnly` comes from /api/me capabilities (delegated payment reviewer without
+  // finance.fee.read); later internal reloads keep the last mode. The server authorises every call.
+  async function load(options) {
+    if (options) reviewOnly=!!options.reviewOnly;
     try {
-      let result;
-      try {result=await call('/api/fees/rounds');reviewOnly=false;}
-      catch {result=await call('/api/fees/review-rounds');reviewOnly=true;}
+      const result=await call(reviewOnly?'/api/fees/review-rounds':'/api/fees/rounds');
       rounds=result.rounds;$('feePanel').hidden=false;$('feeManagePanel').hidden=reviewOnly;
       if (!rounds.some(round=>round.id===selected)) selected=rounds[0]?.id||'';
       $('feeRound').replaceChildren(...rounds.map(round=>option(round.id,round.code)));

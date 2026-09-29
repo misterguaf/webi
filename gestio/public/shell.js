@@ -22,8 +22,9 @@ let currentPage='inici';
 let lastTrigger=null;
 let profileReturnFocus=null;
 let sessionActive=false;
+let canCreateActivity=false;
 function syncContextAction(){
-  $('newActivity').hidden=!(sessionActive && currentPage==='activitats' && !$('activityPanel').hidden);
+  $('newActivity').hidden=!(sessionActive && canCreateActivity && currentPage==='activitats' && !$('activityPanel').hidden);
 }
 let themePreference='system';
 const compact=window.matchMedia('(min-width:768px) and (max-width:1179px)');
@@ -164,6 +165,8 @@ const navigationListeners=new Set();
 export function onNavigate(listener){navigationListeners.add(listener);return ()=>navigationListeners.delete(listener)}
 export function setShellSession(me){
   sessionActive=!!me;
+  const activities=me?.capabilities?.activities;
+  canCreateActivity=!!(activities?.manage || activities?.manageGeneral);
   syncContextAction();
   document.body.classList.toggle('shell-authenticated',sessionActive);
   $('sidebarNav').hidden=!sessionActive;$('sidebarBottom').hidden=!sessionActive;$('mobileNav').hidden=!sessionActive;$('mobileSearch').hidden=!sessionActive;
