@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { copyFileSync, cpSync, mkdtempSync, mkdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, mkdtempSync, mkdirSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { DatabaseSync } from 'node:sqlite';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -46,21 +47,25 @@ test('synthetic fixture fits the migrated SQLite constraints and exercises fee s
   const emails=[...demo.sql.matchAll(/[a-z0-9._-]+@[a-z0-9.-]+/gi)].map(match=>match[0]);
   assert.ok(emails.length>0);
   assert.ok(emails.every(email=>email.endsWith('@example.test')),'demo recipients must satisfy the existing synthetic notification rule');
-  const script = `import sqlite3,glob,json\n` +
-    `c=sqlite3.connect(':memory:');c.execute('PRAGMA foreign_keys=ON')\n` +
-    `for f in sorted(glob.glob('gestio/migrations/*.sql')): c.executescript(open(f).read())\n` +
-    `c.executescript(open('gestio/seed.sql').read());c.executescript(open('/dev/stdin').read())\n` +
-    `def q(s): return c.execute(s).fetchall()\n` +
-    `print(json.dumps({'fk':q('PRAGMA foreign_key_check'),` +
-    `'status':q('SELECT status,count(*) FROM annual_fee_obligation_status GROUP BY status ORDER BY status'),` +
-    `'family':q('SELECT size,count(*) FROM (SELECT count(*) size FROM annual_fee_family_member GROUP BY group_id) GROUP BY size ORDER BY size'),` +
-    `'shared':q('SELECT count(*) FROM (SELECT payment_id FROM annual_fee_allocation GROUP BY payment_id HAVING count(*)>1)'),` +
-    `'installments':q('SELECT count(*) FROM annual_fee_installment_plan'),` +
-    `'residual':q('SELECT count(*) FROM annual_fee_payment_balance WHERE review_status=\\'VERIFIED\\' AND unallocated_cents>0'),` +
-    `'registrations':q('SELECT count(*) FROM activity_registration')}))\n`;
-  const result = spawnSync('python3', ['-c', script], { cwd: repo, input: demo.sql, encoding: 'utf8' });
-  assert.equal(result.status, 0, result.stderr);
-  const data = JSON.parse(result.stdout);
+  // Validated in-process with node:sqlite. The former python3 variant read the SQL from /dev/stdin,
+  // which fails on Linux (ENXIO) because spawnSync gives the child a socket as stdin (CI regression).
+  const sql = new DatabaseSync(':memory:');
+  let data;
+  try {
+    sql.exec('PRAGMA foreign_keys=ON');
+    for (const name of readdirSync(resolve(repo, 'gestio/migrations')).filter(name => name.endsWith('.sql')).sort())
+      sql.exec(readFileSync(resolve(repo, 'gestio/migrations', name), 'utf8'));
+    sql.exec(readFileSync(resolve(repo, 'gestio/seed.sql'), 'utf8'));
+    sql.exec(demo.sql);
+    const q = query => sql.prepare(query).all().map(row => Object.values(row));
+    data = { fk: q('PRAGMA foreign_key_check'),
+      status: q('SELECT status,count(*) FROM annual_fee_obligation_status GROUP BY status ORDER BY status'),
+      family: q('SELECT size,count(*) FROM (SELECT count(*) size FROM annual_fee_family_member GROUP BY group_id) GROUP BY size ORDER BY size'),
+      shared: q('SELECT count(*) FROM (SELECT payment_id FROM annual_fee_allocation GROUP BY payment_id HAVING count(*)>1)'),
+      installments: q('SELECT count(*) FROM annual_fee_installment_plan'),
+      residual: q("SELECT count(*) FROM annual_fee_payment_balance WHERE review_status='VERIFIED' AND unallocated_cents>0"),
+      registrations: q('SELECT count(*) FROM activity_registration') };
+  } finally { sql.close(); }
   assert.deepEqual(data.fk, []);
   assert.deepEqual(data.status, [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 11]]);
   assert.deepEqual(data.family, [[2, 3], [3, 4], [4, 3]]);
