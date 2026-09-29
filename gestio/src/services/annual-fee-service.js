@@ -1,3 +1,4 @@
+import { versionCas } from '../concurrency.js';
 import { pageRequest, pageResult } from '../pagination.js';
 import { synthetic } from '../environment-policy.js';
 import { statement } from '../domains/audit/repository.js';
@@ -92,7 +93,7 @@ export async function updateRound(db,context,requestId,id,input,now=Date.now()) 
   const deadlineChanged=fields.deadline_at!==row.deadline_at;
   try { await db.batch([
     db.prepare(`UPDATE annual_fee_round SET is_open=?,base_cents=?,deadline_at=?,account_holder=?,iban=?,concept_template=?,
-      updated_by=?,updated_at=?,version=CASE WHEN version=? THEN version+1 ELSE NULL END WHERE id=?`)
+      updated_by=?,updated_at=?,${versionCas('version')} WHERE id=?`)
       .bind(fields.is_open,fields.base_cents,fields.deadline_at,fields.account_holder,fields.iban,
         fields.concept_template,context.userId,now,row.version,id),
     audit(db,context,requestId,'FEE_ROUND_UPDATED','annual_fee_round',id,now),
@@ -191,10 +192,11 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
       (id,round_id,reference,created_by,created_at) VALUES(?,?,?,?,?)`)
       .bind(id,group.round_id,creation.reference,context.userId,now),
     audit(db,context,requestId,'FEE_FAMILY_GROUP_CREATED','annual_fee_family_group',id,now)]:[]),
-    db.prepare('UPDATE annual_fee_family_group SET version=CASE WHEN version=? THEN version+1 ELSE NULL END WHERE id=?')
+    db.prepare(`UPDATE annual_fee_family_group SET ${versionCas('version')} WHERE id=?`)
       .bind(group.version,id),
     db.prepare('INSERT INTO annual_fee_family_correction_gate(group_id,opened_at) VALUES(?,?)').bind(id,now),
     db.prepare('DELETE FROM annual_fee_family_member WHERE group_id=?').bind(id),
+    // Compare-and-set on the whole financial state of each obligation (see concurrency.js).
     ...changes.map(change=>db.prepare(`UPDATE annual_fee_obligation SET family_group_id=?,sibling_ordinal=?,
       discount_cents=?,amount_due_cents=?,updated_at=CASE WHEN amount_due_cents=? AND discount_cents=?
       AND sibling_ordinal=? AND family_group_id IS ? AND override_by IS ? AND
@@ -404,7 +406,7 @@ export async function submitFee(db,storage,input,requestId,now=Date.now()) {
   return {ok:true,reference:paymentId};
 }
 
-async function paymentAccess(db,context,requestId,paymentId,permission='finance.fee.payment.review') {
+async function paymentAccess(db,context,requestId,paymentId,permission='finance.fee.payment.review',conceal=false) {
   requireUuid(paymentId);
   const row=await db.prepare('SELECT * FROM annual_fee_payment WHERE id=?').bind(paymentId).first();
   if (!row) throw new AppError(404,'not_found');
@@ -418,17 +420,17 @@ async function paymentAccess(db,context,requestId,paymentId,permission='finance.
     const sectionId=person.participant_id?person.current_section_id:person.section_id;
     if (!sectionId) throw new AppError(403,'forbidden');
     await requirePermission(db,context,requestId,permission,
-      {sectionId,resourceType:'annual_fee_submission_person',resourceId:person.id});
+      {sectionId,resourceType:'annual_fee_submission_person',resourceId:person.id,conceal});
   }
-  await fundedObligationAccess(db,context,requestId,paymentId,permission);
+  await fundedObligationAccess(db,context,requestId,paymentId,permission,conceal);
   return row;
 }
-async function fundedObligationAccess(db,context,requestId,paymentId,permission='finance.fee.payment.review') {
+async function fundedObligationAccess(db,context,requestId,paymentId,permission='finance.fee.payment.review',conceal=false) {
   const funded=(await db.prepare(`SELECT DISTINCT o.id,p.current_section_id FROM annual_fee_allocation a
     JOIN annual_fee_obligation o ON o.id=a.obligation_id JOIN participant p ON p.id=o.participant_id
     WHERE a.payment_id=?`).bind(paymentId).all()).results;
   for (const row of funded) await requirePermission(db,context,requestId,permission,
-    {sectionId:row.current_section_id,resourceType:'annual_fee_obligation',resourceId:row.id});
+    {sectionId:row.current_section_id,resourceType:'annual_fee_obligation',resourceId:row.id,conceal});
   return funded;
 }
 export async function listFeePayments(db,context,requestId,roundId,params=null) {
@@ -457,7 +459,7 @@ export async function listFeePayments(db,context,requestId,roundId,params=null) 
   return {payments:result.items,nextCursor:result.nextCursor};
 }
 export async function feePaymentDetail(db,context,requestId,id) {
-  const payment=await paymentAccess(db,context,requestId,id);
+  const payment=await paymentAccess(db,context,requestId,id,undefined,true);
   const balance=await db.prepare('SELECT unallocated_cents FROM annual_fee_payment_balance WHERE id=?').bind(id).first();
   const people=(await db.prepare(`SELECT s.id,s.submitted_name,s.submitted_birth_date,s.section_id,s.participant_id,
     s.match_status FROM annual_fee_submission_person s WHERE s.payment_id=? ORDER BY s.rowid`).bind(id).all()).results;
@@ -499,7 +501,7 @@ export async function feeMatchCandidates(db,context,requestId,id,search=null) {
   const row=await db.prepare(`SELECT payment_id,section_id,match_status,submitted_name,submitted_birth_date
     FROM annual_fee_submission_person WHERE id=?`).bind(requireUuid(id)).first();
   if (!row) throw new AppError(404,'not_found');
-  await paymentAccess(db,context,requestId,row.payment_id);
+  await paymentAccess(db,context,requestId,row.payment_id,undefined,true);
   if (!['AMBIGUOUS','NONE'].includes(row.match_status)) throw new AppError(409,'invalid_transition');
   // Resolution must stay in the declared section (reviewFeeMatch enforces the same rule).
   return matchCandidates(db,context,{submittedName:row.submitted_name,submittedBirthDate:row.submitted_birth_date,
@@ -508,7 +510,7 @@ export async function feeMatchCandidates(db,context,requestId,id,search=null) {
 export async function feeEvidenceDownload(db,storage,context,requestId,id) {
   const row=await db.prepare('SELECT id,payment_id,object_key FROM annual_fee_evidence WHERE id=?').bind(requireUuid(id)).first();
   if (!row) throw new AppError(404,'not_found');
-  await paymentAccess(db,context,requestId,row.payment_id);
+  await paymentAccess(db,context,requestId,row.payment_id,undefined,true);
   return readEvidence(storage,row.object_key);
 }
 
@@ -610,8 +612,7 @@ export async function reviseFeeAllocations(db,context,requestId,id,input,now=Dat
     .filter(obligationId=>(previousById.get(obligationId)??null)!==(revisedById.get(obligationId)??null));
   if (!changedIds.length) throw new AppError(409,'unchanged_fee_allocation');
   try { await db.batch([
-    db.prepare(`UPDATE annual_fee_payment SET allocation_version=CASE WHEN allocation_version=?
-      THEN allocation_version+1 ELSE NULL END WHERE id=?`).bind(input.expectedVersion,id),
+    db.prepare(`UPDATE annual_fee_payment SET ${versionCas('allocation_version')} WHERE id=?`).bind(input.expectedVersion,id),
     db.prepare("UPDATE annual_fee_payment SET review_status='ISSUE' WHERE id=? AND review_status='VERIFIED'").bind(id),
     db.prepare('DELETE FROM annual_fee_allocation WHERE payment_id=?').bind(id),
     ...obligations.map(row=>db.prepare(`INSERT INTO annual_fee_allocation
@@ -754,7 +755,7 @@ export async function feeObligationDetail(db,context,requestId,id) {
   const row=await db.prepare('SELECT * FROM annual_fee_obligation_status WHERE id=?').bind(requireUuid(id)).first();
   if (!row) throw new AppError(404,'not_found');
   await requirePermission(db,context,requestId,'finance.fee.read',
-    {sectionId:row.current_section_id,resourceType:'annual_fee_obligation',resourceId:id});
+    {sectionId:row.current_section_id,resourceType:'annual_fee_obligation',resourceId:id,conceal:true});
   const allocations=(await db.prepare(`SELECT a.id,a.payment_id,a.amount_cents,p.review_status,p.verified_amount_cents
     FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id WHERE a.obligation_id=?
     ORDER BY a.created_at,a.id`).bind(id).all()).results;

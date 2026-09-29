@@ -4,7 +4,7 @@ import { AppError, requirePermission, requireUuid } from './common.js';
 async function scope(db,context,requestId) {
   return requirePermission(db,context,requestId,'finance.fee.read',{mode:'list',resourceType:'annual_fee_obligation'});
 }
-export async function listObligations(db,context,requestId,{roundId,sectionId=null,status=null,search='',params=null}={}) {
+export async function listObligations(db,context,requestId,{roundId=null,sectionId=null,status=null,search='',params=null}={}) {
   const page=pageRequest(params,['string','string']);
   requireUuid(roundId);
   const decision=await scope(db,context,requestId);
@@ -54,12 +54,19 @@ export async function feeMetrics(db,context,requestId,roundId) {
     if (row.status==='PARTIAL') totals.partialCount++;
     if (row.status==='ISSUE') totals.issueCount++;
   }
+  // Audit L3: same rule as listFeePayments — a matched person counts in their CURRENT section, an
+  // unmatched one in the declared section, and every funded obligation must also be in scope.
+  const marks=decision.sections===null?'':decision.sections.map(()=>'?').join(',');
   const paymentScope=decision.sections===null?'':` AND EXISTS(SELECT 1 FROM annual_fee_submission_person s
     WHERE s.payment_id=b.id) AND NOT EXISTS(SELECT 1 FROM annual_fee_submission_person s
-    WHERE s.payment_id=b.id AND s.section_id NOT IN (${decision.sections.map(()=>'?').join(',')}))`;
+      LEFT JOIN participant person ON person.id=s.participant_id WHERE s.payment_id=b.id AND
+      (CASE WHEN s.participant_id IS NULL THEN s.section_id ELSE person.current_section_id END IS NULL OR
+       CASE WHEN s.participant_id IS NULL THEN s.section_id ELSE person.current_section_id END NOT IN (${marks})))
+    AND NOT EXISTS(SELECT 1 FROM annual_fee_allocation a JOIN annual_fee_obligation o ON o.id=a.obligation_id
+      JOIN participant person ON person.id=o.participant_id WHERE a.payment_id=b.id AND person.current_section_id NOT IN (${marks}))`;
   const balance=await db.prepare(`SELECT COALESCE(SUM(b.unallocated_cents),0) AS cents
     FROM annual_fee_payment_balance b WHERE b.round_id=? AND b.review_status='VERIFIED'
-    AND b.unallocated_cents>0${paymentScope}`).bind(roundId,...(decision.sections??[])).first();
+    AND b.unallocated_cents>0${paymentScope}`).bind(roundId,...(decision.sections??[]),...(decision.sections??[])).first();
   totals.unallocatedVerifiedCents=balance.cents;
   totals.collectedPercent=totals.expectedCents?Math.round(totals.confirmedAllocatedCents*10000/totals.expectedCents)/100:0;
   return totals;

@@ -24,27 +24,27 @@ site/_headers                  capçaleres de Cloudflare Pages i Netlify
 site/robots.txt, sitemap.xml   fitxers públics de rastreig
 api/_lib/validate.js           validació de servidor + filtre anti-spam
 api/_lib/ratelimit.js          límit de peticions
-api/_lib/sheets.js             adaptador legacy d'alta, reserva i quota
+api/_lib/sheets.js             adaptador legacy d'alta i reserva
 api/_lib/handler.js            nucli de l'endpoint, independent de la plataforma
-api/_lib/quota.js              càlcul de quota legacy, deprecated per a nous enviaments
-portal/                        frontend familiar canònic i Worker d'activitats 3A / quota 3B
+portal/                        frontend familiar canònic; sense D1/R2, parla amb Gestió via PortalIntake
 gestio/                        serveis 3A/3B, D1 local i plataforma interna
-family/                        frontend anterior deprecated, sense ruta familiar canònica
+family/                        DEPRECATED: prototip anterior només local; retirar quan el portal estiga en producció
 api/alta.js                    adaptador Vercel
 netlify/functions/alta.js      adaptador Netlify (també reserva.js)
 worker.js                      adaptador Cloudflare Workers
 scripts/dev.js                 servidor local de proves
 scripts/google-apps-script.gs  script per a enganxar al projecte d'Apps Script
 data/activitats.json           fixture/catàleg legacy; no governa les activitats noves
-data/cuotes.json               configuració de quota legacy; no governa les quotes noves
 test/alta.test.js              proves automàtiques
 docs/                          guies, textos i documentació del projecte
 Launchers/                     accessos locals per a obrir els servidors
 ```
 
-Alta i reserva conserven l'adaptador legacy d'`api/_lib/`. El codi antic de quota es
-manté deprecated, sense ruta des del portal canònic. Les activitats
-noves passen de `portal/worker.js` als serveis 3A de `gestio/`: catàleg
+Alta i reserva conserven l'adaptador legacy d'`api/_lib/`. El codi JS antic de quota
+(`handler-quota`, `quota`, `cuotes`, `data/cuotes.json`) s'ha retirat en la remediació 3.5
+perquè cap ruta l'importava; queda en l'historial Git. La branca de quota de
+`scripts/google-apps-script.gs` es conserva com a referència del desplegament remot legacy. Les activitats
+noves passen de `portal/worker.js` a Gestió pel service binding `PortalIntake`: catàleg
 `PUBLISHED` en D1, matching, revisió de pagament, abstracció de storage per als
 justificants i notification outbox. Les úniques rutes públiques de la web
 general són `POST /api/alta` i `POST /api/reserva`; `/api/inscripcio` només

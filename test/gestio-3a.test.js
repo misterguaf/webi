@@ -106,9 +106,8 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
   mkdirSync(join(temp,'api'),{recursive:true});
   cpSync(resolve(root,'api/_lib'),join(temp,'api/_lib'),{recursive:true});
   mkdirSync(join(temp,'data'),{recursive:true});
-  // Bundle-only stubs satisfy legacy quota imports without copying its live catalog/config.
+  // Bundle-only stub for the legacy activity catalogue import; no live catalogue is copied.
   cpSync(resolve(root,'test/fixtures/empty-activities.synthetic.json'),join(temp,'data/activitats.json'));
-  cpSync(resolve(root,'test/fixtures/closed-quota.synthetic.json'),join(temp,'data/cuotes.json'));
   const state=join(gestio,'.wrangler','state');
   let worker;
   try{
@@ -142,6 +141,12 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
       permissionCode:'finance.payment.verify',sectionId:id(2),authorizedBy:id(101),
       authorizationReference:'DEMO-FIN-TROPA-001',expiresAt:later(10)}});
     assert.equal(delegated.status,201);assert.equal(delegated.data.ratificationStatus,'PENDING_RATIFICATION');
+    assert.equal(delegated.data.authorizationStatus,'PENDING_CONFIRMATION','TECH_ADMIN cannot attribute an authorisation (M3)');
+    assert.equal((await request(worker.base,`/api/delegations/${delegated.data.id}/ratify`,{method:'POST',cookie:group,
+      body:{ratificationReference:'DEMO-CONSELL-001'}})).status,409,'ratification waits for the named authoriser');
+    assert.equal((await request(worker.base,`/api/delegations/${delegated.data.id}/confirm`,{method:'POST',cookie:troop,body:{}})).status,403,
+      'only the named authoriser confirms');
+    assert.equal((await request(worker.base,`/api/delegations/${delegated.data.id}/confirm`,{method:'POST',cookie:group,body:{}})).status,200);
     assert.equal((await request(worker.base,`/api/delegations/${delegated.data.id}/ratify`,{method:'POST',cookie:group,
       body:{ratificationReference:'DEMO-CONSELL-001'}})).status,200);
     await stop(worker);worker=null;
@@ -216,8 +221,9 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     assert.equal(rows(gestio,state,`SELECT count(*) AS n FROM activity_registration WHERE activity_id='${free.data.id}'
       AND submitted_name='Persona Desconocida (ficticio)' AND status='NEEDS_PARTICIPANT_REVIEW'`)[0].n,2,
     'distinct submitted dates must not silently collapse pending applications');
-    assert.match(readFileSync(resolve(gestio,'public/app.js'),'utf8'),/registration\.submitted_birth_date/);
-    assert.match(readFileSync(resolve(gestio,'public/app.js'),'utf8'),/person\.birth_date/);
+    // Audit M8: registration review lives in views/registrations.js, candidate labels in labels.js.
+    assert.match(readFileSync(resolve(gestio,'public/views/registrations.js'),'utf8'),/registration\.submitted_birth_date/);
+    assert.match(readFileSync(resolve(gestio,'public/labels.js'),'utf8'),/person\.birth_date/);
     const clan=await submit(portalInput('DEMO-GENERAL','Persona Clan Desconocida (ficticio)','CLA','2007-08-09',{telefon:''}),session.data.csrf,worker.base,syntheticIp(24));
     assert.equal(clan.status,202,'optional phone must not block submission');
     const paymentInput=portalInput(paid.data.publicCode,'Participante Tropa B (ficticio)','TRO','2012-11-03',{transportCode:'GROUP'});
@@ -258,7 +264,8 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     const group2=await relogin('seed-101'),delegate=await relogin('seed-105'),treasury=await relogin('seed-104'),troop2=await relogin('seed-102');
     const freeRows=await request(worker.base,`/api/activities/${free.data.id}/registrations`,{cookie:delegate});
     assert.equal(freeRows.status,200);
-    assert.equal((await request(worker.base,`/api/activities/${id(802)}/registrations`,{cookie:delegate})).status,403);
+    assert.equal((await request(worker.base,`/api/activities/${id(802)}/registrations`,{cookie:delegate})).status,404,
+      'audit L1: an out-of-scope activity is not confirmed to exist');
     const confirmed=freeRows.data.registrations.find(row=>row.participant_id===id(502));
     assert.equal(confirmed.status,'CONFIRMED');
     assert.equal(confirmed.submitted_birth_date,null);

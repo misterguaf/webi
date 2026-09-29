@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import portal from "../portal/worker.js";
 import { _reset } from "../api/_lib/ratelimit.js";
 
-const ORIGIN = "https://inscripciones.example.test";
+const ORIGIN = "https://inscripcions.example.test";
 const ENV = {
   PORTAL_ACCESS_PASSWORD: "families-prova",
   PORTAL_SESSION_SECRET: "secret-de-sessio-prou-llarg-per-a-proves",

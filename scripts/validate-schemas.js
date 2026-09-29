@@ -6,7 +6,6 @@ import Ajv2020 from "ajv/dist/2020.js";
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const pairs = [
   ["data/activitats.schema.json", "data/activitats.json"],
-  ["data/cuotes.schema.json", "data/cuotes.json"],
   ["infra/cloudflare-resources.schema.json", "infra/cloudflare-resources.example.json"],
 ];
 

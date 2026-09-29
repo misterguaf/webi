@@ -5,6 +5,8 @@
 // Services must not hard-code DEMO markers, test domains or environment checks elsewhere.
 
 /** @typedef {'local-synthetic'|'test'|'production'} RuntimeEnvironment */
+/** @typedef {{APP_ENV?: string, DB?: unknown, EVIDENCE_STORAGE?: unknown, DEV_IDENTITY_PROVIDER?: string,
+ *   ACCESS_ISSUER?: string, ACCESS_AUDIENCE?: string}} RuntimeEnv */
 
 // Data accepted by Gestió services, independent of the runtime: while SYNTHETIC_ONLY, every intake,
 // notification and privileged reference must carry a synthetic marker, even if a production
@@ -30,7 +32,8 @@ export function runtimeEnvironment(env) {
   }
 }
 
-/** Throws on any configuration that could expose the dev identity provider or run without D1. */
+/** Throws on any configuration that could expose the dev identity provider or run without D1.
+ * @param {RuntimeEnv} env */
 export function assertRuntime(env) {
   const name = runtimeEnvironment(env);
   if (!ENVIRONMENTS[name].devIdentityProvider && env.DEV_IDENTITY_PROVIDER === 'enabled')
@@ -43,16 +46,19 @@ export function assertRuntime(env) {
 /** @param {URL} url */
 export const isLocalHost = url => LOCAL_HOSTS.has(url.hostname);
 
-/** Non-production runtimes only answer on loopback hosts. */
+/** Non-production runtimes only answer on loopback hosts.
+ * @param {RuntimeEnv} env @param {URL} url */
 export function hostAllowed(env, url) {
   return !ENVIRONMENTS[runtimeEnvironment(env)].localHostOnly || isLocalHost(url);
 }
 
+/** @param {RuntimeEnv} env @param {URL} url */
 export function devIdentityEnabled(env, url) {
   return ENVIRONMENTS[runtimeEnvironment(env)].devIdentityProvider && env.DEV_IDENTITY_PROVIDER === 'enabled' && isLocalHost(url);
 }
 
 // The portal reaches Gestió only through the PortalIntake service binding; intake is closed in production.
+/** @param {RuntimeEnv} env */
 export function portalIntakeEnabled(env) {
   try { return ENVIRONMENTS[runtimeEnvironment(env)].portalIntake && !!env.DB && !!env.EVIDENCE_STORAGE; }
   catch { return false; }
@@ -62,9 +68,10 @@ export function portalIntakeEnabled(env) {
 // local synthetic identity provider elsewhere. A production binding depends on Access being
 // configured (PRODUCTION_BLOCKER until Access/MFA exists).
 export const LOCAL_IDENTITY_ISSUER = 'urn:parpallo:local-synthetic';
+/** @param {RuntimeEnv} env */
 export function identityIssuer(env) {
   if (runtimeEnvironment(env) !== 'production') return LOCAL_IDENTITY_ISSUER;
-  return new URL(env.ACCESS_ISSUER).origin;
+  return new URL(String(env.ACCESS_ISSUER)).origin;
 }
 
 // Production re-authentication hook for high-impact administration. Today: the Gestió session must
@@ -79,13 +86,13 @@ const SYNTHETIC_EVIDENCE_MARKER = 'synthetic';
 
 export const synthetic = Object.freeze({
   /** Notification and receipt addresses must belong to the reserved test domain. */
-  email: value => typeof value === 'string' && value.toLowerCase().endsWith(SYNTHETIC_EMAIL_DOMAIN),
+  email: /** @param {unknown} value */ value => typeof value === 'string' && value.toLowerCase().endsWith(SYNTHETIC_EMAIL_DOMAIN),
   /** Uploaded evidence must declare itself synthetic in its first KiB. */
-  evidence: bytes => new TextDecoder('latin1').decode(bytes.slice(0, Math.min(bytes.length, 1024)))
+  evidence: /** @param {Uint8Array} bytes */ bytes => new TextDecoder('latin1').decode(bytes.slice(0, Math.min(bytes.length, 1024)))
     .toLowerCase().includes(SYNTHETIC_EVIDENCE_MARKER),
   evidenceKeyPrefix: 'synthetic/',
   /** Organisational references (delegations, family groups) are demo references. */
-  reference: (value, { min = 6, max = 80 } = {}) =>
+  reference: /** @param {unknown} value */ (value, { min = 6, max = 80 } = {}) =>
     typeof value === 'string' && new RegExp(`^DEMO-[A-Z0-9-]{${min},${max}}$`).test(value),
   /** Legal text versions accepted at intake; real versions arrive with the approved legal texts. */
   terms: Object.freeze({
@@ -96,7 +103,7 @@ export const synthetic = Object.freeze({
   /** Normalised name tokens that only mark fixtures as synthetic; they never count as a name match. */
   nameMarkers: Object.freeze(['ficticio', 'ficticia', 'fictici', 'demo']),
   /** People created in Gestió while synthetic-only must be visibly fictitious. */
-  personName: value => typeof value === 'string' && /\(fict[ií]ci[ao]?\)/i.test(value),
+  personName: /** @param {unknown} value */ value => typeof value === 'string' && /\(fict[ií]ci[ao]?\)/i.test(value),
   /** Justification stored with administrative grants while no real governance record exists. */
   adminJustification: 'SYNTHETIC_PHASE_2A'
 });

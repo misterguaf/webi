@@ -215,6 +215,8 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
     assert.equal((await request(worker.base,`/api/fees/rounds/${round}/payments`,{cookie:delegate})).status,403,
       'a pending fee-review delegation is not effective');
     assert.equal((await request(worker.base,'/api/fees/review-rounds',{cookie:delegate})).status,403);
+    assert.equal((await as(worker.base,group2,`/api/delegations/${delegated.data.id}/confirm`,{})).status,200,
+      'named authoriser confirms before ratification (M3)');
     assert.equal((await as(worker.base,group2,`/api/delegations/${delegated.data.id}/ratify`,
       {ratificationReference:'DEMO-FEE-RATIFIED-001'})).status,200);
     const scoped=await request(worker.base,`/api/fees/rounds/${round}/payments`,{cookie:delegate});
@@ -230,7 +232,8 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
     assert.ok(candidates.data.candidates.some(person=>person.id===id(502)));
     assert.ok(!candidates.data.candidates.some(person=>person.id===id(501)),
       'delegated candidate search remains section-scoped');
-    assert.equal((await request(worker.base,`/api/fees/payments/${primary.id}`,{cookie:delegate})).status,403);
+    assert.equal((await request(worker.base,`/api/fees/payments/${primary.id}`,{cookie:delegate})).status,404,
+      'audit L1: an out-of-scope payment is not confirmed to exist');
     assert.equal((await as(worker.base,group2,`/api/delegations/${delegated.data.id}/revoke`,{})).status,200);
     assert.equal((await request(worker.base,`/api/fees/rounds/${round}/payments`,{cookie:delegate})).status,403);
     const detail=await request(worker.base,`/api/fees/payments/${primary.id}`,{cookie:treasury2});

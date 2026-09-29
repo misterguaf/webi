@@ -30,7 +30,7 @@ const TABLES=[
   'annual_fee_notification_outbox','annual_fee_notification_capture',
   'annual_fee_issue_outbox','annual_fee_issue_capture','d1_migrations',
   'participant_section_membership','guardian','participant_guardian','contact_point','consent_record',
-  'auth_identity_invitation'
+  'auth_identity_invitation','delegated_permission_confirmation'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -72,7 +72,9 @@ const REQUIRED_OBJECTS=[
   'trigger:participant_membership_no_delete','index:contact_point_participant_primary',
   'index:contact_point_guardian_primary','trigger:participant_contact_mirror_insert',
   'trigger:consent_record_no_update','trigger:consent_record_no_delete','view:participant_consent_current',
-  'index:auth_identity_invitation_open_unique','trigger:auth_identity_invitation_recipient_active'
+  'index:auth_identity_invitation_open_unique','trigger:auth_identity_invitation_recipient_active',
+  'trigger:delegated_permission_confirmation_by_authoriser','trigger:delegated_permission_no_self_insert',
+  'trigger:delegated_permission_ratification_governance'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};

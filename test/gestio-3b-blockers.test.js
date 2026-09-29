@@ -279,7 +279,7 @@ test('3B final: current section controls fee payment listing, detail and review'
     assert.ok(!(await listFeePayments(f.db,f.contexts[105],crypto.randomUUID(),id(901))).payments
       .some(row=>row.id===created.reference));
     await assert.rejects(feePaymentDetail(f.db,f.contexts[105],crypto.randomUUID(),created.reference),
-      error=>error.status===403);
+      error=>error.status===404 /* audit L1: out-of-scope read concealed */);
     await assert.rejects(reviewFeePayment(f.db,f.contexts[105],crypto.randomUUID(),created.reference,
       {verifiedAmountCents:10000,allocations:[{obligationId:obligation,amountCents:10000}]}),
     error=>error.status===403);
@@ -325,7 +325,7 @@ test('3B final: multi-obligation payment denies a partially scoped allocation re
     const before=f.sql.prepare('SELECT obligation_id,amount_cents FROM annual_fee_allocation WHERE payment_id=? ORDER BY obligation_id')
       .all(created.reference);
     await assert.rejects(feePaymentDetail(f.db,f.contexts[105],crypto.randomUUID(),created.reference),
-      error=>error.status===403);
+      error=>error.status===404 /* audit L1: out-of-scope read concealed */);
     await assert.rejects(reviseFeeAllocations(f.db,f.contexts[105],crypto.randomUUID(),created.reference,
       {expectedVersion:1,allocations:[{obligationId:first,amountCents:9000},
         {obligationId:second,amountCents:10000}]}),error=>error.status===403);

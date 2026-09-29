@@ -1,10 +1,21 @@
 # Estado actual del sistema
 
-Fecha de corte: **2026-09-26**
-Fase: **3B en desarrollo — cuota anual y tesorería locales sintéticas**
+Fecha de corte: **2026-09-29**
+Fase: **3.5 — diseño de Gestió; remediación de la auditoría independiente completada en local** (3.5D Activitats aún no iniciada)
 Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
-Commit base: `3690bca` (`phase-3a-ci-stable`); rama de trabajo `phase/3b-annual-fees`.
-Estado del árbol: **cambios locales 3B sin commit; no desplegado**.
+Base: `phase-3b-complete`; checkpoint 3.5 `5e59e37` en `phase/3.5-design`; remediación en `phase/3.5-audit-remediation` (sin merge a `main`).
+Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
+
+## Actualización FASE 3.5 — remediación de auditoría (2026-09-29)
+
+Detalle, evidencias, decisiones y deuda: [PHASE_3_5_AUDIT_REMEDIATION](PHASE_3_5_AUDIT_REMEDIATION.md).
+
+- **Portal aislado (A1):** `portal/` ya no tiene D1/R2 ni importa `gestio/`; usa el service binding `GESTIO_INTAKE` → `PortalIntake` (catálogo, inscripción, cuota). [ADR-009](adr/ADR-009-portal-intake-service-binding.md).
+- **Autorización (M1–M3):** catálogo GLOBAL/SCOPED que falla cerrado; `/api/me` devuelve capacidades; confirmación del autorizador y separación de funciones en delegaciones; política de roles elevados. [ADR-010](adr/ADR-010-permission-catalogue-capabilities.md).
+- **Modelo de participantes (A2, migración 0011):** historial de sección coherente con `current_section_id`, tutores N:M, contactos extensibles y consentimientos append-only. Sin salud ni entidad familia.
+- **Identidades (0012):** catálogo de autorización sin seed; alta de personas e invitación de identidad Access por API. Sin SQL manual ni autorregistro.
+- **Otros:** paginación por cursor (M6); política de entorno única (M7); matching minimizado (M4); CSP estricta y `frame-ancestors` (L2); lecturas fuera de alcance como 404 (L1); frontend por vistas (M8); typecheck ampliado y suite smoke en workerd (M5); código JS de cuota legacy retirado (L5).
+- Las secciones 3B, 3A y siguientes de este documento describen el estado anterior y se conservan como historial.
 
 ## Actualización FASE 3B
 

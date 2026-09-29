@@ -9,6 +9,19 @@ import { AppError, requireFresh, requirePermission, requireUuid, validUuid } fro
 const ROLES=new Set(['GROUP_COORDINATOR','SECTION_COORDINATOR','SECTION_DELEGATE','TREASURY','SECRETARY','CRM_MANAGER','TECH_ADMIN']);
 const SEVERITIES=new Set(['LOW','MEDIUM','HIGH','CRITICAL']);
 const SUMMARY_CODES=new Set(['TEST_SCENARIO','ACCOUNT_SUSPICION','UNEXPECTED_ACCESS','OTHER_TECHNICAL']);
+// M3 conservative policy for elevated roles (see docs/PHASE_3_5_AUDIT_REMEDIATION.md):
+// only a current GROUP_COORDINATOR assigns them, assignments are audited as ELEVATED_ROLE, and the
+// last active GROUP_COORDINATOR cannot be removed or disabled (security suspension stays possible).
+const ELEVATED_ROLES=new Set(['GROUP_COORDINATOR','TREASURY','TECH_ADMIN']);
+async function holdsRole(db,userId,roleCode,now) {
+  return !!await db.prepare(`SELECT 1 FROM user_role WHERE user_id=? AND role_code=? AND revoked_at IS NULL
+    AND valid_from<=? AND (expires_at IS NULL OR expires_at>?) LIMIT 1`).bind(userId,roleCode,now,now).first();
+}
+async function otherActiveCoordinators(db,userId,now) {
+  return (await db.prepare(`SELECT count(DISTINCT ur.user_id) AS n FROM user_role ur JOIN app_user u ON u.id=ur.user_id
+    WHERE ur.role_code='GROUP_COORDINATOR' AND ur.user_id!=? AND u.status='ACTIVE' AND ur.revoked_at IS NULL
+    AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)`).bind(userId,now,now).first()).n;
+}
 function notSelf(context,targetId) { if (context.userId===targetId) throw new AppError(403,'self_change_forbidden'); }
 function expiry(value,now,{required=false,maxMs=90*24*60*60*1000}={}) {
   if (value==null && !required) return null;
@@ -32,6 +45,8 @@ export async function setUserEnabled(db,context,session,requestId,targetId,enabl
   const target=await auth.getUser(db,targetId);
   if (!target) throw new AppError(404,'not_found');
   if (target.status!==(enabled?'DISABLED':'ACTIVE')) throw new AppError(409,'invalid_transition');
+  if (!enabled && await holdsRole(db,targetId,'GROUP_COORDINATOR',now) && !await otherActiveCoordinators(db,targetId,now))
+    throw new AppError(409,'last_group_coordinator');
   await db.batch([...(enabled?[security.enableStatement(db,targetId,now)]:security.disableStatements(db,targetId,now)),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
       action:enabled?'USER_ENABLED':'USER_DISABLED',resourceType:'app_user',resourceId:targetId,occurredAt:now})]);
@@ -44,17 +59,27 @@ export async function assignRole(db,context,session,requestId,input,now=Date.now
   const scoped=roleCode==='SECTION_COORDINATOR'||roleCode==='SECTION_DELEGATE';
   if (scoped!==Boolean(sectionId) || !await organization.roleExists(db,roleCode,sectionId)) throw new AppError(400,'invalid_scope');
   if ((await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(404,'not_found');
+  const elevated=ELEVATED_ROLES.has(roleCode);
+  if (elevated && !await holdsRole(db,context.userId,'GROUP_COORDINATOR',now)) throw new AppError(403,'elevated_role_requires_group_coordinator');
   const expiresAt=expiry(input.expiresAt??null,now,{required:roleCode==='SECTION_DELEGATE'});
   const id=crypto.randomUUID();
-  await db.batch([organization.assignRoleStatement(db,{id,userId,roleCode,sectionId,validFrom:now,expiresAt,actorId:context.userId,justification:synthetic.adminJustification}),
-    statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_ASSIGNED',
-      resourceType:'user_role',resourceId:id,occurredAt:now})]);
+  try {
+    await db.batch([organization.assignRoleStatement(db,{id,userId,roleCode,sectionId,validFrom:now,expiresAt,actorId:context.userId,justification:synthetic.adminJustification}),
+      statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_ASSIGNED',
+        resourceType:'user_role',resourceId:id,reasonCode:elevated?'ELEVATED_ROLE':null,occurredAt:now})]);
+  } catch(error) {
+    // Regression (audit remediation): a duplicate active assignment is a conflict, not a server error.
+    if (/UNIQUE/.test(error?.message??'')) throw new AppError(409,'role_already_assigned');
+    throw error;
+  }
   return {id};
 }
 export async function removeRole(db,context,session,requestId,userId,assignmentId,now=Date.now()) {
   requireUuid(userId);requireUuid(assignmentId);
   await requirePermission(db,context,requestId,'auth.role.manage'); requireFresh(session,now);notSelf(context,userId);
-  if (!await organization.activeRole(db,assignmentId,userId)) throw new AppError(404,'not_found');
+  const role=await organization.activeRole(db,assignmentId,userId);
+  if (!role) throw new AppError(404,'not_found');
+  if (role.role_code==='GROUP_COORDINATOR' && !await otherActiveCoordinators(db,userId,now)) throw new AppError(409,'last_group_coordinator');
   await db.batch([organization.revokeRoleStatement(db,assignmentId,userId,now),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_REMOVED',
       resourceType:'user_role',resourceId:assignmentId,occurredAt:now})]);

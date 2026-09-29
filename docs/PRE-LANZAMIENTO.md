@@ -88,8 +88,10 @@ además del contacto del tutor; la lista de espera no admite datos de salud.
 - [ ] **Configurar métricas y alertas del free tier** para Workers, D1, R2,
       Access y Turnstile, y probar el comportamiento fail-closed al agotar cuota.
 - [ ] **Desplegar el segundo Worker desde `portal/`** y asociarlo únicamente a
-      `inscripciones.grupscoutparpallo.com`. Cargar sus cuatro secretos y no
-      publicar la dirección en la web pública.
+      `inscripcions.grupscoutparpallo.com`. Cargar sus cuatro secretos y no
+      publicar la dirección en la web pública. El portal **no** lleva D1/R2:
+      solo el service binding `GESTIO_INTAKE` al entrypoint `PortalIntake` de
+      Gestió (auditoría A1), que exige desplegar antes el Worker de Gestió.
 - [ ] **Configurar las variables de entorno en el panel del hosting real**, no
       solo en tu `.env` local: `SHEETS_WEBHOOK_URL` (la URL del paso anterior),
       `SHEETS_SHARED_SECRET` (el mismo valor que `WEBHOOK_HMAC_SECRET`) y

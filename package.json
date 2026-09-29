@@ -10,6 +10,7 @@
   "packageManager": "npm@11.16.0",
   "scripts": {
     "test": "node --test --test-concurrency=1 test/*.test.js",
+    "test:smoke": "node --test test/gestio-smoke.test.js",
     "dev": "node scripts/dev.js",
     "dev:site": "node scripts/dev.js",
     "dev:site:fake": "node scripts/dev.js --fals",
@@ -30,7 +31,7 @@
     "disaster:drill": "node --test test/gestio-recovery.test.js",
     "gestio:deploy": "node gestio/scripts/deploy.js",
     "lint": "eslint .",
-    "typecheck": "tsc -p tsconfig.check.json",
+    "typecheck": "tsc -p tsconfig.check.json && tsc -p tsconfig.gestio.json",
     "schema:check": "node scripts/validate-schemas.js",
     "cloudflare:check": "node scripts/check-cloudflare-config.js",
     "waitlist:check": "node scripts/check-waitlist-boundary.js",

@@ -101,9 +101,9 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
     assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 40);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);
     const html = readFileSync(resolve(repo, 'gestio/public/index.html'), 'utf8');
-    const app = readFileSync(resolve(repo, 'gestio/public/app.js'), 'utf8');
+    const app = readFileSync(resolve(repo, 'gestio/public/views/activities.js'), 'utf8'); // audit M8: activity view module
     assert.match(html, /class="page-header-actions"><button id="newActivity"/);
     assert.equal((html.match(/id="newActivity"/g) || []).length, 1);
-    assert.match(app, /editingActivity\?`\/api\/activities\/\$\{editingActivity\}`:'\/api\/activities'/);
+    assert.match(app, /editing \? `\/api\/activities\/\$\{editing\}` : '\/api\/activities'/);
   } finally { rmSync(temp, { recursive: true, force: true }); }
 });

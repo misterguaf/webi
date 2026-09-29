@@ -20,9 +20,13 @@ import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/envir
 // Named entrypoint for the portal service binding only; never routed from the public handler below.
 export { PortalIntake } from './src/intake.js';
 
+// Audit L2: strict CSP without 'unsafe-inline' and no framing. CSSOM style changes stay allowed.
+const PAGE_CSP="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; "+
+  "font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
+const API_CSP="default-src 'none'; frame-ancestors 'none'";
 const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status, headers: { 'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store',
-    'X-Content-Type-Options':'nosniff',...headers }
+    'X-Content-Type-Options':'nosniff','Content-Security-Policy':API_CSP,'X-Frame-Options':'DENY',...headers }
 });
 const devEnabled = (env,url) => devIdentityEnabled(env,url);
 
@@ -133,9 +137,10 @@ async function api(request,env,url,requestId) {
   if (match && method==='GET') return registrations.evidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1]);
   if (path==='/api/delegations' && method==='GET') return json({...await delegations.listDelegations(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/delegations' && method==='POST') return json({...await delegations.grantDelegation(db,context,session,requestId,await readJson(request)),requestId},201);
-  match=path.match(/^\/api\/delegations\/([^/]+)\/(ratify|revoke)$/);
+  match=path.match(/^\/api\/delegations\/([^/]+)\/(ratify|revoke|confirm)$/);
   if (match && method==='POST') return json({...await (match[2]==='ratify'
     ?delegations.ratifyDelegation(db,context,session,requestId,match[1],await readJson(request))
+    :match[2]==='confirm'?delegations.confirmDelegation(db,context,session,requestId,match[1])
     :delegations.revokeDelegation(db,context,session,requestId,match[1])),requestId});
   if (path==='/api/dev/notifications/drain' && method==='POST') {
     if (!devEnabled(env,url)) throw new AppError(404,'not_found');
@@ -246,6 +251,8 @@ export default {
       headers.set('X-Content-Type-Options','nosniff');
       headers.set('Referrer-Policy','no-referrer');
       headers.set('X-Robots-Tag','noindex, nofollow, noarchive');
+      headers.set('Content-Security-Policy',PAGE_CSP);
+      headers.set('X-Frame-Options','DENY');
       headers.set('Cache-Control','no-store');
       headers.set('X-Request-ID',requestId);
       return new Response(response.body,{status:response.status,headers});

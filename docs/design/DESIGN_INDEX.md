@@ -100,12 +100,14 @@ exist.
 
 ### Screens
 
-` screens/SHELL.md `
+`screens/SHELL.md`
 Application shell: sidebar, top area, layout and responsive navigation.
+
+`screens/DASHBOARD.md`
+Dashboard / Inici v0.1 (3.5C): permission-aware home, attention block, upcoming activities, fee summary.
 
 Future specifications may include:
 
-- DASHBOARD
 - ACTIVITIES
 - REGISTRATIONS
 - FEES
@@ -114,6 +116,19 @@ Future specifications may include:
 - SETTINGS
 
 ---
+
+## Implementation conventions (frontend)
+
+These are engineering rules, not visual rules, but every screen must follow them:
+
+- A screen is a view module in `gestio/public/views/` following the contract in
+  `gestio/public/view-registry.js` (`available`, `load`, `unload`, optional `enter`).
+  `app.js` only composes views.
+- Which modules a user sees comes from `GET /api/me` → `capabilities`. The UI never discovers
+  permissions by provoking 403 responses; the server still authorises every operation.
+- Lists follow `nextCursor` (`public/api.js`); a list is never shown silently truncated.
+- The page runs under a strict CSP: no inline scripts, inline `style` attributes or inline event
+  handlers. Use CSS classes and module scripts.
 
 ## Core rule
 

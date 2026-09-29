@@ -23,8 +23,8 @@ function setup() {
       VALUES('${id(3200)}','${id(REVIEWER)}','SECTION_DELEGATE','${TROPA}',1,4102444800000,'Fixture');
     INSERT INTO delegated_permission(id,user_id,permission_code,section_id,authorized_by,provisioned_by,authorization_reference,
       granted_at,expires_at,ratification_status,ratified_at,ratified_by,ratification_reference) VALUES
-      ('${id(3201)}','${id(REVIEWER)}','activities.registration.review','${TROPA}','${id(102)}','${id(101)}','DEMO-MATCH-0001',1,4102444800000,'RATIFIED',2,'${id(101)}','DEMO-MATCH-RAT1'),
-      ('${id(3202)}','${id(REVIEWER)}','finance.fee.payment.review','${TROPA}','${id(102)}','${id(101)}','DEMO-MATCH-0002',1,4102444800000,'RATIFIED',2,'${id(101)}','DEMO-MATCH-RAT2')`);
+      ('${id(3201)}','${id(REVIEWER)}','activities.registration.review','${TROPA}','${id(102)}','${id(107)}','DEMO-MATCH-0001',1,4102444800000,'RATIFIED',2,'${id(101)}','DEMO-MATCH-RAT1'),
+      ('${id(3202)}','${id(REVIEWER)}','finance.fee.payment.review','${TROPA}','${id(102)}','${id(107)}','DEMO-MATCH-0002',1,4102444800000,'RATIFIED',2,'${id(101)}','DEMO-MATCH-RAT2')`);
   return f;
 }
 async function register(f, name, birthDate) {

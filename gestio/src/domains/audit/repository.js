@@ -65,6 +65,7 @@ export function conditionalStatement(db, detail, existsSql, existsParams=[]) {
     .bind(...validated(detail),...existsParams);
 }
 
+/** @type {Record<string, [string, (value: string) => boolean]>} */
 const FILTERS = {
   actorId: ['actor_user_id', value => UUID.test(value)],
   action: ['action', value => ACTIONS.has(value)],

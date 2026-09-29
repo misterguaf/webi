@@ -165,9 +165,9 @@ async function registration(db,id) {
   return row;
 }
 // A registration without a known section can only be reviewed with group-wide authority.
-async function reviewDecision(db,context,requestId,row,permission,sectionId=row.submitted_section_id) {
+async function reviewDecision(db,context,requestId,row,permission,sectionId=row.submitted_section_id,conceal=false) {
   return requirePermission(db,context,requestId,permission,
-    {...(sectionId?{sectionId}:{mode:'all-sections'}),resourceType:'activity_registration',resourceId:row.id});
+    {...(sectionId?{sectionId}:{mode:'all-sections'}),resourceType:'activity_registration',resourceId:row.id,conceal});
 }
 export async function listRegistrations(db,context,requestId,activityId,params) {
   const page=pageRequest(params,['number','string']);
@@ -177,7 +177,7 @@ export async function listRegistrations(db,context,requestId,activityId,params) 
   const decision=await requirePermission(db,context,requestId,'activities.registration.review',{mode:'list',resourceType:'activity',resourceId:activityId});
   const activitySections=await audienceSections(db,activityId);
   if (activity.audience==='SECTIONS' && decision.sections!==null &&
-      !activitySections.some(sectionId=>decision.sections.includes(sectionId))) throw new AppError(403,'forbidden');
+      !activitySections.some(sectionId=>decision.sections.includes(sectionId))) throw new AppError(404,'not_found');
   const scope=decision.sections===null?'':` AND r.submitted_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
   const rows=await db.prepare(`SELECT r.id,r.submitted_name,r.submitted_by_name,r.contact_phone,r.receipt_email,
     r.submitted_birth_date,r.submitted_section_id,r.participant_id,r.match_status,r.status,
@@ -221,7 +221,7 @@ export async function matchCandidates(db,context,{submittedName,submittedBirthDa
 export async function reviewCandidates(db,context,requestId,id,search=null) {
   const row=await registration(db,id);
   if (row.status!=='NEEDS_PARTICIPANT_REVIEW') throw new AppError(409,'invalid_transition');
-  const decision=await reviewDecision(db,context,requestId,row,'activities.registration.review');
+  const decision=await reviewDecision(db,context,requestId,row,'activities.registration.review',row.submitted_section_id,true);
   const allowed=row.audience==='GENERAL'?[]:await audienceSections(db,row.activity_id);
   const scoped=decision.sections===null?(allowed.length?allowed:null)
     :allowed.length?allowed.filter(sectionId=>decision.sections.includes(sectionId)):decision.sections;
@@ -281,14 +281,14 @@ async function payment(db,id) {
   if (!row) throw new AppError(404,'not_found');
   return row;
 }
-async function paymentAccess(db,context,requestId,row) {
+async function paymentAccess(db,context,requestId,row,conceal=false) {
   const participant=row.participant_id?await db.prepare('SELECT current_section_id FROM participant WHERE id=?').bind(row.participant_id).first():null;
   await reviewDecision(db,context,requestId,{...row,id:row.registration_id},'finance.payment.verify',
-    participant?.current_section_id??row.submitted_section_id);
+    participant?.current_section_id??row.submitted_section_id,conceal);
 }
 export async function evidenceDownload(db,storage,context,requestId,id) {
   const row=await payment(db,id);
-  await paymentAccess(db,context,requestId,row);
+  await paymentAccess(db,context,requestId,row,true);
   return readEvidence(storage,row.object_key);
 }
 export async function reviewPayment(db,context,requestId,id,decision,now=Date.now()) {

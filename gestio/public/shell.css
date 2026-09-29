@@ -238,3 +238,6 @@ body{background-color:var(--bg-primary);background-image:var(--canvas-atmosphere
 @media(prefers-reduced-motion:reduce){
   .page-header.context-shift .page-heading,.page-main.page-shift>[data-active="true"]{animation:none}
 }
+
+/* Icon sprite container (moved from an inline style so the CSP needs no 'unsafe-inline'). */
+.svg-sprite{position:absolute;width:0;height:0;overflow:hidden}

@@ -12,6 +12,10 @@ Cloudflare Access verifica identidad y MFA cuando se configure. El adaptador val
 
 La policy central exige rol vigente **y** permiso explícito vigente; ni uno ni otro concede por sí solo. `SECTION` limita las consultas SQL mediante `WHERE current_section_id IN (...)`, no tras cargar la tabla. Salud requiere además grant individual, purpose y tiempo, y solo se prueba una decisión sin datos sanitarios. `TECH_ADMIN` y `TREASURY` carecen de permiso de perfil o salud. La suspensión usa `D1Database.batch`, que Cloudflare documenta como transacción que revierte el lote ante error; bloquea cuenta, sesiones y grants, y añade evento mínimo. No coordina todavía el bloqueo del IdP ni sustituye una revisión operativa.
 
+## Actualización 2026-09-29 (remediación 3.5)
+
+La policy se rige ahora por el catálogo explícito GLOBAL/SCOPED de [ADR-010](ADR-010-permission-catalogue-capabilities.md); una evaluación de sección sin alcance falla cerrado. El catálogo de secciones, roles, permisos y matriz por defecto vive en la migración 0012, no solo en `seed.sql`. Las identidades se provisionan por invitación de correo verificado, ligada en el primer login de Access (no hay autorregistro). Las reglas de entorno están centralizadas en `gestio/src/environment-policy.js`.
+
 ## Consecuencias y límites
 
 - `gestio/` no comparte contraseña familiar ni rutas de `portal/`.

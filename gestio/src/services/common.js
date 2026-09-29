@@ -7,12 +7,21 @@ export class AppError extends Error {
 }
 export const validUuid = value => typeof value==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 export function requireUuid(value) { if (!validUuid(value)) throw new AppError(404,'not_found'); return value; }
+// `conceal: true` (single-resource reads, audit L1): a holder of the permission asking for a resource
+// outside their scope gets 404, so UUIDs outside scope cannot be confirmed. The denial is still audited.
+/**
+ * @param {any} db @param {any} context @param {string} requestId @param {string} permission
+ * @param {{sectionId?: string|null, participantId?: string|null, purpose?: string|null, mode?: 'list'|'all-sections'|null,
+ *   resourceType?: string, resourceId?: string|null, conceal?: boolean}} [details]
+ */
 export async function requirePermission(db,context,requestId,permission,details={}) {
-  const decision=await authorize(db,context,{permission,...details});
+  const {conceal=false,...request}=details;
+  const decision=await authorize(db,context,{permission,...request});
   if (!decision.allow) {
     await append(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'AUTHZ_DENY',
-      resourceType:details.resourceType??(details.participantId?'participant':'app_user'),resourceId:details.resourceId??details.participantId??null,
+      resourceType:request.resourceType??(request.participantId?'participant':'app_user'),resourceId:request.resourceId??request.participantId??null,
       result:'DENY',reasonCode:decision.reason});
+    if (conceal && decision.reason==='OUT_OF_SCOPE') throw new AppError(404,'not_found');
     throw new AppError(403,'forbidden');
   }
   return decision;

@@ -122,7 +122,7 @@ export async function activityDetail(db,context,requestId,id) {
   if (activity.audience==='GENERAL') await requirePermission(db,context,requestId,'activities.general.manage',
     {resourceType:'activity',resourceId:activity.id});
   else for (const sectionId of activity.sectionIds) await requirePermission(db,context,requestId,'activities.read',
-    {sectionId,resourceType:'activity',resourceId:activity.id});
+    {sectionId,resourceType:'activity',resourceId:activity.id,conceal:true});
   return activity;
 }
 export async function listAdminActivities(db,context,requestId,params) {

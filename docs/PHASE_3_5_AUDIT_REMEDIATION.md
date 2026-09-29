@@ -1,6 +1,6 @@
 # FASE 3.5 — Remediació de l'auditoria independent
 
-Estat: **EN CURS** · Branca: `phase/3.5-audit-remediation` · Base: checkpoint `5e59e37` (`phase/3.5-design`)
+Estat: **COMPLETADA EN LOCAL** · Branca: `phase/3.5-audit-remediation` · Base: checkpoint `5e59e37` (`phase/3.5-design`)
 Entorn: només local i sintètic. Cap recurs remot, cap desplegament, cap dada real.
 
 Aquest document registra, per a cada troballa de l'auditoria independent de 2026-09-29, l'evidència,
@@ -256,4 +256,94 @@ publicades), rondes (30). No són llistats operatius on el truncament amague fei
 
 ## Batch 4
 
-Pendent.
+### M3 — Govern de privilegis (migració 0013)
+
+**Evidència.** `authorized_by` era una afirmació de qui provisionava (p. ex. TECH_ADMIN); no hi havia cap
+comprovació que ratificador ≠ provisionador; un GROUP_COORDINATOR podia assignar qualsevol rol elevat.
+
+**Solució (part inequívoca).**
+- `delegated_permission_confirmation`: l'autoritzador nomenat confirma (`POST /api/delegations/:id/confirm`,
+  amb `auth.permission.authorize` sobre la secció). Si qui provisiona és el mateix autoritzador, la
+  confirmació es registra en el mateix acte.
+- Ratificar exigeix confirmació prèvia i una persona diferent del provisionador i del destinatari.
+- Prohibida l'autodelegació (destinatari ≠ provisionador i ≠ autoritzador). Tot això també en triggers.
+- Delegacions ja ratificades abans de 0013: confirmació marcada `legacy=1` (no es tornen a demostrar).
+- Rols elevats (`GROUP_COORDINATOR`, `TREASURY`, `TECH_ADMIN`): només els assigna una coordinació general
+  vigent, amb auditoria `ELEVATED_ROLE`. No es pot retirar ni desactivar l'última coordinació general;
+  la suspensió de seguretat continua permesa (seguretat per damunt de disponibilitat).
+- Hook de reautenticació: `requireFresh` → `RECENT_AUTHENTICATION_MS` (environment-policy). Requisit de
+  producció: la sessió ha de nàixer d'un login recent d'Access amb MFA (no verificable en local).
+- Regressió trobada i corregida: assignar un rol ja actiu retornava 500; ara 409 `role_already_assigned`.
+
+**DECISION REQUIRED.** Aprovació a dues persones per a rols elevats (depén de quantes coordinacions
+hi haurà); caducitat obligatòria dels rols elevats; si una mateixa persona pot tindre `TECH_ADMIN` i un
+rol amb accés a dades.
+
+**Proves.** `test/gestio-governance.test.js`; 3A/3B inclouen ara el pas de confirmació.
+
+**Estat: FET** (part inequívoca).
+
+### M5 — Qualitat real
+
+- `tsconfig.gestio.json`: `checkJs` no estricte sobre tot `gestio/src`, `gestio/worker.js` i el portal
+  (errors de contracte i propietats; ha detectat i corregit dos errors reals de tipus). `tsconfig.check.json`
+  (estricte) incorpora `permissions.js` i `environment-policy.js` anotats. `npm run typecheck` executa tots dos.
+  Mode estricte a tot el codi: 969 avisos, majoritàriament `any` implícit en codi dens → DIFERIT i gradual.
+- `test/gestio-smoke.test.js` (`npm run test:smoke`): Gestió + portal sobre workerd amb `wrangler dev`,
+  estat i registre temporals: CSP, login, capacitats, cursor en D1 real i escriptura del portal via
+  `PortalIntake`. ~7 s. Complementa els tests `node:sqlite`.
+
+**Estat: FET** (gradual).
+
+### M8 — Frontend modular
+
+Convenció `gestio/public/view-registry.js` (`available/load/unload/enter`). `app.js` passa a ser arrel de
+composició (sessió, login local, registre). Vistes: `views/activities.js`, `views/registrations.js`,
+`views/simple-views.js` (compte, participants, quotes, estat bàsic, dashboard). Client HTTP i etiquetes
+compartides en `http.js` i `labels.js`. Sense framework i sense redisseny d'Activitats. Verificat en
+navegador sobre un Gestió local temporal (sessió de coordinació de Tropa: 0 respostes 403, sense errors CSP).
+
+**Proves.** `test/gestio-views.test.js` i els tests de shell/dashboard existents.
+
+**Estat: FET.**
+
+### Troballes baixes
+
+| Id | Solució | Estat |
+|---|---|---|
+| L1 | Lectures d'un recurs concret fora d'abast (detall d'activitat, inscripcions d'activitat, evidències, detall de pagament de quota, candidats, detall d'obligació) → 404 com un recurs inexistent; la denegació continua auditada (`OUT_OF_SCOPE`). Sense permís: 403. Escriptures sense canvis. | FET |
+| L2 | CSP estricta a Gestió (sense `unsafe-inline`), `frame-ancestors 'none'`, `X-Frame-Options: DENY`; script de tema a `theme-init.js` (síncron, sense parpelleig) i estil inline del sprite a CSS. | FET |
+| L3 | Mètriques de quota amb abast de secció: persona vinculada → secció actual; no vinculada → declarada; obligacions finançades també dins d'abast (igual que `listFeePayments`). Regressió. | FET |
+| L4 | Patró `version=CASE…ELSE NULL` documentat i encapsulat en `gestio/src/concurrency.js` (`versionCas`), sense canviar el mecanisme. | FET |
+| L5 | Vegeu anàlisi següent. | FET/DIFERIT |
+| L6 | Domini canònic `inscripcions.grupscoutparpallo.com` a `portal/wrangler.toml`, `.env.example`, `PRE-LANZAMIENTO.md` i test. | FET |
+| L7 | `CURRENT_STATE`, `IMPLEMENTATION_PLAN`, `DESIGN_INDEX`, `AUTHORIZATION_MODEL`, ADR-007 actualitzats; ADR-009 i ADR-010 nous. | FET |
+
+**L5 — Legacy (demostrat, no a cegues).**
+- `api/_lib/handler-quota.js`, `quota.js`, `cuotes.js`, `data/cuotes.json` (+ esquema, 3 tests i fixture):
+  cap ruta en temps d'execució els importava (web pública, Worker públic, adaptadors Vercel/Netlify,
+  portal, Gestió). **Retirats** (queden a l'historial Git).
+- `family/`: DEPRECATED amb condició de retirada "quan el portal estiga en producció", no complida →
+  **no s'esborra**; documentat que contradiu ADR-009 i que no s'ha de desplegar.
+- `scripts/google-apps-script.gs`: continua servint alta i reserva (Sheets) i documenta el desplegament
+  remot legacy de quota pendent de retirar → **es manté**.
+- Adaptadors Netlify/Vercel: encara s'usen per a alta/reserva de la web pública mentre no es tria hosting
+  → **es mantenen** (decisió de hosting pendent fora d'aquesta fase).
+
+---
+
+## Deute diferit
+
+- Endpoints d'escriptura i UI per a tutors, contactes i consentiments (3.5E), alta individual i importació.
+- Tipat estricte de tot `gestio/src` (969 avisos) i del frontend.
+- Històrics de revisions i catàleg públic amb límits fixos documentats (no operatius).
+- `family/` fins a la posada en producció del portal; retirada de l'Apps Script remot (PRODUCTION_BLOCKER).
+- Reautenticació forta amb Access/MFA real, desplegament del Worker `parpallo-gestio` i del binding del portal.
+- Registre de desenvolupament global: en local manual, no obrir dues instàncies de Gestió alhora.
+
+## DECISION REQUIRED (recull)
+
+1. Permís per a llegir contactes i tutors (`participants.profile.read` o `participants.contact.read`).
+2. Catàleg de `consent_code` i textos/versions legals.
+3. Taxonomia final de relació de tutor.
+4. Aprovació a dues persones i caducitat de rols elevats; compatibilitat `TECH_ADMIN` + rols amb dades.
