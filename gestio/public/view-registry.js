@@ -6,14 +6,15 @@
 //     available(caps),    from GET /api/me capabilities; advisory only, the server authorises every call
 //     load(me),           fetch and render when the session starts or is refreshed
 //     unload(),           hide the view and clear any data it rendered (logout, expiry, lost capability)
-//     enter?(me),         optional: refresh when the user navigates to its page
+//     enter?(me, route),  optional: called on every route of its page (hash router, router.js):
+//                         entering the page, sub-routes such as #/activitats/<id>, back/forward
 //   }
 //
 // The registry owns the lifecycle; app.js only composes views. New screens (3.5D Activitats onwards)
 // are added as view modules instead of growing app.js.
 
 /** @typedef {{id: string, page: string, available: (caps: any) => boolean, load: (me: any) => Promise<void>|void,
- *   unload: () => void, enter?: (me: any) => Promise<void>|void}} GestioView */
+ *   unload: () => void, enter?: (me: any, route?: any) => Promise<void>|void}} GestioView */
 
 const signedIn = () => document.body.classList.contains('shell-authenticated');
 
@@ -35,11 +36,11 @@ export function createViewRegistry(views) {
       }
     },
     unloadAll() { for (const view of views) view.unload(); },
-    /** Navigation hook: let views on the entered page refresh themselves. */
-    enter(page, me) {
+    /** Navigation hook: let views on the entered page refresh themselves or follow the route. */
+    enter(page, me, route = null) {
       if (!me) return;
       for (const view of views)
-        if (view.page === page && view.enter && view.available(me.capabilities)) void view.enter(me);
+        if (view.page === page && view.enter && view.available(me.capabilities)) void view.enter(me, route);
     }
   };
 }

@@ -2,7 +2,7 @@
 // Screens live in views/*; this file must not grow new screen logic.
 import { createClient } from './http.js';
 import { setupDashboard } from './dashboard.js';
-import { navigateTo, onNavigate, setShellSession } from './shell.js';
+import { navigateTo, onNavigate, routes, setShellSession } from './shell.js';
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
@@ -36,7 +36,7 @@ const views = createViewRegistry([
   createFeesView({ call, message, reportLoadError }),
   createFeeStatusView({ call, reportLoadError })
 ]);
-onNavigate(page => views.enter(page, currentMe));
+onNavigate((page, route) => views.enter(page, currentMe, route));
 
 function hide() {
   currentMe = null;
@@ -57,6 +57,7 @@ async function loadDevIdentities() {
 }
 $('retryShellData').addEventListener('click', async () => { await refresh(); await loadDevIdentities(); });
 $('loginButton').addEventListener('click', async () => { try { await call('/api/dev/login', { method: 'POST', body: JSON.stringify({ subject: $('identity').value }) }); message('Sessió iniciada.'); await refresh(); } catch (e) { message(e.message); } });
-$('logout').addEventListener('click', async () => { try { await post('/api/logout'); hide(); message('Sessió tancada.'); } catch (e) { message(e.message); } });
+// An explicit logout forgets the route; an expired session keeps it so the next login restores it.
+$('logout').addEventListener('click', async () => { try { await post('/api/logout'); hide(); routes.go({ page: 'inici' }, { replace: true }); message('Sessió tancada.'); } catch (e) { message(e.message); } });
 $('revokeAll').addEventListener('click', async () => { try { await post('/api/me/sessions/revoke-all'); hide(); message('Totes les sessions revocades.'); } catch (e) { message(e.message); } });
 await loadDevIdentities(); await refresh();

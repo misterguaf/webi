@@ -1,3 +1,5 @@
+import { createRouter } from './router.js';
+
 const $ = id => document.getElementById(id);
 const pages = [
   {id:'inici',label:'Inici',icon:'home'},
@@ -23,9 +25,12 @@ let lastTrigger=null;
 let profileReturnFocus=null;
 let sessionActive=false;
 let canCreateActivity=false;
+let contextActionAllowed=true;
 function syncContextAction(){
-  $('newActivity').hidden=!(sessionActive && canCreateActivity && currentPage==='activitats' && !$('activityPanel').hidden);
+  $('newActivity').hidden=!(sessionActive && canCreateActivity && contextActionAllowed && currentPage==='activitats' && !$('activityPanel').hidden);
 }
+// A screen may suppress the shell's contextual action (e.g. the activity detail has its own actions).
+export function setContextAction(enabled){contextActionAllowed=!!enabled;syncContextAction()}
 let themePreference='system';
 const compact=window.matchMedia('(min-width:768px) and (max-width:1179px)');
 const systemDark=window.matchMedia('(prefers-color-scheme: dark)');
@@ -143,9 +148,24 @@ document.addEventListener('keydown',event=>{
     else if(!event.shiftKey && document.activeElement===last){event.preventDefault();first.focus()}
   }
 });
-export function navigateTo(id){
+// Navigation goes through the hash router (router.js): buttons and views call navigateTo(), the router
+// records history, and every route change — including back/forward — is shown by showRoute().
+let currentRoute=null;
+const router=createRouter({onChange:route=>{if(sessionActive)showRoute(route)}});
+export const routes=router;
+export function navigateTo(id,{path=[],query={},replace=false}={}){
+  if(!pages.some(item=>item.id===id) || !sessionActive)return;
+  router.go({page:id,path,query},{replace});
+}
+function showRoute(route){
+  const samePage=currentRoute?.page===route.page && document.body.dataset.page===route.page;
+  currentRoute=route;
+  if(!samePage)showPage(route.page);
+  for(const listener of navigationListeners)listener(route.page,route);
+}
+function showPage(id){
   const page=pages.find(item=>item.id===id);if(!page || !sessionActive)return;
-  currentPage=id;document.body.dataset.page=id;
+  currentPage=id;document.body.dataset.page=id;contextActionAllowed=true;
   for(const section of document.querySelectorAll('.page-main>[data-page]'))section.dataset.active=String(section.dataset.page===id);
   for(const button of document.querySelectorAll('[data-route]')){
     if(button.dataset.route===id)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');
@@ -154,12 +174,18 @@ export function navigateTo(id){
   $('pageTitle').textContent=page.label;
   $('pageSubtitle').hidden=true;
   $('pageHeader').hidden=false;
+  document.title=`${page.label} · Gestió`;
   syncContextAction();
   closeMore();closeProfile();
   window.scrollTo({top:0,behavior:'instant'});
   $('pageMain').classList.remove('page-shift');void $('pageMain').offsetWidth;$('pageMain').classList.add('page-shift');
   $('pageHeader').classList.remove('context-shift');void $('pageHeader').offsetWidth;$('pageHeader').classList.add('context-shift');
-  for(const listener of navigationListeners)listener(id);
+}
+// Screens with their own header (the activity detail) hide the shell heading or set its subtitle.
+export function setPageHeader({hidden=false,title=null,subtitle=null}={}){
+  $('pageHeader').hidden=hidden;
+  if(title!==null)$('pageTitle').textContent=title;
+  $('pageSubtitle').hidden=!subtitle;$('pageSubtitle').textContent=subtitle||'';
 }
 const navigationListeners=new Set();
 export function onNavigate(listener){navigationListeners.add(listener);return ()=>navigationListeners.delete(listener)}
@@ -170,17 +196,19 @@ export function setShellSession(me){
   syncContextAction();
   document.body.classList.toggle('shell-authenticated',sessionActive);
   $('sidebarNav').hidden=!sessionActive;$('sidebarBottom').hidden=!sessionActive;$('mobileNav').hidden=!sessionActive;$('mobileSearch').hidden=!sessionActive;
-  if(!sessionActive){closeSearch({restoreFocus:false});closeProfile();closeMore();currentPage='inici';document.body.dataset.page='login';$('pageTitle').textContent='Accés a Gestió';$('pageHeader').hidden=false;return}
+  if(!sessionActive){closeSearch({restoreFocus:false});closeProfile();closeMore();currentPage='inici';currentRoute=null;document.body.dataset.page='login';$('pageTitle').textContent='Accés a Gestió';$('pageHeader').hidden=false;$('pageSubtitle').hidden=true;document.title='Gestió · Parpalló';return}
   const name=me.user.displayName||'Usuari';
   $('profileName').textContent=name;
   const roleLabels={GROUP_COORDINATOR:'Coordinació general',SECTION_COORDINATOR:'Coordinació de secció',SECTION_DELEGATE:'Delegació de secció',TREASURY:'Tresoreria',SECRETARY:'Secretaria',CRM_MANAGER:'CRM',TECH_ADMIN:'Administració tècnica'};
   $('profileRole').textContent=roleLabels[me.roles[0]?.role_code]||'Compte';
   $('profileAvatar').textContent=name.replace(/\s*\([^)]*\)/g,'').trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('').toLocaleUpperCase('ca');
   $('profileTrigger').setAttribute('aria-label',`Perfil de ${name}`);
-  navigateTo(currentPage);
+  // The hash survives the login screen, so a deep link requested while signed out is restored here.
+  showRoute(router.current());
 }
 
 $('brandLink').addEventListener('click',event=>{event.preventDefault();navigateTo('inici')});
+export function currentRouteOf(){return currentRoute}
 $('openFeeIssues').addEventListener('click',()=>{if($('feePanel').hidden)return;navigateTo('quotes');$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
 
 const emptyGroups={activitats:['activityPanel'],inscripcions:['registrationPanel','paymentPanel'],quotes:['feePanel','feeStatusPanel'],participants:['participants']};
