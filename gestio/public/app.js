@@ -6,7 +6,8 @@ import { navigateTo, onNavigate, routes, setContextAction, setPageHeader, setShe
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
-import { createAccountView, createDashboardView, createFeeStatusView, createFeesView, createParticipantsView } from './views/simple-views.js';
+import { createAccountView, createDashboardView, createFeeStatusView, createFeesView } from './views/simple-views.js';
+import { createParticipantsView } from './views/participants.js';
 
 const $ = id => document.getElementById(id);
 const message = value => { $('message').textContent = value; };
@@ -32,7 +33,7 @@ const dashboard = setupDashboard({ call, navigateTo,
 const views = createViewRegistry([
   createDashboardView(dashboard),
   createAccountView({ call, message, reportLoadError, reload: () => refresh() }),
-  createParticipantsView({ call, reportLoadError }),
+  createParticipantsView({ call, reportLoadError, routes, setPageHeader, setContextAction }),
   activities,
   registrations,
   createFeesView({ call, message, reportLoadError }),

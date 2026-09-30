@@ -68,6 +68,7 @@ export async function find(db,context,requestId,id,now=Date.now()) {
     birthDate:row.birth_date, version:row.version, createdAt:row.created_at, updatedAt:row.updated_at,
     provenance:row.provenance, provenanceNote:row.provenance_note,
     completeness:completeness(row,{canSeeContacts,now}),
+    feeStatus:await feeStatus(db,context,row.current_section_id,id),
     sectionHistory:await participants.sectionHistory(db,id)
   };
 }
@@ -77,6 +78,17 @@ export async function healthPolicyCheck(db,context,requestId,participantId,purpo
   const decision=await authorize(db,context,{permission:'health.record.read',participantId,purpose});
   await decisionEvent(db,context,requestId,decision.allow,decision.reason,participantId);
   return {allowed:decision.allow,reason:decision.reason};
+}
+
+// Basic fee status per round for the record (§11). Reuses the existing projection and permissions;
+// never amounts. Visible to a basic-status reader of the section or a group-wide finance reader.
+async function feeStatus(db,context,sectionId,participantId) {
+  const status=await authorize(db,context,{permission:'finance.fee.status.read',mode:'list'});
+  const full=await authorize(db,context,{permission:'finance.fee.read',mode:'list'});
+  if (!covers(status,sectionId) && !covers(full,sectionId)) return null;
+  return (await db.prepare(`SELECT r.code AS round, v.status FROM annual_fee_obligation_status v
+    JOIN annual_fee_round r ON r.id=v.round_id WHERE v.participant_id=? ORDER BY r.code DESC LIMIT 4`)
+    .bind(participantId).all()).results.map(row=>({round:row.round,status:row.status}));
 }
 
 // ---------------------------------------------------------------- validation

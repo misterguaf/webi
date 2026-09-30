@@ -1,6 +1,5 @@
 // Small views: account/sessions, participants, fees (full or basic), dashboard. Each follows the
 // view contract documented in ../view-registry.js.
-import { fetchAllPages } from '../api.js';
 import { setupFees } from '../fees.js';
 import { setupFeeStatus } from '../fee-status.js';
 
@@ -31,16 +30,6 @@ export function createAccountView({ call, message, reportLoadError, reload }) {
     unload: () => { for (const id of ['account', 'sessions', 'notificationPanel']) $(id).hidden = true; } };
 }
 
-export function createParticipantsView({ call, reportLoadError }) {
-  return { id: 'participants', page: 'participants', available: caps => !!caps.participants.read,
-    async load() {
-      try {
-        const data = await fetchAllPages(call, '/api/participants', 'participants'); $('participants').hidden = false;
-        $('participantList').replaceChildren(...data.participants.map(person => { const li = document.createElement('li'); li.textContent = `${person.display_name} · ${person.current_section_id}`; return li; }));
-      } catch (error) { $('participants').hidden = true; reportLoadError(error); }
-    },
-    unload() { $('participants').hidden = true; $('participantList').replaceChildren(); } };
-}
 
 // Full treasury view for group-wide finance readers; review-only mode for delegated payment reviewers.
 export function createFeesView({ call, message, reportLoadError }) {

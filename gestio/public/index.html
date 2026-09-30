@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="/dashboard.css">
   <link rel="stylesheet" href="/fee-status.css">
   <link rel="stylesheet" href="/activities.css">
+  <link rel="stylesheet" href="/participants.css">
   <script src="/theme-init.js"></script>
 </head>
 <body data-page="login">
@@ -61,7 +62,7 @@
   <section id="account" data-page="administracio" hidden><h2 tabindex="-1">El meu compte</h2><div id="profile"></div><h3>Rols vigents</h3><ul id="roles"></ul></section>
   <section id="sessions" data-page="administracio" hidden><h2 tabindex="-1">Les meues sessions</h2><ul id="sessionList"></ul><button id="revokeAll">Tanca totes les sessions</button></section>
   <section class="shell-empty" data-page="participants" data-shell-empty-for="participants" hidden><p>Els participants no estan disponibles en esta sessió.</p></section>
-  <section id="participants" data-page="participants" hidden><h2>Participants autoritzats</h2><p class="muted">Llista filtrada en la consulta D1 segons la secció autoritzada.</p><ul id="participantList"></ul></section>
+  <section id="participantsView" class="participants-view activities-view" data-page="participants" hidden><div id="participantsList"></div><div id="participantDetail" hidden></div></section>
   <section class="shell-empty" data-page="activitats" data-shell-empty-for="activitats" hidden><p>Les activitats no estan disponibles en esta sessió.</p></section>
   <section id="activitiesView" class="activities-view" data-page="activitats" hidden><div id="activitiesList"></div><div id="activityDetail" hidden></div></section>
   <section class="shell-empty" data-page="inscripcions" data-shell-empty-for="inscripcions" hidden><p>Les inscripcions es revisen des de cada activitat, a Activitats.</p></section>

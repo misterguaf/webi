@@ -17,6 +17,7 @@
     "portal/worker.js",
     "portal/auth.js",
     "gestio/public/router.js",
-    "gestio/public/views/activities/model.js"
+    "gestio/public/views/activities/model.js",
+    "gestio/public/views/participants/model.js"
   ]
 }

@@ -211,7 +211,7 @@ $('brandLink').addEventListener('click',event=>{event.preventDefault();navigateT
 export function currentRouteOf(){return currentRoute}
 $('openFeeIssues').addEventListener('click',()=>{if($('feePanel').hidden)return;navigateTo('quotes');$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
 
-const emptyGroups={activitats:['activitiesView'],inscripcions:['paymentPanel'],quotes:['feePanel','feeStatusPanel'],participants:['participants']};
+const emptyGroups={activitats:['activitiesView'],inscripcions:['paymentPanel'],quotes:['feePanel','feeStatusPanel'],participants:['participantsView']};
 function syncEmptyStates(){
   for(const [page,ids] of Object.entries(emptyGroups)){
     const empty=document.querySelector(`[data-shell-empty-for="${page}"]`);
