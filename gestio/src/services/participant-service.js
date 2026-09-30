@@ -146,12 +146,27 @@ export async function createParticipant(db,context,requestId,input,now=Date.now(
   await requirePermission(db,context,requestId,'participants.profile.manage',{sectionId:input.sectionId,resourceType:'participant'});
   if (!await db.prepare('SELECT 1 FROM section WHERE id=?').bind(input.sectionId).first()) throw new AppError(400,'invalid_participant');
   const id=crypto.randomUUID();
+  // Possible duplicates OUTSIDE the creator's scope are never disclosed; they open a Secretaria review
+  // instead (§11.2). In-scope duplicates are shown in the UI before creating. Group-wide creators see
+  // every match in the UI, so no review is opened for them.
+  const scope=await authorize(db,context,{permission:'participants.profile.manage',mode:'list'});
+  let duplicateOf=null;
+  if (scope.allow && scope.sections!==null) {
+    duplicateOf=(await db.prepare(`SELECT id FROM participant WHERE status='ACTIVE' AND lower(display_name)=lower(?)
+      ${birthDate?'AND birth_date=?':''} AND current_section_id NOT IN (${scope.sections.map(()=>'?').join(',')}) LIMIT 1`)
+      .bind(name,...(birthDate?[birthDate]:[]),...scope.sections).first())?.id??null;
+  }
+  const reviewId=duplicateOf?crypto.randomUUID():null;
   await db.batch([
     db.prepare(`INSERT INTO participant(id,display_name,current_section_id,status,birth_date,version,created_at,updated_at,created_by,provenance,provenance_note)
       VALUES(?,?,?,'ACTIVE',?,1,?,?,?,?,?)`).bind(id,name,input.sectionId,birthDate,now,now,context.userId,provenance,provenanceNote),
-    statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'DATA_CREATED',resourceType:'participant',resourceId:id,occurredAt:now})
+    statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'DATA_CREATED',resourceType:'participant',resourceId:id,occurredAt:now}),
+    ...(duplicateOf?[
+      db.prepare(`INSERT INTO participant_review(id,kind,status,participant_id,duplicate_of,detail,created_by,created_at)
+        VALUES(?,'POSSIBLE_DUPLICATE_PARTICIPANT','OPEN',?,?,?,?,?)`).bind(reviewId,id,duplicateOf,'Possible participant duplicat en una altra secció',context.userId,now),
+      statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'DATA_CREATED',resourceType:'participant_review',resourceId:reviewId,occurredAt:now})]:[])
   ]);
-  return {id,version:1};
+  return {id,version:1,duplicateReview:!!duplicateOf};
 }
 export async function updateParticipant(db,context,requestId,id,input,now=Date.now()) {
   requireUuid(id);

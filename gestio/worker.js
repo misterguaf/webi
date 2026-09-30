@@ -3,6 +3,8 @@ import * as identities from './src/domains/auth/repository.js';
 import * as organization from './src/domains/organization/repository.js';
 import * as auth from './src/services/auth-service.js';
 import * as participants from './src/services/participant-service.js';
+import * as family from './src/services/participant-family-service.js';
+import * as participantReviews from './src/services/participant-review-service.js';
 import * as audit from './src/services/audit-service.js';
 import * as security from './src/services/security-service.js';
 import * as activities from './src/services/activity-service.js';
@@ -112,6 +114,38 @@ async function api(request,env,url,requestId) {
   if (match && method==='POST') return json({...await participants.setParticipantActive(db,context,requestId,match[1],match[2]==='reactivate',await readJson(request)),requestId});
   match=path.match(/^\/api\/participants\/([^/]+)\/section$/);
   if (match && method==='POST') return json({...await participants.changeParticipantSection(db,context,requestId,match[1],await readJson(request)),requestId});
+  // 3.5E family: guardians, contacts and legal representation (participant-scoped).
+  match=path.match(/^\/api\/participants\/([^/]+)\/familia$/);
+  if (match && method==='GET') return json({...await family.familia(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/representation$/);
+  if (match && method==='GET') return json({history:await family.representationHistory(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/guardians$/);
+  if (match && method==='POST') return json({...await family.addGuardian(db,context,requestId,match[1],await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/participants\/([^/]+)\/guardians\/([^/]+)$/);
+  if (match && method==='DELETE') return json({...await family.endGuardianRelationship(db,context,requestId,match[1],match[2]),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/guardians\/([^/]+)\/representation$/);
+  if (match && method==='POST') return json({...await family.setRepresentation(db,context,requestId,match[1],match[2],await readJson(request)),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/guardians\/([^/]+)\/accredit$/);
+  if (match && method==='POST') return json({...await family.accreditRepresentation(db,context,requestId,match[1],match[2],await readJson(request)),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/contacts$/);
+  if (match && method==='POST') return json({...await family.addContact(db,context,requestId,match[1],await readJson(request)),requestId},201);
+  match=path.match(/^\/api\/participants\/([^/]+)\/contacts\/([^/]+)$/);
+  if (match && method==='DELETE') return json({...await family.endContact(db,context,requestId,match[1],match[2]),requestId});
+  match=path.match(/^\/api\/contacts\/([^/]+)$/);
+  if (match && method==='GET') return json({contact:await family.consultContact(db,context,requestId,match[1]),requestId});
+  // 3.5E administrative review queue (Secretaria).
+  if (path==='/api/participant-reviews' && method==='GET') return json({...await participantReviews.listReviews(db,context,requestId,url.searchParams),requestId});
+  if (path==='/api/participant-reviews/summary' && method==='GET') return json({...await participantReviews.reviewSummary(db,context,requestId),requestId});
+  match=path.match(/^\/api\/participant-reviews\/([^/]+)\/(acknowledge|incidence|escalate|resolve|apply|reject)$/);
+  if (match && method==='POST') {
+    const id=match[1];
+    if (match[2]==='acknowledge') return json({...await participantReviews.acknowledgeReview(db,context,requestId,id),requestId});
+    if (match[2]==='incidence') return json({...await participantReviews.raiseIncidence(db,context,requestId,id,await readJson(request)),requestId});
+    if (match[2]==='escalate') return json({...await participantReviews.escalateReview(db,context,requestId,id),requestId});
+    if (match[2]==='resolve') return json({...await participantReviews.resolveReview(db,context,requestId,id),requestId});
+    if (match[2]==='apply') return json({...await participantReviews.applyChangeRequest(db,context,requestId,id),requestId});
+    return json({...await participantReviews.rejectChangeRequest(db,context,requestId,id),requestId});
+  }
   if (path==='/api/dev/policy/health' && method==='POST' && devEnabled(env,url)) {
     const body=await readJson(request);
     return json({...await participants.healthPolicyCheck(db,context,requestId,body.participantId,body.purpose),requestId});
