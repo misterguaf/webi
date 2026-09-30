@@ -20,7 +20,7 @@ class NodeStub {
   reset() {this.resetCount=(this.resetCount||0)+1;}
 }
 
-test('shell guards unavailable controls, closed activities and invalid payment reviews', async () => {
+test('shell guards unavailable controls, session expiry and invalid payment reviews', async () => {
   const nodes=new Map();
   const node=id=>{if(!nodes.has(id))nodes.set(id,new NodeStub(id));return nodes.get(id);};
   const observers=new Map();
@@ -37,6 +37,7 @@ test('shell guards unavailable controls, closed activities and invalid payment r
       body:new NodeStub('body'),documentElement:new NodeStub('html'),
       getElementById:node,
       createElement:()=>{const element=new NodeStub();routeButtons.push(element);return element;},
+      createElementNS:()=>new NodeStub(),
       querySelector:selector=>emptyStates.get(selector.match(/data-shell-empty-for="([^"]+)"/)?.[1]),
       querySelectorAll:selector=>selector==='[data-theme-choice]'?themes:selector==='[data-route]'?routeButtons:[],
       addEventListener(){}
@@ -78,30 +79,18 @@ test('shell guards unavailable controls, closed activities and invalid payment r
     assert.equal(node('message').textContent||'', '', 'initial unsigned visit has no expiry message');
     shell.setShellSession({user:{displayName:'Synthetic Coordinator'},roles:[]});
     node('login').hidden=true;
-    node('activityForm').hidden=false;
+    node('activitiesView').hidden=false;
     await node('logout').listeners.get('click')();
     assert.equal(globalThis.document.body.classList.contains('shell-authenticated'),false);
     assert.equal(node('login').hidden,false);
-    assert.equal(node('activityForm').hidden,true);
+    assert.equal(node('activitiesView').hidden,true,'Activitats is unloaded when the session ends');
+    assert.equal(node('activityDetail').children.length,0);
     assert.equal(node('message').textContent,'La sessió ha caducat. Torna a entrar.');
     meSucceeds=true;
     await node('retryShellData').listeners.get('click')();
     assert.equal(globalThis.document.body.classList.contains('shell-authenticated'),false,'expired session during refresh must leave the shell signed out');
     assert.equal(node('notificationPanel').hidden,true,'refresh must not reveal administration after a 401');
     fixture='ui';
-    node('activitySections').options=[];
-    await node('reloadActivities').listeners.get('click')();
-    const activityRow=node('activityList').children[0];
-    assert.equal(activityRow.children[0].textContent,'Consulta');
-    await activityRow.children[0].listeners.get('click')();
-    assert.equal(node('activityName').disabled,true);
-    assert.equal(node('activitySave').hidden,true);
-    assert.equal(node('activityClosedNotice').hidden,false);
-    assert.match(node('activityFormTitle').textContent,/^Consulta:/);
-    node('newActivity').listeners.get('click')();
-    assert.equal(node('activityName').disabled,false);
-    assert.equal(node('activitySave').hidden,false);
-    assert.equal(node('activityClosedNotice').hidden,true);
     const visiblePaymentActions=()=>node('paymentList').children[0].children.filter(child=>child.listeners.has('click')).map(child=>child.textContent);
     await node('reloadPayments').listeners.get('click')();
     assert.deepEqual(visiblePaymentActions(),['Verifica'],'ISSUE cannot be marked as ISSUE again');

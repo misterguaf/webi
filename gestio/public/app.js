@@ -2,7 +2,7 @@
 // Screens live in views/*; this file must not grow new screen logic.
 import { createClient } from './http.js';
 import { setupDashboard } from './dashboard.js';
-import { navigateTo, onNavigate, routes, setShellSession } from './shell.js';
+import { navigateTo, onNavigate, routes, setContextAction, setPageHeader, setShellSession } from './shell.js';
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
@@ -19,10 +19,12 @@ const reportLoadError = error => { if (error?.status !== 401 && error?.status !=
 let currentMe = null;
 
 const registrations = createRegistrationsView({ call, message, reportLoadError, navigateTo });
-const activities = createActivitiesView({ call, post, message, reportLoadError, openRegistrations: registrations.openRegistrations });
+const activities = createActivitiesView({ call, message, reportLoadError, routes, setPageHeader, setContextAction });
+// Dashboard entry points land on the activity detail (3.5D), never on a form.
 const dashboard = setupDashboard({ call, navigateTo,
-  openActivity: async id => { navigateTo('activitats'); await activities.open(id); $('activityForm').scrollIntoView({ block: 'start', behavior: 'instant' }); },
-  openRegistrations: (id, pendingOnly, activityName) => registrations.openRegistrations(id, pendingOnly, activityName),
+  openActivity: id => activities.openActivity(id),
+  openRegistrations: id => activities.openActivity(id, { tab: 'inscripcions', query: { filtre: 'per-revisar' } }),
+  createActivity: () => { navigateTo('activitats'); activities.openCreate(); },
   openPayments: async () => { navigateTo('inscripcions'); await registrations.loadPayments(); $('paymentPanel').scrollIntoView({ block: 'start', behavior: 'instant' }); },
   openFeeIssues: () => { navigateTo('quotes'); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); }
 });

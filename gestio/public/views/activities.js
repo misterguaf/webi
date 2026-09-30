@@ -1,82 +1,115 @@
-// Activitats (legacy UI, unchanged behaviour; the 3.5D redesign replaces this module's rendering).
+// Activitats (3.5D, docs/design/screens/ACTIVITIES.md). View module following view-registry.js:
+// the controller owns the #/activitats routes and composes the list, the activity detail and the
+// Nova activitat / Editar drawer. It replaces the legacy screen entirely.
 import { fetchAllPages } from '../api.js';
-import { label } from '../labels.js';
+import { announce } from '../ui.js';
+import { createActivityList } from './activities/list.js';
+import { canCreate, filtersToQuery, parseFilters, scopeSubtitle } from './activities/model.js';
 
 const $ = id => document.getElementById(id);
-const dateInput = value => { const d = new Date(value), two = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`; };
-const dateValue = id => new Date($(id).value).getTime();
-const FORM_FIELDS = ['activityName', 'activityAudience', 'activitySections', 'activityLocation', 'activityStart', 'activityEnd',
-  'activityDeadline', 'activityPrice', 'activityDescription', 'activityMaterials', 'activityNotice', 'activityTransport', 'activityTransportPrice'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const STALE_AFTER_MS = 30000;
 
-export function createActivitiesView({ call, post, message, reportLoadError, openRegistrations }) {
-  let editing = null;
-  async function load() {
-    try {
-      const data = await fetchAllPages(call, '/api/activities', 'activities'); $('activityPanel').hidden = false;
-      $('activityList').replaceChildren(...data.activities.map(activity => {
-        const li = document.createElement('li'); li.textContent = `${activity.name} · ${label(activity.status)} · ${activity.audience === 'GENERAL' ? label('GENERAL') : activity.sections} · ${(activity.price_cents / 100).toFixed(2)} € `;
-        const edit = document.createElement('button'); edit.textContent = activity.status === 'CLOSED' ? 'Consulta' : 'Edita'; edit.addEventListener('click', () => open(activity.id));
-        const registrations = document.createElement('button'); registrations.textContent = 'Inscripcions'; registrations.addEventListener('click', () => openRegistrations(activity.id, false, activity.name));
-        li.append(edit, registrations); return li;
-      }));
-    } catch (error) { $('activityPanel').hidden = true; reportLoadError(error); }
-  }
-  function setReadOnly(closed) {
-    for (const id of FORM_FIELDS) $(id).disabled = closed;
-    $('activitySave').hidden = closed;
-    $('activityClosedNotice').hidden = !closed;
-  }
-  async function open(id) {
-    try {
-      const { activity } = await call(`/api/activities/${id}`); editing = id; $('activityForm').hidden = false;
-      const closed = activity.status === 'CLOSED';
-      setReadOnly(closed);
-      $('activityFormTitle').textContent = `${closed ? 'Consulta' : 'Edita'}: ${activity.name}`;
-      $('activityName').value = activity.name; $('activityAudience').value = activity.audience;
-      for (const option of $('activitySections').options) option.selected = activity.sectionIds.includes(option.value);
-      $('activityLocation').value = activity.location; $('activityStart').value = dateInput(activity.starts_at);
-      $('activityEnd').value = dateInput(activity.ends_at); $('activityDeadline').value = dateInput(activity.registration_deadline);
-      $('activityPrice').value = activity.price_cents; $('activityDescription').value = activity.short_description;
-      $('activityMaterials').value = activity.materials; $('activityNotice').value = activity.special_notice;
-      $('activityTransport').checked = activity.transportOptions.length > 0;
-      $('activityTransportPrice').value = activity.transportOptions.find(option => option.code === 'GROUP')?.price_adjustment_cents ?? 0;
-      $('publishActivity').hidden = activity.status !== 'DRAFT'; $('closeActivity').hidden = activity.status !== 'PUBLISHED';
-    } catch (error) { message(error.message); }
-  }
-  function unload() { $('activityPanel').hidden = true; $('activityForm').hidden = true; $('activityForm').reset(); editing = null; }
+export function createActivitiesView({ call, reportLoadError, routes, setPageHeader, setContextAction }) {
+  const view = $('activitiesView'), listRoot = $('activitiesList'), detailRoot = $('activityDetail');
+  let me = null, rows = null, listError = null, loading = null, loadedAt = 0, route = { page: 'activitats', path: [], query: {} };
+  let listScroll = 0, lastOpened = null, highlight = null, wasOnList = false;
 
-  $('newActivity').addEventListener('click', () => {
-    editing = null; $('activityForm').reset(); $('activityForm').hidden = false;
-    setReadOnly(false);
-    $('activityFormTitle').textContent = 'Activitat nova'; $('publishActivity').hidden = true; $('closeActivity').hidden = true;
-    $('activityForm').scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
-    $('activityName').focus({ preventScroll: true });
+  const list = createActivityList({ root: listRoot,
+    onFilters: filters => routes.go({ page: 'activitats', query: filtersToQuery(filters) }, { replace: true }),
+    onOpen: (id, event) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      event.preventDefault();
+      openActivity(id);
+    },
+    onCreate: () => openCreate(),
+    onRetry: () => void refresh({ force: true })
   });
-  $('reloadActivities').addEventListener('click', load);
-  $('activityForm').addEventListener('submit', async event => {
-    event.preventDefault();
-    if ($('activitySave').hidden) return;
-    const body = { name: $('activityName').value, audience: $('activityAudience').value,
-      sectionIds: $('activityAudience').value === 'GENERAL' ? [] : [...$('activitySections').selectedOptions].map(option => option.value),
-      location: $('activityLocation').value, startsAt: dateValue('activityStart'), endsAt: dateValue('activityEnd'),
-      registrationDeadline: dateValue('activityDeadline'), priceCents: Number($('activityPrice').value),
-      shortDescription: $('activityDescription').value, materials: $('activityMaterials').value, specialNotice: $('activityNotice').value,
-      transportOptions: $('activityTransport').checked ? [{ code: 'GROUP', adjustmentCents: Number($('activityTransportPrice').value) },
-        { code: 'FAMILY', adjustmentCents: 0 }] : [] };
-    try {
-      const result = await call(editing ? `/api/activities/${editing}` : '/api/activities',
-        { method: editing ? 'PATCH' : 'POST', body: JSON.stringify(body) });
-      editing = result.id; message('Activitat guardada.'); await load(); await open(result.id);
-    } catch (error) { message(error.message); }
-  });
-  for (const [button, action] of [['publishActivity', 'publish'], ['closeActivity', 'close']]) {
-    $(button).addEventListener('click', async () => { if (!editing) return; try {
-      await post(`/api/activities/${editing}/${action}`); message('Estat actualitzat.'); await load(); await open(editing);
-    } catch (error) { message(error.message); } });
+
+  function openActivity(id, { tab = null, query = {} } = {}) {
+    listScroll = window.scrollY; lastOpened = id;
+    routes.go({ page: 'activitats', path: tab ? [id, tab] : [id], query });
+  }
+  function openCreate() { /* Nova activitat drawer: added with the editor (3.5D batch 4). */ }
+  $('newActivity').addEventListener('click', () => openCreate());
+
+  async function refresh({ force = false } = {}) {
+    if (!me) return;
+    if (loading) return loading;
+    if (!force && rows && Date.now() - loadedAt < STALE_AFTER_MS) return;
+    listError = null;
+    loading = (async () => {
+      renderRoute();
+      try {
+        const data = await fetchAllPages(call, '/api/activities', 'activities');
+        rows = data.activities; loadedAt = Date.now();
+      } catch (error) {
+        listError = error;
+        if (!rows) reportLoadError(error);
+      } finally { loading = null; }
+      renderRoute();
+    })();
+    return loading;
   }
 
-  return { id: 'activities', page: 'activitats',
+  // Page chrome (header, title, URL) is touched only while Activitats is the page on screen: the list
+  // may also load in the background when the session starts on another page.
+  const onScreen = () => document.body.dataset.page === 'activitats';
+  function renderList() {
+    const filters = parseFilters(route.query);
+    listRoot.hidden = false; detailRoot.hidden = true;
+    if (onScreen()) {
+      // Normalise unknown filter values in the URL without adding history.
+      if (JSON.stringify(filtersToQuery(filters)) !== JSON.stringify(route.query)) { routes.go({ page: 'activitats', query: filtersToQuery(filters) }, { replace: true }); return; }
+      setPageHeader({ title: 'Activitats', subtitle: scopeSubtitle(me.capabilities) });
+      setContextAction(canCreate(me.capabilities));
+      document.title = 'Activitats · Gestió';
+    }
+    list.render({ rows, caps: me.capabilities, query: route.query, loading: !!loading, error: listError, highlight });
+    highlight = null;
+  }
+  function renderDetail(id) {
+    listRoot.hidden = true; detailRoot.hidden = false;
+    if (onScreen()) setContextAction(false);
+    detailRoot.textContent = 'Obrint l’activitat…';
+    void id;
+  }
+  function renderRoute() {
+    if (!me) return;
+    const [id] = route.path;
+    if (id && UUID.test(id)) renderDetail(id);
+    else renderList();
+  }
+
+  return {
+    id: 'activities', page: 'activitats',
     available: caps => !!(caps.activities.read || caps.activities.manage || caps.activities.manageGeneral),
-    load, unload, open };
+    async load(nextMe) {
+      me = nextMe; view.hidden = false;
+      await refresh({ force: true });
+    },
+    enter(nextMe, nextRoute) {
+      me = nextMe; view.hidden = false;
+      const fromDetail = !!route.path[0], toList = !nextRoute?.path?.[0];
+      route = nextRoute ?? { page: 'activitats', path: [], query: {} };
+      renderRoute();
+      if (toList) {
+        void refresh();
+        if (fromDetail) {
+          window.scrollTo({ top: listScroll, behavior: 'instant' });
+          if (lastOpened) list.focusRow(lastOpened);
+        } else if (!wasOnList) $('pageTitle').focus({ preventScroll: true });
+        wasOnList = true;
+      } else {
+        wasOnList = false;
+        announce(document.title);
+      }
+    },
+    unload() {
+      me = null; rows = null; listError = null; loadedAt = 0; view.hidden = true;
+      list.clear(); detailRoot.replaceChildren();
+      setContextAction(true);
+    },
+    openActivity, openCreate
+  };
 }

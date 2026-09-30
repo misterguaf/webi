@@ -20,7 +20,8 @@ export function createClient({ onUnauthorized }) {
         const error = new Error('La sessió ha caducat. Torna a entrar.'); error.status = 401; throw error;
       }
       const error = new Error(response.status >= 500 ? 'No s’ha pogut completar l’operació. Torna-ho a provar.' : `${data.error || 'error'} · ${data.requestId || ''}`);
-      error.status = response.status; throw error;
+      // Stable server code (e.g. stale_activity) so screens can map it to human copy.
+      error.status = response.status; error.code = typeof data.error === 'string' ? data.error : null; throw error;
     }
     return data;
   }

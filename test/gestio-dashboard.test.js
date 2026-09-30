@@ -40,7 +40,8 @@ function harness(responses){
     if(result===undefined)throw forbidden();return result;
   },navigateTo:id=>navigation.push(id),openActivity:id=>opened.push(['activity',id]),
   openRegistrations:(id,filtered,name)=>opened.push(['registrations',id,filtered,name]),
-  openPayments:()=>opened.push(['payments']),openFeeIssues:()=>opened.push(['fees'])});
+  openPayments:()=>opened.push(['payments']),openFeeIssues:()=>opened.push(['fees']),
+  createActivity:()=>opened.push(['create'])});
   return {app,node:id=>nodes.get(id),opened,navigation,calls,restore:()=>{globalThis.document=original}};
 }
 
@@ -124,7 +125,7 @@ test('dashboard shows creation from capabilities, independent fee metric and loc
     assert.match(h.node('dashboardAttention').textContent,/No s’han pogut comprovar/);
     assert.doesNotMatch(h.node('dashboardAttention').textContent,/Tot al dia|server error/);
     await h.node('dashboardNewActivity').click();
-    assert.deepEqual(h.navigation,['activitats']);
+    assert.deepEqual(h.opened.at(-1),['create'],'Nova activitat opens the new create flow, not the legacy form');
     assert.ok(!h.calls.includes('/api/activities/general'),'no detail read is used as a capability heuristic');
   }finally{h.restore()}
 });

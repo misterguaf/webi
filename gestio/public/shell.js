@@ -27,7 +27,7 @@ let sessionActive=false;
 let canCreateActivity=false;
 let contextActionAllowed=true;
 function syncContextAction(){
-  $('newActivity').hidden=!(sessionActive && canCreateActivity && contextActionAllowed && currentPage==='activitats' && !$('activityPanel').hidden);
+  $('newActivity').hidden=!(sessionActive && canCreateActivity && contextActionAllowed && currentPage==='activitats' && !$('activitiesView').hidden);
 }
 // A screen may suppress the shell's contextual action (e.g. the activity detail has its own actions).
 export function setContextAction(enabled){contextActionAllowed=!!enabled;syncContextAction()}
@@ -211,7 +211,7 @@ $('brandLink').addEventListener('click',event=>{event.preventDefault();navigateT
 export function currentRouteOf(){return currentRoute}
 $('openFeeIssues').addEventListener('click',()=>{if($('feePanel').hidden)return;navigateTo('quotes');$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
 
-const emptyGroups={activitats:['activityPanel'],inscripcions:['registrationPanel','paymentPanel'],quotes:['feePanel','feeStatusPanel'],participants:['participants']};
+const emptyGroups={activitats:['activitiesView'],inscripcions:['registrationPanel','paymentPanel'],quotes:['feePanel','feeStatusPanel'],participants:['participants']};
 function syncEmptyStates(){
   for(const [page,ids] of Object.entries(emptyGroups)){
     const empty=document.querySelector(`[data-shell-empty-for="${page}"]`);

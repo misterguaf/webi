@@ -11,7 +11,7 @@ const dateRange=activity=>{
 };
 const isUnavailable=error=>error?.status===403 || error?.status===404;
 
-export function setupDashboard({call,navigateTo,openActivity,openRegistrations,openPayments,openFeeIssues}) {
+export function setupDashboard({call,navigateTo,openActivity,openRegistrations,openPayments,openFeeIssues,createActivity}) {
   let generation=0;
   let identity=null;
   let attention={registrations:[],payments:null,fees:null};
@@ -191,6 +191,6 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
   function hide(){generation++;identity=null;$('dashboard').hidden=true;$('dashboardNewActivity').hidden=true;$('dashboardFees').replaceChildren();}
   $('dashboardSeeActivities').addEventListener('click',()=>navigateTo('activitats'));
   $('dashboardSeeFees').addEventListener('click',()=>navigateTo('quotes'));
-  $('dashboardNewActivity').addEventListener('click',()=>{navigateTo('activitats');$('newActivity').click();});
+  $('dashboardNewActivity').addEventListener('click',()=>createActivity());
   return {load,hide};
 }
