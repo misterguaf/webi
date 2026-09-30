@@ -87,12 +87,15 @@ export function createActivityDetail({ root, call, caps, sections, go, back, onE
       message ? h('p', { className: 'detail-message', attrs: { role: 'status' }, text: message }) : null);
     message = null;
 
+    // Keyboard users switching tabs keep focus on the tab bar across the re-render.
+    const tabHadFocus = root.contains(document.activeElement) && document.activeElement?.getAttribute('role') === 'tab';
     const body = activity.status === 'DRAFT' ? readiness(activity) : summary(activity);
     const content = h('div', { className: 'detail-tabpanel', attrs: tabs.length ? { role: 'tabpanel', id: 'activityTabPanel', 'aria-labelledby': `tab-${tab}` } : {} });
     root.replaceChildren(h('article', { className: 'activity-detail' }, header, body, tabs.length ? tabBar(activity, tabs, tab) : null, content));
     if (tab === 'inscripcions') registrations.render(content, activity, query);
     else content.append(information(activity));
-    if (focus) title.focus({ preventScroll: true });
+    if (tabHadFocus) root.querySelector(`#tab-${tab}`)?.focus({ preventScroll: true });
+    else if (focus) title.focus({ preventScroll: true });
   }
 
   // ---- actions per state and capability (§10.1)
@@ -215,7 +218,6 @@ export function createActivityDetail({ root, call, caps, sections, go, back, onE
         event.preventDefault();
         const target = buttons[(next + buttons.length) % buttons.length];
         select(target.dataset.tab);
-        requestAnimationFrame(() => root.querySelector(`#tab-${target.dataset.tab}`)?.focus());
       });
     }
     return h('div', { className: 'tabs', attrs: { role: 'tablist', 'aria-label': 'Seccions de l’activitat' } }, buttons);
