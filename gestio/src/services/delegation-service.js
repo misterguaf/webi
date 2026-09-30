@@ -7,6 +7,10 @@ import { AppError, requireFresh, requirePermission, requireUuid, validUuid } fro
 const DELEGABLE=new Set(['activities.registration.review','finance.payment.verify','finance.fee.payment.review',
   'participants.profile.read','participants.profile.manage','participants.contact.read','participants.contact.manage',
   'participants.guardian.manage']);
+// 3.5E delegation duration: 90 days by default, up to 365 days, always with an expiry. Never indefinite.
+// The maximum matches the delegate-role expiry cap (security-service) so the role never expires first.
+const DAY=24*60*60*1000;
+export const DELEGATION_DEFAULT_MS=90*DAY, DELEGATION_MAX_MS=365*DAY;
 const reference=value=>synthetic.reference(value);
 async function active(db,id) {
   return db.prepare("SELECT id FROM app_user WHERE id=? AND status='ACTIVE'").bind(id).first();
@@ -14,11 +18,13 @@ async function active(db,id) {
 export async function grantDelegation(db,context,session,requestId,input,now=Date.now()) {
   await requirePermission(db,context,requestId,'auth.permission.provision',{resourceType:'delegated_permission'});
   requireFresh(session,now);
+  // expiresAt is optional: default 90 days, maximum 365, always in the future. Never indefinite.
+  const expiresAt=input?.expiresAt==null?now+DELEGATION_DEFAULT_MS:input.expiresAt;
   if (!input || Object.keys(input).some(key=>!['userId','permissionCode','sectionId','authorizedBy','authorizationReference','expiresAt'].includes(key)) ||
       !validUuid(input.userId) || !validUuid(input.authorizedBy) ||
       (input.sectionId!=null && !validUuid(input.sectionId)) || !DELEGABLE.has(input.permissionCode) ||
-      !reference(input.authorizationReference) || !Number.isSafeInteger(input.expiresAt) ||
-      input.expiresAt<=now || input.expiresAt>now+90*24*60*60*1000) throw new AppError(400,'invalid_delegation');
+      !reference(input.authorizationReference) || !Number.isSafeInteger(expiresAt) ||
+      expiresAt<=now || expiresAt>now+DELEGATION_MAX_MS) throw new AppError(400,'invalid_delegation');
   if (!await active(db,input.userId) || !await active(db,input.authorizedBy)) throw new AppError(400,'invalid_delegation');
   // Separation of duties (M3): nobody delegates to themselves, as provisioner or as named authoriser.
   if (input.userId===context.userId || input.userId===input.authorizedBy) throw new AppError(403,'separation_of_duties');
@@ -39,7 +45,7 @@ export async function grantDelegation(db,context,session,requestId,input,now=Dat
     db.prepare(`INSERT INTO delegated_permission(id,user_id,permission_code,section_id,authorized_by,provisioned_by,
       authorization_reference,granted_at,expires_at) VALUES(?,?,?,?,?,?,?,?,?)`)
       .bind(id,input.userId,input.permissionCode,sectionId,input.authorizedBy,context.userId,
-        input.authorizationReference,now,input.expiresAt),
+        input.authorizationReference,now,expiresAt),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
       action:'DELEGATED_PERMISSION_GRANTED',resourceType:'delegated_permission',resourceId:id,occurredAt:now}),
     ...(selfAuthorized?confirmationStatements(db,context,requestId,id,now):[])

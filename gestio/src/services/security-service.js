@@ -28,7 +28,10 @@ async function otherActiveCoordinators(db,userId,now) {
     AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)`).bind(userId,now,now).first()).n;
 }
 function notSelf(context,targetId) { if (context.userId===targetId) throw new AppError(403,'self_change_forbidden'); }
-function expiry(value,now,{required=false,maxMs=90*24*60*60*1000}={}) {
+// 3.5E: role assignments may run up to a year, matching the maximum delegation duration, so a
+// SECTION_DELEGATE role never expires before a valid delegation that relies on it.
+const ROLE_EXPIRY_MAX_MS=365*24*60*60*1000;
+function expiry(value,now,{required=false,maxMs=ROLE_EXPIRY_MAX_MS}={}) {
   if (value==null && !required) return null;
   if (!Number.isSafeInteger(value) || value<=now || value>now+maxMs) throw new AppError(400,'invalid_expiry');
   return value;

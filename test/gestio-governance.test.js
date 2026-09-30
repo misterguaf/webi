@@ -38,6 +38,30 @@ test('a provisioner cannot attribute authority: the named authoriser confirms, t
   } finally { f.close(); }
 });
 
+test('3.5E delegation duration: default 90 days, maximum 365, never indefinite', async () => {
+  const f = fixture();
+  try {
+    f.sql.exec(`DELETE FROM delegated_permission WHERE id='${id(741)}'`);
+    for (const user of [102, 107]) await f.login(user);
+    const DAY = 86400000, grant = body => f.request(107, '/api/delegations', { method: 'POST', body: delegation({ authorizedBy: id(102), ...body }) });
+    // No expiry → defaults to 90 days.
+    const before = Date.now();
+    const def = await grant({ expiresAt: undefined });
+    assert.equal(def.status, 201);
+    const expiry = f.sql.prepare('SELECT expires_at FROM delegated_permission WHERE id=?').get(def.data.id).expires_at;
+    assert.ok(expiry >= before + 90 * DAY - 1000 && expiry <= Date.now() + 90 * DAY + 1000, 'default is 90 days');
+    f.sql.exec(`DELETE FROM delegated_permission WHERE id='${def.data.id}'`); // free the slot (one active per user/permission/section)
+    // A shorter and a year-long delegation are accepted; beyond 365 days and a past date are refused.
+    assert.equal((await grant({ expiresAt: later(7) })).status, 201);
+    f.sql.exec('DELETE FROM delegated_permission');
+    assert.equal((await grant({ expiresAt: later(365) })).status, 201);
+    f.sql.exec('DELETE FROM delegated_permission');
+    assert.deepEqual([(await grant({ expiresAt: later(366) })).status], [400], 'beyond one year is refused');
+    assert.equal((await grant({ expiresAt: later(-1) })).status, 400, 'a past expiry is refused');
+    assert.equal((await grant({ expiresAt: null })).status, 201, 'null defaults, never indefinite');
+  } finally { f.close(); }
+});
+
 test('nobody ratifies what they provisioned; self-authorised provisioning still needs a second person', async () => {
   const f = fixture();
   try {
