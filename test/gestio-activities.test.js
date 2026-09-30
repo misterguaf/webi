@@ -332,6 +332,17 @@ test('transport: arranged by the family always costs 0 €, on create and on edi
   } finally { f.close(); }
 });
 
+test('support data for the UI: section catalogue in capabilities and transport choice in the registration list', async () => {
+  const f = await setup();
+  try {
+    const me = (await f.request(102, '/api/me')).data.capabilities;
+    assert.deepEqual(me.sections.map(section => section.code).sort(), ['CLAN', 'ESCOLTA', 'MANADA', 'TROPA']);
+    assert.deepEqual(Object.keys(me.sections[0]).sort(), ['code', 'id'], 'reference data only');
+    const rows = (await f.request(103, `/api/activities/${ESCOLTA_PAID}/registrations`)).data.registrations;
+    assert.equal(rows[0].transport_code, 'FAMILY');
+  } finally { f.close(); }
+});
+
 test('terms lock still applies with the right version and closed activities cannot be edited', async () => {
   const f = await setup();
   try {

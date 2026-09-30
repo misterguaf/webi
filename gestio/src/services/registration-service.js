@@ -180,7 +180,7 @@ export async function listRegistrations(db,context,requestId,activityId,params) 
       !activitySections.some(sectionId=>decision.sections.includes(sectionId))) throw new AppError(404,'not_found');
   const scope=decision.sections===null?'':` AND r.submitted_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
   const rows=await db.prepare(`SELECT r.id,r.submitted_name,r.submitted_by_name,r.contact_phone,r.receipt_email,
-    r.submitted_birth_date,r.submitted_section_id,r.participant_id,r.match_status,r.status,
+    r.submitted_birth_date,r.submitted_section_id,r.participant_id,r.match_status,r.status,r.transport_code,
     r.expected_amount_cents,r.created_at,p.review_status AS payment_status FROM activity_registration r
     LEFT JOIN payment_evidence p ON p.registration_id=r.id WHERE r.activity_id=?${scope}
     ${page.after?'AND (r.created_at<? OR (r.created_at=? AND r.id<?))':''} ORDER BY r.created_at DESC,r.id DESC LIMIT ?`)
