@@ -105,6 +105,7 @@ async function api(request,env,url,requestId) {
     await auth.revokeOne(db,context,requestId,match[1]);
     return json({ok:true,requestId},200,match[1]===context.sessionId?{'Set-Cookie':cookieHeader(url,'',0)}:{});
   }
+  if (path==='/api/participants/follow-up' && method==='GET') return json({...await participants.followUp(db,context,requestId),requestId});
   if (path==='/api/participants' && method==='GET') return json({...await participants.list(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/participants' && method==='POST') return json({...await participants.createParticipant(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/participants\/([^/]+)$/);

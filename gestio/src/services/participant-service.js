@@ -72,6 +72,12 @@ export async function find(db,context,requestId,id,now=Date.now()) {
     sectionHistory:await participants.sectionHistory(db,id)
   };
 }
+// Dashboard follow-up (§13): scoped count of incomplete active records, computed server-side.
+export async function followUp(db,context,requestId) {
+  const decision=await authorize(db,context,{permission:'participants.profile.manage',mode:'list'});
+  if (!decision.allow) { await decisionEvent(db,context,requestId,false,decision.reason); throw new AppError(403,'forbidden'); }
+  return { incomplete: await participants.incompleteCount(db,decision) };
+}
 export async function healthPolicyCheck(db,context,requestId,participantId,purpose) {
   requireUuid(participantId);
   if (typeof purpose!=='string' || !/^[a-z-]{1,100}$/.test(purpose)) throw new AppError(400,'invalid_request');

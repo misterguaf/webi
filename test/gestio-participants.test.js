@@ -228,3 +228,14 @@ test('capabilities expose the participant management scopes without provoking de
     assert.equal(auditDenies(f, 101), 0);
   } finally { f.close(); }
 });
+
+test('Dashboard follow-up endpoint is scoped and gated on manage', async () => {
+  const f = await setup();
+  try {
+    assert.equal((await f.request(104, '/api/participants/follow-up')).status, 403, 'treasury has no manage');
+    const tropa = await f.request(102, '/api/participants/follow-up');
+    assert.deepEqual([tropa.status, tropa.data.incomplete], [200, 2], 'only the Tropa minors');
+    const group = await f.request(101, '/api/participants/follow-up');
+    assert.equal(group.data.incomplete, 4, 'the Clan adult has a contact and is complete');
+  } finally { f.close(); }
+});

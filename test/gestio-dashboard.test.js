@@ -20,7 +20,7 @@ const failure=()=>Object.assign(new Error('server error'),{status:500});
 const ALL={all:true,sections:[]};
 const TROPA={all:false,sections:[{id:'00000000-0000-4000-8000-000000000002',code:'TROPA'}]};
 // Shape of GET /api/me capabilities (version 1); omitted entries mean "not allowed".
-const caps=({activities={},fees={}}={})=>({version:1,participants:{read:null},
+const caps=({activities={},fees={},participants={}}={})=>({version:1,participants:{read:null,manage:null,readContacts:null,manageContacts:null,manageGuardians:null,accredit:false,review:false,...participants},
   activities:{read:null,manage:null,manageGeneral:false,reviewRegistrations:null,verifyPayments:null,...activities},
   fees:{status:null,read:null,manage:null,reviewPayments:null,authorizeInstallments:null,configure:false,...fees},
   administration:{}});
@@ -41,7 +41,8 @@ function harness(responses){
   },navigateTo:id=>navigation.push(id),openActivity:id=>opened.push(['activity',id]),
   openRegistrations:(id,filtered,name)=>opened.push(['registrations',id,filtered,name]),
   openPayments:()=>opened.push(['payments']),openFeeIssues:()=>opened.push(['fees']),
-  createActivity:()=>opened.push(['create'])});
+  createActivity:()=>opened.push(['create']),
+  openIncompleteParticipants:()=>opened.push(['incomplete']),openParticipantReviews:()=>opened.push(['reviews'])});
   return {app,node:id=>nodes.get(id),opened,navigation,calls,restore:()=>{globalThis.document=original}};
 }
 
@@ -182,5 +183,34 @@ test('registration counts come from the list read model: one request, partial sc
     assert.match(h.node('dashboardActivities').textContent,/12 inscripcions de Tropa/);
     assert.match(h.node('dashboardActivities').textContent,/Acampada Escolta/);
     assert.deepEqual(h.calls,['/api/activities'],'no request per activity');
+  }finally{h.restore()}
+});
+
+test('dashboard follow-up: scoped incomplete count and reviews only for the right capabilities',async()=>{
+  const me=as(caps({activities:{read:{all:false,sections:[{id:'00000000-0000-4000-8000-000000000002',code:'TROPA'}]}},
+    participants:{read:{all:false,sections:[]},manage:{all:false,sections:[]},review:true}}));
+  const h=harness({'/api/activities':{activities:[]},'/api/participants/follow-up':{incomplete:3},'/api/participant-reviews/summary':{open:2,escalated:1}});
+  try{
+    await h.app.load(me);
+    const text=h.node('dashboardAttention').textContent;
+    assert.match(text,/3 fitxes pendents de completar/);
+    assert.match(text,/2 revisions administratives pendents/);
+    assert.match(text,/1 cas escalat/);
+    assert.doesNotMatch(text,/00000000|Demo|@/,'no names or ids in attention');
+    const buttons=h.node('dashboardAttention').children[0].children;
+    await buttons[0].click();
+    assert.deepEqual(h.opened.at(-1),['incomplete']);
+    await buttons[1].click();
+    assert.deepEqual(h.opened.at(-1),['reviews']);
+    assert.ok(h.calls.includes('/api/participants/follow-up') && h.calls.includes('/api/participant-reviews/summary'));
+  }finally{h.restore()}
+});
+
+test('dashboard follow-up requests nothing without the manage or review capability',async()=>{
+  const h=harness({'/api/activities':{activities:[]}});
+  try{
+    await h.app.load(as(caps({activities:{read:{all:true,sections:[]}}})));
+    assert.ok(!h.calls.includes('/api/participants/follow-up'));
+    assert.ok(!h.calls.includes('/api/participant-reviews/summary'));
   }finally{h.restore()}
 });

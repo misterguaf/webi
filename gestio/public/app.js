@@ -27,7 +27,9 @@ const dashboard = setupDashboard({ call, navigateTo,
   openRegistrations: id => activities.openActivity(id, { tab: 'inscripcions', query: { filtre: 'per-revisar' } }),
   createActivity: () => { navigateTo('activitats'); activities.openCreate(); },
   openPayments: async () => { navigateTo('inscripcions'); await registrations.loadPayments(); $('paymentPanel').scrollIntoView({ block: 'start', behavior: 'instant' }); },
-  openFeeIssues: () => { navigateTo('quotes'); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); }
+  openFeeIssues: () => { navigateTo('quotes'); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); },
+  openIncompleteParticipants: () => routes.go({ page: 'participants', query: { completitud: 'pendents' } }),
+  openParticipantReviews: () => routes.go({ page: 'participants', path: ['revisions'] })
 });
 // Order matters: it is the order in which a session loads its modules.
 const views = createViewRegistry([
