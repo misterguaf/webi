@@ -34,9 +34,9 @@ export function demoPdf() {
 }
 
 export const DEMO_MARKER_ID = id(14001);
-export const DEMO_VERSION = 'gestio-demo-v1';
+export const DEMO_VERSION = 'gestio-demo-v2';
 
-export function buildDemoData() {
+export function buildDemoData({ now = Date.now() } = {}) {
   const pdf = demoPdf();
   const digest = createHash('sha256').update(pdf).digest('hex');
   const evidenceKeys = new Set(['fixture-only/no-binary']); // Repair the canonical synthetic 3A evidence link locally.
@@ -64,49 +64,89 @@ export function buildDemoData() {
   const byNumber = new Map(participants.map(person=>[person.number,person]));
   const participantRows = participants.slice(5).map(person=>[person.id,person.name,section(person.section),'ACTIVE',person.birth]);
   const contactRows = participants.slice(5).map(person=>[person.id,`familia-demo-${person.number}@example.test`,createdAt]);
+  // 3.5D (ACTIVITIES.md §21): activity scenarios D1–D12 are relative to the seed time T so that "deadline
+  // soon", "in progress" and "ended" stay true whenever the demo is rebuilt. Fee data does not depend on them.
+  const T = now, HOUR = 3600000, DAY = 24 * HOUR;
+  const day = (offset, hour = 10) => { const d = new Date(T); d.setUTCHours(0, 0, 0, 0); return d.getTime() + offset * DAY + hour * HOUR; };
   const activities = [
-    {n:11001,code:'DEMO-NEW-DRAFT',name:'Projecte Demo · esborrany',status:'DRAFT',audience:'GENERAL',sections:[],price:0,start:at(11,12),end:at(11,13),deadline:at(11,5)},
-    {n:11002,code:'DEMO-GENERAL-OPEN',name:'Jornada Demo · tot el grup',status:'PUBLISHED',audience:'GENERAL',sections:[],price:0,start:at(11,8),end:at(11,8)+21600000,deadline:at(11,1)},
-    {n:11003,code:'DEMO-TROPA-PAID',name:'Eixida Demo · Tropa',status:'PUBLISHED',audience:'SECTIONS',sections:[2],price:1500,start:at(10,25),end:at(10,26),deadline:at(10,20)},
-    {n:11004,code:'DEMO-MANADA-FREE',name:'Taller Demo · Manada',status:'PUBLISHED',audience:'SECTIONS',sections:[1],price:0,start:at(10,18),end:at(10,18)+14400000,deadline:at(10,14)},
-    {n:11005,code:'DEMO-TROPA-PAST',name:'Campament Demo · Tropa',status:'CLOSED',audience:'SECTIONS',sections:[2],price:1200,start:at(4,10),end:at(4,12),deadline:at(4,3)},
-    {n:11006,code:'DEMO-ESCOLTA-PAST',name:'Ruta Demo · Escolta',status:'CLOSED',audience:'SECTIONS',sections:[3],price:0,start:at(3,14),end:at(3,15),deadline:at(3,7)},
-    {n:11007,code:'DEMO-CLAN-PAID',name:'Projecte Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:at(12,4),end:at(12,6),deadline:at(11,28)},
-    {n:11008,code:'DEMO-ESCOLTA-DRAFT',name:'Activitat Demo · preparació',status:'DRAFT',audience:'SECTIONS',sections:[3],price:500,start:at(12,15),end:at(12,16),deadline:at(12,10)}
+    // D1 GENERAL, published, a few registrations incl. one pending review.
+    {n:11002,code:'DEMO-GENERAL-OPEN',name:'Jornada Demo · tot el grup',status:'PUBLISHED',audience:'GENERAL',sections:[],price:0,start:day(21),end:day(21,17),deadline:day(14,20)},
+    // D2 Tropa, paid, many registrations, deadline in under 48h; D12 evidence pending / issue / verified.
+    {n:11003,code:'DEMO-TROPA-PAID',name:'Eixida Demo · Tropa',status:'PUBLISHED',audience:'SECTIONS',sections:[2],price:1500,start:day(10),end:day(11,17),deadline:T+40*HOUR},
+    // D3 published without registrations.
+    {n:11004,code:'DEMO-MANADA-FREE',name:'Taller Demo · Manada',status:'PUBLISHED',audience:'SECTIONS',sections:[1],price:0,start:day(30),end:day(30,14),deadline:day(20,20)},
+    // D4 DRAFT, GENERAL, free: discardable.
+    {n:11001,code:'DEMO-NEW-DRAFT',name:'Projecte Demo · esborrany',status:'DRAFT',audience:'GENERAL',sections:[],price:0,start:day(40),end:day(41,17),deadline:day(30,20),
+      description:''},
+    // D5 DRAFT, section, paid, deadline already past (cannot be published until edited).
+    {n:11008,code:'DEMO-ESCOLTA-DRAFT',name:'Activitat Demo · preparació',status:'DRAFT',audience:'SECTIONS',sections:[3],price:500,start:day(5),end:day(5,18),deadline:day(-1,20)},
+    // D6 published, in progress.
+    {n:11009,code:'DEMO-CLAN-NOW',name:'Campament Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:T-DAY,end:T+DAY,deadline:T-3*DAY},
+    // D7 published, ended, pending close.
+    {n:11010,code:'DEMO-ESCOLTA-ENDED',name:'Ruta Demo · Escolta',status:'PUBLISHED',audience:'SECTIONS',sections:[3],price:0,start:day(-10,9),end:day(-9,18),deadline:day(-14,20)},
+    // D8 closed, past, with registrations (a historical Tropa intake whose participant is now in Escolta).
+    {n:11005,code:'DEMO-TROPA-PAST',name:'Campament d’estiu Demo · Tropa',status:'CLOSED',audience:'SECTIONS',sections:[2],price:1200,start:day(-60,9),end:day(-58,17),deadline:day(-67,20)},
+    {n:11006,code:'DEMO-ESCOLTA-PAST',name:'Ruta d’hivern Demo · Escolta',status:'CLOSED',audience:'SECTIONS',sections:[3],price:0,start:day(-120,9),end:day(-119,17),deadline:day(-127,20)},
+    // D10 paid with group transport supplement (GROUP +3 €, FAMILY 0 €).
+    {n:11007,code:'DEMO-CLAN-PAID',name:'Projecte Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:day(15,9),end:day(17,17),deadline:day(7,20),
+      transport:[['GROUP',300],['FAMILY',0]]},
+    // D11 mixed Tropa + Escolta (read-only for a Tropa-only coordinator).
+    {n:11011,code:'DEMO-MIXED-OPEN',name:'Excursió Demo · Tropa i Escolta',status:'PUBLISHED',audience:'SECTIONS',sections:[2,3],price:0,start:day(25,8),end:day(25,19),deadline:day(15,20)}
   ];
   const activityRows=activities.map(a=>[id(a.n),a.code,a.name,a.status,a.audience,'Espai fictici',a.start,a.end,a.deadline,a.price,'EUR',
-    'Contingut sintètic per a proves de Gestió.','Material de demostració.','',coordinator,createdAt,createdAt]);
+    a.description??'Contingut sintètic per a proves de Gestió.','Material de demostració.','',coordinator,
+    Math.min(T-45*DAY,a.deadline-20*DAY),Math.min(T-45*DAY,a.deadline-20*DAY)]);
   const activitySectionRows=activities.flatMap(a=>a.sections.map(sectionNumber=>[id(a.n),section(sectionNumber)]));
+  const transportRows=activities.flatMap(a=>(a.transport??[]).map(([code,cents])=>[id(a.n),code,cents]));
   const regs=[];
   const addReg=(activityNumber,participantNumber,status,matchStatus='CLEAR',opts={})=>{
     const person=byNumber.get(participantNumber);
+    const activity=activities.find(a=>a.n===activityNumber);
     const number=12001+regs.length;
     const name=opts.name||person?.name||'Sol·licitud Demo sense fitxa';
+    const transport=opts.transport??(activity.transport?'GROUP':null);
+    const adjustment=activity.transport?.find(([code])=>code===transport)?.[1]??0;
     regs.push({number,activityNumber,person,status,matchStatus,name,sectionNumber:opts.section||person?.section||2,
-      birth:opts.birth||null,amount:opts.amount??activities.find(a=>a.n===activityNumber).price,
-      transport:null,evidence:opts.evidence||null,created:opts.created||at(9,12)});
+      birth:opts.birth||null,amount:opts.amount??activity.price+adjustment,transport,
+      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),
+      created:opts.created||Math.min(T-2*DAY,activity.deadline-DAY)-number*60000});
   };
-  addReg(11002,1001,'CONFIRMED','CLEAR',{amount:0});
-  addReg(11002,1002,'CONFIRMED','CLEAR',{amount:0});
-  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','AMBIGUOUS',{name:'Família Demo · coincidència dubtosa',section:2,birth:'2013-04-10',amount:0});
-  addReg(11003,1006,'CONFIRMED','CLEAR',{evidence:'VERIFIED'});
-  addReg(11003,1010,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
+  const pending=(activity,name,sectionNumber,birth)=>addReg(activity,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name,section:sectionNumber,birth});
+  const rejected=(activity,name,sectionNumber)=>addReg(activity,null,'REJECTED','REJECTED',{name,section:sectionNumber});
+  // D1
+  addReg(11002,1001,'CONFIRMED'); addReg(11002,1002,'CONFIRMED'); addReg(11002,1003,'CONFIRMED');
+  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','AMBIGUOUS',{name:'Família Demo · coincidència dubtosa',section:2,birth:'2013-04-10'});
+  // D2: 20 registrations mixing confirmed, pending review, pending payment and rejected.
+  for(const n of [1002,1006,1010,1018,1022,1026,1030,1034])addReg(11003,n,'CONFIRMED');
+  addReg(11003,502,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
+  addReg(11003,503,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
   addReg(11003,1014,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'ISSUE'});
-  addReg(11003,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Sol·licitud sense fitxa',section:2,birth:'2013-07-11'});
-  addReg(11004,1005,'CONFIRMED','CLEAR',{amount:0});
-  addReg(11004,1009,'CONFIRMED','CLEAR',{amount:0});
-  addReg(11005,1003,'CONFIRMED','CLEAR',{section:2,created:at(4,1),evidence:'VERIFIED'}); // Current section is Escolta: past Tropa intake.
-  addReg(11006,1015,'CONFIRMED','CLEAR',{amount:0,created:at(3,1)});
-  addReg(11007,1004,'CONFIRMED','CLEAR',{evidence:'VERIFIED'});
-  addReg(11007,1008,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
-  addReg(11007,null,'REJECTED','REJECTED',{name:'Demo Sol·licitud rebutjada',section:4,amount:2300});
+  [['Demo Sol·licitud sense fitxa','2013-07-11'],['Demo Persona Nova Tropa','2012-02-03'],['Demo Germana Petita','2014-09-21']]
+    .forEach(([name,birth])=>pending(11003,name,2,birth));
+  [['Demo Sol·licitud duplicada',2],['Demo Secció equivocada',2],['Demo Sol·licitud retirada',2]].forEach(([name,sectionNumber])=>rejected(11003,name,sectionNumber));
+  pending(11003,'Demo Inscripció tardana',2,'2013-01-15');
+  pending(11003,'Demo Nom incomplet',2,'2012-06-30');
+  pending(11003,'Demo Família nova',2,'2013-11-02');
+  // D6
+  addReg(11009,1004,'CONFIRMED'); addReg(11009,1008,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'}); rejected(11009,'Demo Sol·licitud rebutjada',4);
+  // D7
+  addReg(11010,1007,'CONFIRMED'); addReg(11010,1011,'CONFIRMED');
+  // D8
+  addReg(11005,1003,'CONFIRMED','CLEAR',{section:2}); // Current section is Escolta: past Tropa intake.
+  addReg(11006,1015,'CONFIRMED');
+  // D10: group transport vs family transport (0 €).
+  addReg(11007,1012,'CONFIRMED','CLEAR',{transport:'GROUP'});
+  addReg(11007,1016,'AWAITING_PAYMENT_REVIEW','CLEAR',{transport:'FAMILY',evidence:'PENDING_REVIEW'});
+  rejected(11007,'Demo Sol·licitud Clan rebutjada',4);
+  // D11
+  addReg(11011,1006,'CONFIRMED'); addReg(11011,1011,'CONFIRMED','CLEAR',{section:3});
   const registrationRows=regs.map(r=>[id(r.number),id(r.activityNumber),r.person?.id??null,r.name,
-    r.name.toLocaleLowerCase('ca').normalize('NFD').replace(/[\u0300-\u036f]/g,''),section(r.sectionNumber),
+    r.name.toLocaleLowerCase('ca').normalize('NFD').replace(/[̀-ͯ]/g,''),section(r.sectionNumber),
     `inscripcio-demo-${r.number}@example.test`,r.transport,r.amount,r.matchStatus,r.status,'DEMO-3A',
     'DEMO-3A-PARTICIPATION-V1',r.created,'DEMO-3A-PRIVACY-NOTICE-V1',r.created,
     `demo-registration-${r.number}`,createHash('sha256').update(`registration-${r.number}`).digest('hex'),r.created,r.created,
     r.status==='REJECTED'?coordinator:null,r.status==='REJECTED'?r.created:null,
-    'Tutor de demostració',null,r.birth]);
+    'Tutor de demostració',r.number%3?`600 00${String(r.number).slice(-2)} 0${r.number%10}`:null,r.birth]);
   const activityEvidenceRows=regs.filter(r=>r.evidence).map(r=>{
     const key=`synthetic/demo-activity-${r.number}.pdf`;evidenceKeys.add(key);
     return [id(13000+r.number-12000),id(r.number),key,digest,pdf.length,'application/pdf',r.evidence,r.created,
@@ -178,6 +218,7 @@ export function buildDemoData() {
     insert('participant_contact',['participant_id','notification_email','verified_at'],contactRows),
     insert('activity',['id','public_code','name','status','audience','location','starts_at','ends_at','registration_deadline','price_cents','currency','short_description','materials','special_notice','created_by','created_at','updated_at'],activityRows),
     insert('activity_section',['activity_id','section_id'],activitySectionRows),
+    insert('activity_transport_option',['activity_id','code','price_adjustment_cents'],transportRows),
     insert('activity_registration',['id','activity_id','participant_id','submitted_name','match_key','submitted_section_id','receipt_email','transport_code','expected_amount_cents','match_status','status','consent_version','participation_terms_version','participation_authorized_at','privacy_notice_version','privacy_notice_acknowledged_at','idempotency_key','payload_sha256','created_at','updated_at','reviewed_by','reviewed_at','submitted_by_name','contact_phone','submitted_birth_date'],registrationRows),
     insert('payment_evidence',['id','registration_id','object_key','sha256','size_bytes','detected_mime','review_status','created_at','reviewed_at','reviewed_by'],activityEvidenceRows),
     insert('annual_fee_family_group',['id','round_id','reference','created_by','created_at'],familyGroupRows),
@@ -194,6 +235,6 @@ export function buildDemoData() {
     insert('audit_event',['id','occurred_at','created_at','request_id','actor_user_id','action','resource_type','resource_id','result','reason_code','security_relevant'],[markerRow])
   ];
   return {sql:chunks.join(''),evidenceKeys:[...evidenceKeys],pdf,
-    expected:{participants:40,activities:13,registrations:16,rounds:1,obligations:40,payments:19,
+    expected:{participants:40,activities:16,registrations:38,rounds:1,obligations:40,payments:19,
       families:{single:10,pair:3,triple:4,quadruple:3}}};
 }

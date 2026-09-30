@@ -41,7 +41,7 @@ test('demo commands are pinned to the local development D1/R2 and reject remote 
 
 test('synthetic fixture fits the migrated SQLite constraints and exercises fee states', () => {
   const demo = buildDemoData();
-  assert.equal(demo.evidenceKeys.length, 26);
+  assert.equal(demo.evidenceKeys.length, 36);
   assert.match(demo.pdf.toString('utf8'), /SYNTHETIC DEMO/);
   assert.doesNotMatch(demo.sql, /@[a-z0-9.-]+\.(?:com|es|org)\b/i);
   const emails=[...demo.sql.matchAll(/[a-z0-9._-]+@[a-z0-9.-]+/gi)].map(match=>match[0]);
@@ -72,7 +72,53 @@ test('synthetic fixture fits the migrated SQLite constraints and exercises fee s
   assert.deepEqual(data.shared, [[2]]);
   assert.deepEqual(data.installments, [[3]]);
   assert.deepEqual(data.residual, [[1]]);
-  assert.deepEqual(data.registrations, [[16]]);
+  assert.deepEqual(data.registrations, [[38]]);
+});
+
+// 3.5D (ACTIVITIES.md §21): D1–D12 hold whenever the demo is rebuilt, because dates are relative to seeding.
+test('demo activity scenarios are relative to the seed time and cover D1–D12', () => {
+  for (const now of [Date.UTC(2026, 8, 30, 1), Date.UTC(2027, 1, 14, 22, 30)]) {
+    const demo = buildDemoData({ now });
+    const sql = new DatabaseSync(':memory:');
+    try {
+      sql.exec('PRAGMA foreign_keys=ON');
+      for (const name of readdirSync(resolve(repo, 'gestio/migrations')).filter(name => name.endsWith('.sql')).sort())
+        sql.exec(readFileSync(resolve(repo, 'gestio/migrations', name), 'utf8'));
+      sql.exec(readFileSync(resolve(repo, 'gestio/seed.sql'), 'utf8'));
+      sql.exec(demo.sql);
+      const one = (query, ...args) => sql.prepare(query).get(...args);
+      const activity = code => one('SELECT * FROM activity WHERE public_code=?', code);
+      const count = (code, extra = '') => one(`SELECT count(*) n FROM activity_registration r JOIN activity a ON a.id=r.activity_id WHERE a.public_code=?${extra}`, code).n;
+      const HOUR = 3600000;
+      const general = activity('DEMO-GENERAL-OPEN');
+      assert.equal(general.audience, 'GENERAL'); assert.equal(general.status, 'PUBLISHED');
+      assert.ok(count('DEMO-GENERAL-OPEN', " AND r.status='NEEDS_PARTICIPANT_REVIEW'") >= 1, 'D1 has a pending review');
+      const tropa = activity('DEMO-TROPA-PAID');
+      assert.ok(tropa.registration_deadline > now && tropa.registration_deadline - now < 48 * HOUR, 'D2 deadline in under 48h');
+      assert.ok(count('DEMO-TROPA-PAID') >= 20, 'D2 has many registrations');
+      for (const status of ['CONFIRMED', 'NEEDS_PARTICIPANT_REVIEW', 'AWAITING_PAYMENT_REVIEW', 'REJECTED'])
+        assert.ok(count('DEMO-TROPA-PAID', ` AND r.status='${status}'`) >= 1, `D2 ${status}`);
+      assert.deepEqual(sql.prepare(`SELECT DISTINCT e.review_status s FROM payment_evidence e JOIN activity_registration r ON r.id=e.registration_id
+        WHERE r.activity_id=? ORDER BY 1`).all(tropa.id).map(row => row.s), ['ISSUE', 'PENDING_REVIEW', 'VERIFIED'], 'D12');
+      assert.equal(count('DEMO-MANADA-FREE'), 0, 'D3 published without registrations');
+      assert.equal(activity('DEMO-NEW-DRAFT').status, 'DRAFT'); assert.equal(count('DEMO-NEW-DRAFT'), 0, 'D4 discardable');
+      const late = activity('DEMO-ESCOLTA-DRAFT');
+      assert.ok(late.status === 'DRAFT' && late.registration_deadline < now && late.price_cents > 0, 'D5');
+      const running = activity('DEMO-CLAN-NOW');
+      assert.ok(running.starts_at <= now && now <= running.ends_at, 'D6 in progress');
+      const ended = activity('DEMO-ESCOLTA-ENDED');
+      assert.ok(ended.status === 'PUBLISHED' && ended.ends_at < now, 'D7 ended, pending close');
+      const closed = activity('DEMO-TROPA-PAST');
+      assert.ok(closed.status === 'CLOSED' && closed.ends_at < now && count('DEMO-TROPA-PAST') > 0, 'D8');
+      assert.ok(one("SELECT count(*) n FROM activity WHERE price_cents=0").n > 0 && one("SELECT count(*) n FROM activity WHERE price_cents>0").n > 0, 'D9');
+      const transport = sql.prepare('SELECT code,price_adjustment_cents c FROM activity_transport_option WHERE activity_id=? ORDER BY code')
+        .all(activity('DEMO-CLAN-PAID').id).map(row => [row.code, row.c]);
+      assert.deepEqual(transport, [['FAMILY', 0], ['GROUP', 300]], 'D10 family transport costs 0 €');
+      assert.equal(one('SELECT count(*) n FROM activity_section WHERE activity_id=?', activity('DEMO-MIXED-OPEN').id).n, 2, 'D11 mixed');
+      assert.deepEqual(sql.prepare('PRAGMA foreign_key_check').all(), []);
+      assert.ok(sql.prepare('SELECT created_at FROM activity_registration').all().every(row => row.created_at < now), 'registrations precede the seed');
+    } finally { sql.close(); }
+  }
 });
 
 test('empty local seed, repeat seed, and reset preserve isolation and restore a known state', () => {
