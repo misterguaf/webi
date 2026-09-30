@@ -111,11 +111,19 @@ Activitats v0.2 (3.5D, implemented — checkpoint `phase-3.5d-complete`): activi
 activitat drawer/sheet, activity detail with Inscripcions / Informació (no Pagaments tab in
 v1.0), hash routing, concurrency, states and known implementation gaps.
 
+`screens/PARTICIPANTS.md`
+Participants v0.4 (3.5E, approved for implementation): participant list and record, section
+history, provisional records with age-based completeness (minors need a guardian and a
+contact; adults need a contact), manual progressive incorporation, guardians and contacts
+with audited consultation and shared-guardian protection, legal-representation history and
+administrative review by Secretaria, Inici follow-up items, basic fee status, and delegation
+duration (default 90 days, maximum 365). Secretaria absorbs the retired CRM manager role.
+Consent catalogue and texts stay in the legal phase.
+
 Future specifications may include:
 
 - REGISTRATIONS
 - FEES
-- PARTICIPANT
 - SEARCH
 - SETTINGS
 
