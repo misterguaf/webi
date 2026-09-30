@@ -1,6 +1,6 @@
 import {fetchAllPages} from './api.js';
-import {attentionPhrase,basicFeeSummary,canReviewActivity,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
-  paymentAttention,registrationAttention,sectionLabel,upcomingActivities} from './dashboard-model.js';
+import {attentionPhrase,basicFeeSummary,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
+  paymentAttention,registrationCountLabel,sectionLabel,summaryAttention,upcomingActivities} from './dashboard-model.js';
 
 const $=id=>document.getElementById(id);
 const make=(tag,className,text)=>{const node=document.createElement(tag);if(className)node.className=className;if(text!=null)node.textContent=text;return node;};
@@ -46,7 +46,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     if(items.length || count!==0)$('dashboardAttentionPanel').classList.remove('dashboard-clear');
     $('dashboardAttentionPanel').setAttribute('aria-busy','false');
   }
-  function renderActivities(activities,counts){
+  function renderActivities(activities){
     const target=$('dashboardActivities');target.replaceChildren();
     const upcoming=upcomingActivities(activities);
     if(!upcoming.length){target.append(make('p','dashboard-empty','No hi ha cap activitat pròxima.'));return;}
@@ -58,8 +58,8 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
         activity.status==='DRAFT'?'Esborrany':'Publicada'));
       card.append(top,make('h3','',activity.name),make('p','dashboard-activity-context',`${sectionLabel(activity)} · ${dateRange(activity)}`));
       const details=make('div','dashboard-activity-details');
-      const total=counts.get(activity.id);
-      if(total!=null)details.append(make('span','',`${total} ${total===1?'inscripció':'inscripcions'}`));
+      const total=registrationCountLabel(activity.registrations);
+      if(total)details.append(make('span','',total));
       details.append(make('span','',activity.status==='DRAFT'?'Encara no publicada':deadlineLabel(activity.registration_deadline)));
       card.append(details,button(activity.status==='DRAFT'?'Continuar editant':'Obri activitat',
         ()=>openActivity(activity.id),'dashboard-card-action'));
@@ -110,23 +110,13 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       sectionError($('dashboardFees'),'No s’ha pogut carregar l’estat de les quotes.');
     }
   }
-  async function loadActivities(token,caps){
+  async function loadActivities(token){
     try{
+      // 3.5D: counts and pending reviews come in the list read model, scoped by the server.
       const rows=(await fetchAllPages(call,'/api/activities','activities')).activities;
       if(token!==generation)return;
-      // Only ask for registrations the reviewer scope can return; the server still authorises each call.
-      const reviewable=rows.filter(row=>canReviewActivity(row,caps.activities.reviewRegistrations));
-      const result=await Promise.allSettled(reviewable.map(row=>fetchAllPages(call,`/api/activities/${row.id}/registrations`,'registrations')));
-      if(token!==generation)return;
-      const counts=new Map();attention.registrations=[];
-      result.forEach((entry,index)=>{
-        if(entry.status==='fulfilled'){
-          const registrations=entry.value.registrations;
-          counts.set(reviewable[index].id,registrations.length);
-          const item=registrationAttention(reviewable[index],registrations);if(item)attention.registrations.push(item);
-        }else if(!isUnavailable(entry.reason))errors.add('registrations');
-      });
-      renderActivities(rows,counts);
+      attention.registrations=rows.map(summaryAttention).filter(Boolean);
+      renderActivities(rows);
     }catch(error){
       if(token!==generation)return;
       if(!isUnavailable(error)){errors.add('activities');sectionError($('dashboardActivities'),'No s’han pogut carregar les pròximes activitats.');}
@@ -184,7 +174,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     $('dashboardAttentionPanel').setAttribute('aria-busy','true');
     $('dashboardAttention').replaceChildren(make('div','dashboard-skeleton dashboard-skeleton-attention'));
     $('dashboardActivities').replaceChildren(make('div','dashboard-skeleton dashboard-skeleton-activity'));
-    await Promise.allSettled([activityAccess?loadActivities(token,caps):null,
+    await Promise.allSettled([activityAccess?loadActivities(token):null,
       caps.activities.verifyPayments?loadPayments(token):null,loadFees(token,caps)]);
     if(token===generation)renderAttention();
   }

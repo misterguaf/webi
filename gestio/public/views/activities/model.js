@@ -185,11 +185,12 @@ export function signals(activity, now = Date.now()) {
   }
   if (summary?.needsReview > 0) result.push({ text: `${summary.needsReview} per revisar`, tone: 'attention' });
   else if (current === 'ended') result.push({ text: 'Pendent de tancar', tone: 'attention' });
+  // A deadline under 48h is time-critical (§8.2 warning): it outranks the plain count so it is never hidden.
+  if (current === 'deadline-soon') result.push({ text: deadlineSignal(activity.registration_deadline, now), tone: 'warning' });
   const registrations = registrationsText(summary);
   if (registrations) result.push({ text: registrations, tone: 'neutral' });
   if (current === 'in-progress') result.push({ text: 'En curs', tone: 'neutral' });
-  else if (current !== 'ended') result.push({ text: deadlineSignal(activity.registration_deadline, now),
-    tone: current === 'deadline-soon' ? 'warning' : 'neutral' });
+  else if (current !== 'ended' && current !== 'deadline-soon') result.push({ text: deadlineSignal(activity.registration_deadline, now), tone: 'neutral' });
   result.push({ text: priceLabel(activity.price_cents), tone: 'neutral' });
   return result.slice(0, 2);
 }

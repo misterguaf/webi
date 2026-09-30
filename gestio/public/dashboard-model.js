@@ -29,10 +29,19 @@ export function upcomingActivities(activities,now=Date.now()) {
   return result;
 }
 
-export function registrationAttention(activity,registrations) {
-  const count=registrations.filter(row=>row.status==='NEEDS_PARTICIPANT_REVIEW').length;
+// 3.5D: attention from the server's scoped registration summary on each activity row (no per-activity requests).
+export function summaryAttention(activity) {
+  const count=activity.registrations?.needsReview||0;
   return count?{kind:'registrations',count,activityId:activity.id,activityName:activity.name,
     text:`${count} ${count===1?'inscripció':'inscripcions'} per revisar · ${activity.name}`}:null;
+}
+// Registration count for a card: partial scopes are labelled ("12 inscripcions de Tropa"); unknown is null.
+export function registrationCountLabel(summary) {
+  if(!summary)return null;
+  const labels={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Escolta',CLAN:'Clan'};
+  const base=`${summary.total} ${summary.total===1?'inscripció':'inscripcions'}`;
+  const sections=summary.scope==='PARTIAL'?(summary.sections||[]).map(code=>labels[code]).filter(Boolean):[];
+  return sections.length?`${base} de ${sections.join(' i ')}`:base;
 }
 
 export function paymentAttention(payments) {
@@ -72,13 +81,4 @@ export function basicFeeSummary(statuses) {
   const counts={PAID:0,PARTIAL:0,PENDING:0,ISSUE:0};
   for(const row of statuses)if(Object.hasOwn(counts,row.status))counts[row.status]++;
   return counts;
-}
-
-// Mirrors listRegistrations scope: GENERAL activities are reviewable by any reviewer (rows are
-// filtered server-side by section); section activities need an overlapping section.
-export function canReviewActivity(activity,scope) {
-  if(!scope)return false;
-  if(scope.all || activity.audience==='GENERAL')return true;
-  const codes=String(activity.sections||'').split(',').map(code=>code.trim());
-  return scope.sections.some(section=>codes.includes(section.code));
 }

@@ -82,6 +82,8 @@ test('signals: at most two, by priority; partial counts are labelled; unknown co
   assert.deepEqual(texts(row('f', { status: 'DRAFT' })), [], 'drafts show the continue affordance instead');
   assert.deepEqual(texts(row('g', { status: 'CLOSED', registrations: summary(1) })), ['1 inscripció']);
   assert.equal(model.signals(row('h', { registration_deadline: NOW + DAY }), NOW)[0].tone, 'warning');
+  assert.deepEqual(texts(row('s', { registration_deadline: NOW + 30 * 3600000, registrations: summary(20, { needsReview: 6 }) })),
+    ['6 per revisar', 'Termini en 2 dies'], 'a deadline under 48h is never hidden behind the count');
   assert.equal(model.registrationsText({ ...summary(4), scope: 'PARTIAL', sections: ['TROPA', 'ESCOLTA'] }), '4 inscripcions de Tropa i Escolta');
   assert.equal(model.registrationsText(null), null);
   assert.match(model.accessibleRowName(row('i', { registrations: summary(12) }), NOW), /^Activitat i, Publicada, Tropa, .*, 12 inscripcions$/);

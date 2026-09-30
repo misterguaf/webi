@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {attentionPhrase,basicFeeSummary,canReviewActivity,financialSummary,greeting,paymentAttention,registrationAttention,sectionLabel,
+import {attentionPhrase,basicFeeSummary,financialSummary,greeting,paymentAttention,registrationCountLabel,sectionLabel,summaryAttention,
   upcomingActivities} from '../gestio/public/dashboard-model.js';
 import {setupDashboard} from '../gestio/public/dashboard.js';
 
@@ -58,10 +58,14 @@ test('dashboard model uses real states, human copy and useful upcoming activitie
   const rows=[activity('closed','Passada','TROPA','CLOSED'),activity('draft','Preparació','ESCOLTA','DRAFT'),
     activity('published','Pròxima','TROPA'),far];
   assert.deepEqual(upcomingActivities(rows,now).map(row=>row.id),['published','draft']);
-  assert.deepEqual(registrationAttention(rows[2],[{status:'NEEDS_PARTICIPANT_REVIEW'},{status:'CONFIRMED'}]),
+  const summary=(total,needsReview,extra={})=>({scope:'ALL',sections:[],total,needsReview,awaitingPayment:0,confirmed:total-needsReview,rejected:0,...extra});
+  assert.deepEqual(summaryAttention({...rows[2],registrations:summary(2,1)}),
     {kind:'registrations',count:1,activityId:'published',activityName:'Pròxima',text:'1 inscripció per revisar · Pròxima'});
+  assert.equal(summaryAttention(rows[2]),null,'no summary, no attention');
+  assert.equal(registrationCountLabel(summary(12,0,{scope:'PARTIAL',sections:['TROPA']})),'12 inscripcions de Tropa');
+  assert.equal(registrationCountLabel(null),null);
   assert.equal(paymentAttention([{review_status:'VERIFIED'}]),null);
-  assert.doesNotMatch(registrationAttention(rows[2],[{status:'NEEDS_PARTICIPANT_REVIEW'}]).text,/PENDING_REVIEW|TROPA|[0-9a-f]{8}-/);
+  assert.doesNotMatch(summaryAttention({...rows[2],registrations:summary(1,1)}).text,/PENDING_REVIEW|TROPA|[0-9a-f]{8}-/);
 });
 
 test('dashboard gives scoped users only basic fee counts and links to the read-only view',async()=>{
@@ -94,8 +98,8 @@ test('scoped fee failure remains local and does not imply Tot al dia',async()=>{
 
 test('dashboard uses scoped server rows, omits forbidden finance, and keeps creation hidden without manage capability',async()=>{
   const me=as(caps({activities:{read:TROPA,reviewRegistrations:TROPA}}));
-  const h=harness({'/api/activities':{activities:[activity('tropa','Eixida Tropa')]},
-    '/api/activities/tropa/registrations':{registrations:[{status:'NEEDS_PARTICIPANT_REVIEW'}]}});
+  const h=harness({'/api/activities':{activities:[{...activity('tropa','Eixida Tropa'),
+    registrations:{scope:'ALL',sections:[],total:1,needsReview:1,awaitingPayment:0,confirmed:0,rejected:0}}]}});
   try{
     await h.app.load(me);
     assert.equal(h.node('dashboardFeesPanel').hidden,true);
@@ -113,7 +117,7 @@ test('dashboard shows creation from capabilities, independent fee metric and loc
   const me=as(caps({activities:{read:ALL,manageGeneral:true,reviewRegistrations:ALL,verifyPayments:ALL},fees:{read:ALL}}));
   const general={...activity('general','Jornada Demo'),audience:'GENERAL',sections:''};
   const metrics={collectedPercent:82,statusCounts:{PAID:32,PARTIAL:5},issueCount:3};
-  const h=harness({'/api/activities':{activities:[general]},'/api/activities/general/registrations':{registrations:[]},
+  const h=harness({'/api/activities':{activities:[general]},
     '/api/activities/general':{activity:general},'/api/payments':failure(),
     '/api/fees/rounds':{rounds:[{id:'round',code:'demo'}]},
     '/api/fees/rounds/round/metrics':{metrics},'/api/fees/rounds/round/issues':{issues:[]}});
@@ -167,21 +171,16 @@ test('a user without operational capabilities triggers no module requests (no AU
   }finally{h.restore()}
 });
 
-test('section manage capability alone shows creation; review scope mirrors server rules',()=>{
-  assert.equal(canReviewActivity(activity('t','T'),TROPA),true);
-  assert.equal(canReviewActivity(activity('e','E','ESCOLTA'),TROPA),false);
-  assert.equal(canReviewActivity({...activity('g','G'),audience:'GENERAL',sections:''},TROPA),true);
-  assert.equal(canReviewActivity(activity('e','E','ESCOLTA'),ALL),true);
-  assert.equal(canReviewActivity(activity('t','T'),null),false);
-});
 
-test('registrations are requested only where the reviewer scope overlaps',async()=>{
+test('registration counts come from the list read model: one request, partial scopes labelled',async()=>{
   const me=as(caps({activities:{read:ALL,reviewRegistrations:TROPA}}));
-  const h=harness({'/api/activities':{activities:[activity('tropa','Eixida Tropa'),activity('escolta','Acampada Escolta','ESCOLTA')]},
-    '/api/activities/tropa/registrations':{registrations:[]}});
+  const general={...activity('general','Jornada Demo'),audience:'GENERAL',sections:'',
+    registrations:{scope:'PARTIAL',sections:['TROPA'],total:12,needsReview:0,awaitingPayment:0,confirmed:12,rejected:0}};
+  const h=harness({'/api/activities':{activities:[general,activity('escolta','Acampada Escolta','ESCOLTA')]}});
   try{
     await h.app.load(me);
+    assert.match(h.node('dashboardActivities').textContent,/12 inscripcions de Tropa/);
     assert.match(h.node('dashboardActivities').textContent,/Acampada Escolta/);
-    assert.deepEqual(h.calls.sort(),['/api/activities','/api/activities/tropa/registrations']);
+    assert.deepEqual(h.calls,['/api/activities'],'no request per activity');
   }finally{h.restore()}
 });
