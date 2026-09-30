@@ -343,6 +343,60 @@ test('support data for the UI: section catalogue in capabilities and transport c
   } finally { f.close(); }
 });
 
+// 3.5D closure: a mixed activity never widens a section scope. Reading it is allowed with one section;
+// everything that touches people, money or state stays inside the caller's own sections.
+test('mixed activity: registrations, candidates, reviews and transitions stay strictly inside the section scope', async () => {
+  const f = await setup();
+  try {
+    f.sql.exec(`INSERT INTO activity_section(activity_id,section_id) VALUES('${TROPA_DRAFT}','${ESCOLTA}')`);
+    f.sql.exec(`UPDATE activity SET status='PUBLISHED' WHERE id='${TROPA_DRAFT}'`);
+    register(f, 9301, TROPA_DRAFT, TROPA);
+    register(f, 9302, TROPA_DRAFT, ESCOLTA);
+    register(f, 9303, TROPA_DRAFT, ESCOLTA, 'CONFIRMED', id(504));
+    const MIXED = TROPA_DRAFT;
+    const ids = async user => (await f.request(user, `/api/activities/${MIXED}/registrations`)).data.registrations.map(row => row.id).sort();
+    assert.deepEqual(await ids(102), [id(9301)], 'Tropa reviewer receives only Tropa registrations');
+    assert.deepEqual(await ids(103), [id(9302), id(9303)], 'Escolta reviewer receives only Escolta registrations');
+    assert.equal((await ids(101)).length, 3);
+
+    const tropaView = (await f.request(102, `/api/activities/${MIXED}`)).data.activity.registrations;
+    assert.deepEqual([tropaView.scope, tropaView.sections, tropaView.total], ['PARTIAL', ['TROPA'], 1], 'no total or count from Escolta');
+    const escoltaView = (await f.request(103, `/api/activities/${MIXED}`)).data.activity.registrations;
+    assert.deepEqual([escoltaView.scope, escoltaView.sections, escoltaView.total], ['PARTIAL', ['ESCOLTA'], 2]);
+
+    // Another section's pending registration: no candidates, no review, and no confirmation that it exists.
+    const candidates = await f.request(102, `/api/registrations/${id(9302)}/candidates`);
+    assert.equal(candidates.status, 404);
+    for (const body of [{ decision: 'REJECT' }, { decision: 'MATCH', participantId: id(504) }]) {
+      const review = await f.request(102, `/api/registrations/${id(9302)}/review`, { method: 'POST', body });
+      assert.equal(review.status, 403, JSON.stringify(body));
+    }
+    // Linking an own-section registration to a participant of the other section is refused too.
+    const cross = await f.request(102, `/api/registrations/${id(9301)}/review`, { method: 'POST', body: { decision: 'MATCH', participantId: id(504) } });
+    assert.equal(cross.status, 403);
+    assert.equal(f.sql.prepare('SELECT status FROM activity_registration WHERE id=?').get(id(9302)).status, 'NEEDS_PARTICIPANT_REVIEW');
+    assert.equal(f.sql.prepare('SELECT participant_id FROM activity_registration WHERE id=?').get(id(9301)).participant_id, null);
+    const own = await f.request(102, `/api/registrations/${id(9301)}/candidates`);
+    assert.equal(own.status, 200);
+    assert.ok(own.data.candidates.every(person => person.section_code === 'TROPA'), 'candidates never come from another section');
+
+    // State changes need manage scope over every section of the activity.
+    for (const user of [102, 103]) {
+      assert.equal((await f.request(user, `/api/activities/${MIXED}/close`, { method: 'POST', body: { expectedVersion: 1 } })).status, 403);
+      assert.equal((await f.request(user, `/api/activities/${MIXED}`, { method: 'DELETE', body: { expectedVersion: 1 } })).status, 403);
+      const shrink = await f.request(user, `/api/activities/${MIXED}`, { method: 'PATCH',
+        body: { ...terms({ sectionIds: [user === 102 ? TROPA : ESCOLTA] }), expectedVersion: 1 } });
+      assert.equal(shrink.status, 403, 'a single-section coordinator cannot take over a mixed activity');
+    }
+    assert.equal(f.sql.prepare('SELECT status FROM activity WHERE id=?').get(MIXED).status, 'PUBLISHED');
+    assert.equal(version(f, MIXED), 1);
+    // And a section coordinator cannot turn an own activity into a mixed one.
+    const widen = await f.request(102, `/api/activities/${TROPA_PUBLISHED}`, { method: 'PATCH',
+      body: { ...terms({ sectionIds: [TROPA, ESCOLTA] }), expectedVersion: 1 } });
+    assert.equal(widen.status, 403);
+  } finally { f.close(); }
+});
+
 test('terms lock still applies with the right version and closed activities cannot be edited', async () => {
   const f = await setup();
   try {
