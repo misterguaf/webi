@@ -112,6 +112,55 @@ export function groupBySection(rows, sections) {
       rows: list.sort((a, b) => a.display_name.localeCompare(b.display_name, 'ca')) }));
 }
 
+// ---------------------------------------------------------------- editor (create / edit)
+export const PROVENANCE_OPTIONS = Object.freeze([
+  { value: '', label: 'Sense indicar' },
+  { value: 'CRM_ANTERIOR', label: 'CRM anterior' },
+  { value: 'DOCUMENTACIO_FISICA', label: 'Documentació física' },
+  { value: 'COMUNICACIO_FAMILIA', label: 'Comunicació de la família' },
+  { value: 'ALTRES', label: 'Altres' }]);
+export const PROVENANCE_LABELS = Object.freeze(Object.fromEntries(PROVENANCE_OPTIONS.map(o => [o.value, o.label])));
+
+const validBirthDate = (value, now) => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value && date.getTime() <= now;
+};
+/**
+ * Validate the participant editor inline (mirrors the backend contract) and build the request body.
+ * @param {{name, birthDate, sectionCode, provenance, provenanceNote}} values
+ * @param {{mode:'create'|'edit', sectionIds:Record<string,string>, now?:number}} ctx
+ */
+export function validateEditor(values, { mode, sectionIds, now = Date.now() }) {
+  const errors = {};
+  const name = (values.name ?? '').trim();
+  if (!name) errors.name = 'Escriu el nom del participant';
+  else if (name.length > 120) errors.name = 'Com a màxim 120 caràcters';
+  let birthDate = null;
+  const raw = (values.birthDate ?? '').trim();
+  if (raw) {
+    if (!validBirthDate(raw, now)) errors.birthDate = 'Data no vàlida';
+    else birthDate = raw;
+  }
+  if (mode === 'create' && !values.sectionCode) errors.audience = 'Tria la secció';
+  const provenance = values.provenance || null;
+  const note = (values.provenanceNote ?? '').trim();
+  if (note.length > 200) errors.provenanceNote = 'Com a màxim 200 caràcters';
+  const body = mode === 'create'
+    ? { name, sectionId: sectionIds[values.sectionCode], birthDate, provenance, provenanceNote: note || null }
+    : { name, birthDate, provenance, provenanceNote: note || null };
+  if (mode === 'create' && !body.sectionId) errors.audience = 'Tria la secció';
+  return { errors, body, valid: Object.keys(errors).length === 0 };
+}
+
+/** In-scope possible duplicates: same normalised name (and, if given, same birth date takes priority). */
+export function findDuplicates(rows, name, birthDate) {
+  const needle = normalize(name);
+  if (needle.length < 2) return [];
+  return rows.filter(row => normalize(row.display_name) === needle)
+    .sort((a, b) => (birthDate && b.birth_date === birthDate ? 1 : 0) - (birthDate && a.birth_date === birthDate ? 1 : 0));
+}
+
 export function accessibleRowName(row, sections) {
   const parts = [row.display_name, sectionName(row.current_section_id, sections), statusLabel(row.status)];
   if (row.completeness?.complete === false) parts.push('informació pendent');

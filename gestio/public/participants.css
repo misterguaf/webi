@@ -7,6 +7,14 @@ body[data-page="participants"] .page-main,body[data-page="participants"] .page-h
 /* ------------------------------------------------------------ toolbar */
 .participant-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2);margin-bottom:var(--space-4)}
 .filter-toggle.filter-on{background:var(--iris-soft);border-color:color-mix(in srgb,var(--iris-primary) 40%,transparent);color:var(--iris-strong)}
+.toolbar-cta{margin-left:auto}
+.toolbar-cta svg{width:16px;height:16px;stroke-width:2.2}
+
+/* duplicate hint in the create drawer */
+.duplicate-hint{margin-top:var(--space-2);padding:var(--space-3) var(--space-4);border:1px solid color-mix(in srgb,var(--warning) 45%,var(--border-default));border-radius:var(--radius-control);background:color-mix(in srgb,var(--warning) 10%,var(--surface-primary));display:grid;gap:var(--space-1)}
+.duplicate-title{margin:0!important;font-weight:560}
+.duplicate-list{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.duplicate-list .link-button{padding-left:0}
 
 /* ------------------------------------------------------------ list surface + groups */
 .participant-surface{display:grid;gap:var(--space-5)}

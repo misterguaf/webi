@@ -3,10 +3,11 @@
 // replaces the legacy bullet list. Batch 2 is the read surface (list + Fitxa); the guided create,
 // edit, section change and the Família tab are added in later batches.
 import { fetchAllPages } from '../api.js';
-import { announce, h, icon } from '../ui.js';
-import { accessibleRowName, canCreate, completenessSignal, ESTAT_FILTERS, feeLabel,
-  filterParticipants, filtersDiffer, filtersToQuery, groupBySection, historyReason, initials, missingSummary, parseFilters,
-  scopeSubtitle, sectionName, sectionOptions, statusLabel } from './participants/model.js';
+import { announce, confirmDialog, h, icon, openMenu, toast, trapTab } from '../ui.js';
+import { createParticipantEditor } from './participants/editor.js';
+import { accessibleRowName, canCreate, canManageSection, completenessSignal, ESTAT_FILTERS, feeLabel,
+  filterParticipants, filtersDiffer, filtersToQuery, groupBySection, historyReason, initials, manageableSections,
+  missingSummary, parseFilters, scopeSubtitle, SECTION_LABELS, sectionCode, sectionName, sectionOptions, statusLabel } from './participants/model.js';
 
 const $ = id => document.getElementById(id);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
@@ -22,6 +23,14 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
 
   const caps = () => me?.capabilities;
   const sections = () => me?.capabilities?.sections ?? [];
+  const sectionIds = () => Object.fromEntries(sections().map(s => [s.code, s.id]));
+  const invalidate = () => { loadedAt = 0; };
+
+  const editor = createParticipantEditor({ call, caps, sectionIds, rows: () => rows,
+    reload: id => call(`/api/participants/${id}`).then(r => r.participant),
+    onCreated: created => { invalidate(); toast('Participant afegit'); routes.go({ page: 'participants', path: [created.id] }); },
+    onSaved: id => { invalidate(); toast('Canvis guardats'); if (route.path[0] === id) void showDetail(id); } });
+  function openCreate() { if (canCreate(me?.capabilities)) editor.open({ trigger: document.activeElement }); }
 
   async function refresh({ force = false } = {}) {
     if (!me) return;
@@ -75,7 +84,8 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     if (!rows && listError) { results.replaceChildren(listErrorBox()); return; }
     if (!rows) return;
     const visible = filterParticipants(rows, filters, sections(), search);
-    if (!rows.length) { results.replaceChildren(emptyState(filters.estat === 'de-baixa' ? 'No hi ha participants de baixa en les teues seccions.' : 'Encara no hi ha participants en les teues seccions.')); return; }
+    if (!rows.length) { results.replaceChildren(emptyState(filters.estat === 'de-baixa' ? 'No hi ha participants de baixa en les teues seccions.' : 'Encara no hi ha participants en les teues seccions.',
+      filters.estat !== 'de-baixa' && canCreate(me.capabilities) ? h('button', { className: 'btn btn-primary', text: 'Nou participant', attrs: { type: 'button' }, on: { click: () => openCreate() } }) : null)); return; }
     if (!visible.length) { results.replaceChildren(emptyState('Cap participant coincideix amb la cerca.',
       h('button', { className: 'btn btn-secondary', text: 'Neteja filtres', attrs: { type: 'button' }, on: { click: clearFilters } }))); announce('Cap participant'); return; }
     results.replaceChildren(...groupBySection(visible, sections()).map(group =>
@@ -104,11 +114,13 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const compToggle = h('button', { className: `btn btn-secondary filter-toggle${compActive ? ' filter-on' : ''}`, attrs: { type: 'button', 'aria-pressed': String(compActive) },
       text: 'Informació pendent', on: { click: () => update({ completitud: compActive ? '' : 'pendents' }) } });
     const reset = h('button', { className: 'link-button filters-reset', text: 'Neteja filtres', attrs: { type: 'button', hidden: !filtersDiffer(filters) }, on: { click: clearFilters } });
+    const cta = canCreate(me.capabilities)
+      ? h('button', { className: 'btn btn-primary toolbar-cta', attrs: { type: 'button' }, on: { click: () => openCreate() } }, icon('plus'), h('span', { text: 'Nou participant' })) : null;
     const toolbar = h('div', { className: 'participant-toolbar' },
       h('label', { className: 'search-field', attrs: { for: 'participantSearch' } }, icon('search'), searchInput),
       h('label', { className: 'select-field' }, h('span', { text: 'Secció' }), sectionSelect),
       h('label', { className: 'select-field' }, h('span', { text: 'Estat' }), estatSelect),
-      compToggle, reset);
+      compToggle, reset, cta);
     const results = $('participantResults') ?? h('div', { className: 'participant-surface', attrs: { id: 'participantResults' } });
     listRoot.replaceChildren(toolbar, results);
   }
@@ -170,11 +182,74 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const fee = feeLine(p.feeStatus);
     const header = h('header', { className: 'detail-header' },
       h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); back(); } } }, icon('arrow-left'), h('span', { text: 'Participants' })),
-      h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title, badge)),
+      h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title, badge),
+        h('div', { className: 'detail-actions' }, detailActions(p))),
       h('p', { className: 'detail-context', text: since }),
       completeness, fee);
     detailRoot.replaceChildren(h('article', { className: 'participant-detail' }, header, fitxa(p)));
     title.focus({ preventScroll: true });
+  }
+  function detailActions(p) {
+    const code = sectionCode(p.currentSectionId, sections());
+    if (!canManageSection(me.capabilities, code)) return [];
+    const nodes = [];
+    const edit = h('button', { className: 'btn btn-secondary', text: 'Editar', attrs: { type: 'button' } });
+    edit.addEventListener('click', () => editor.open({ participant: p, trigger: edit }));
+    nodes.push(edit);
+    const items = [];
+    // Section change needs manage over the target too; offer only the sections the user manages.
+    const targets = manageableSections(me.capabilities).filter(c => c !== code);
+    if (p.status === 'ACTIVE' && targets.length) items.push({ label: 'Canviar de secció', onSelect: () => changeSection(p, targets) });
+    if (p.status === 'ACTIVE') items.push({ label: 'Donar de baixa', tone: 'danger', onSelect: () => setActive(p, false) });
+    else items.push({ label: 'Reactivar', onSelect: () => setActive(p, true) });
+    if (items.length) {
+      const more = h('button', { className: 'btn btn-secondary btn-icon', attrs: { type: 'button', 'aria-label': 'Més accions', 'aria-haspopup': 'menu', 'aria-expanded': 'false' } }, icon('more'));
+      more.addEventListener('click', () => openMenu(more, items));
+      nodes.push(more);
+    }
+    return nodes;
+  }
+  async function mutate(request, { success, note }) {
+    try { await request(); invalidate(); toast(success); await showDetail(route.path[0]); }
+    catch (error) {
+      if (error.status === 401) return;
+      if (error.code === 'stale_participant' || error.code === 'invalid_transition') { await showDetail(route.path[0]); toast(note ?? 'La fitxa ha canviat. S’ha actualitzat.'); }
+      else toast(error.status === 403 ? 'No tens permís per a fer aquest canvi.' : 'No s’ha pogut completar l’acció.');
+    }
+  }
+  async function setActive(p, active) {
+    const ok = active
+      ? await confirmDialog({ title: 'Reactivar el participant?', body: `«${p.displayName}» tornarà a estar actiu a ${sectionName(p.currentSectionId, sections())}.`, confirm: 'Reactiva', tone: 'primary' })
+      : await confirmDialog({ title: 'Donar de baixa?', body: `«${p.displayName}» passarà a estar de baixa. Es conserva tot l’historial.`, confirm: 'Dona de baixa', tone: 'danger' });
+    if (!ok) return;
+    await mutate(() => call(`/api/participants/${p.id}/${active ? 'reactivate' : 'deactivate'}`, { method: 'POST', body: JSON.stringify({ expectedVersion: p.version }) }),
+      { success: active ? 'Participant reactivat' : 'Participant donat de baixa' });
+  }
+  function changeSection(p, targets) {
+    sectionDialog(p, targets).then(target => {
+      if (!target) return;
+      return mutate(() => call(`/api/participants/${p.id}/section`, { method: 'POST', body: JSON.stringify({ sectionId: sectionIds()[target], expectedVersion: p.version }) }),
+        { success: 'Secció canviada' });
+    });
+  }
+  function sectionDialog(p, targets) {
+    return new Promise(resolve => {
+      const previous = document.activeElement;
+      const select = h('select', { attrs: { id: 'section-target', 'aria-label': 'Nova secció' } }, targets.map(c => h('option', { text: SECTION_LABELS[c], attrs: { value: c } })));
+      const done = value => { document.removeEventListener('keydown', onKey, true); layer.remove(); previous?.focus?.(); resolve(value); };
+      const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); done(null); } else trapTab(dialog, e); };
+      const dialog = h('div', { className: 'dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Canviar de secció' } },
+        h('h2', { className: 'dialog-title', text: 'Canviar de secció' }),
+        h('p', { className: 'dialog-body', text: `«${p.displayName}» deixarà ${sectionName(p.currentSectionId, sections())} a l’instant. Es conserva l’historial.` }),
+        h('label', { className: 'field' }, h('span', { className: 'field-label', text: 'Nova secció' }), select),
+        h('div', { className: 'dialog-actions' },
+          h('button', { className: 'btn btn-secondary', text: 'Cancel·la', attrs: { type: 'button' }, on: { click: () => done(null) } }),
+          h('button', { className: 'btn btn-primary', text: 'Canvia', attrs: { type: 'button' }, on: { click: () => done(select.value) } })));
+      const layer = h('div', { className: 'dialog-layer', on: { mousedown: e => { if (e.target === layer) done(null); } } }, dialog);
+      document.addEventListener('keydown', onKey, true);
+      document.body.append(layer);
+      select.focus();
+    });
   }
   function feeLine(feeStatus) {
     if (!feeStatus || !feeStatus.length) return null;
@@ -246,7 +321,9 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     },
     unload() {
       me = null; rows = null; listError = null; loadedAt = 0; view.hidden = true; toolbarState = ''; search = '';
+      editor.close({ immediate: true, restoreFocus: false });
       listRoot.replaceChildren(); detailRoot.replaceChildren(); setContextAction(true);
-    }
+    },
+    openCreate
   };
 }

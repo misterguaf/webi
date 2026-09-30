@@ -66,6 +66,32 @@ test('capability derivation for management scope and the list subtitle', () => {
   assert.equal(model.canManageSection(caps({}), 'TROPA'), false);
 });
 
+test('editor validation mirrors the backend; a provisional record may omit the birth date', () => {
+  const now = Date.UTC(2026, 0, 1);
+  const sectionIds = { TROPA: 's2', ESCOLTA: 's3' };
+  const base = { name: ' Aina Fictícia ', birthDate: '', sectionCode: 'TROPA', provenance: '', provenanceNote: '' };
+  const create = model.validateEditor(base, { mode: 'create', sectionIds, now });
+  assert.equal(create.valid, true);
+  assert.deepEqual(create.body, { name: 'Aina Fictícia', sectionId: 's2', birthDate: null, provenance: null, provenanceNote: null });
+  const full = model.validateEditor({ ...base, birthDate: '2015-04-02', provenance: 'ALTRES', provenanceNote: 'Fitxa de paper' }, { mode: 'create', sectionIds, now });
+  assert.deepEqual(full.body.birthDate, '2015-04-02');
+  assert.equal(full.body.provenance, 'ALTRES');
+  assert.deepEqual(Object.keys(model.validateEditor({ ...base, name: '' }, { mode: 'create', sectionIds, now }).errors), ['name']);
+  assert.equal(model.validateEditor({ ...base, sectionCode: '' }, { mode: 'create', sectionIds, now }).errors.audience, 'Tria la secció');
+  assert.equal(model.validateEditor({ ...base, birthDate: '3000-01-01' }, { mode: 'create', sectionIds, now }).errors.birthDate, 'Data no vàlida');
+  const edit = model.validateEditor({ ...base, birthDate: '2015-04-02' }, { mode: 'edit', sectionIds, now });
+  assert.equal('sectionId' in edit.body, false, 'edit never changes the section');
+});
+
+test('duplicate detection matches exact names in the loaded (in-scope) list only', () => {
+  const rows = [p('a', { display_name: 'Joan Exemple', birth_date: '2014-01-01' }),
+    p('b', { display_name: 'Joan Exemple', birth_date: '2015-02-02' }), p('c', { display_name: 'Marta Exemple' })];
+  assert.deepEqual(model.findDuplicates(rows, 'joan exemple').map(r => r.id).sort(), ['a', 'b']);
+  assert.deepEqual(model.findDuplicates(rows, 'Joan Exemple', '2015-02-02')[0].id, 'b', 'same birth date ranks first');
+  assert.deepEqual(model.findDuplicates(rows, 'x'), [], 'needs at least 2 characters');
+  assert.deepEqual(model.findDuplicates(rows, 'Ningú'), []);
+});
+
 test('accessible row name includes name, section, status and pending, never contact data', () => {
   const name = model.accessibleRowName(p('x', { display_name: 'Aina Fictícia', completeness: { complete: false, missing: ['guardian'] } }), S);
   assert.match(name, /^Aina Fictícia, Tropa, Actiu, informació pendent$/);
