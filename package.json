@@ -45,6 +45,6 @@
     "ajv": "8.20.0",
     "eslint": "10.11.0",
     "typescript": "7.0.2",
-    "wrangler": "4.135.0"
+    "wrangler": "4.144.0"
   }
 }
