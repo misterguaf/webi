@@ -111,6 +111,50 @@ export function confirmDialog({ title, body, confirm, tone = 'primary', cancel =
   });
 }
 
+/**
+ * A small modal form dialog. Resolves to a values object (keyed by field name) or null on cancel.
+ * @param {{title:string, fields:Array<{name,label,type?,options?,value?,required?,attrs?}>, confirm:string, tone?:string}} options
+ */
+export function formDialog({ title, fields, confirm, tone = 'primary' }) {
+  return new Promise(resolve => {
+    const previous = document.activeElement;
+    const controls = {};
+    const nodes = fields.map(f => {
+      let control;
+      if (f.type === 'select') control = h('select', { attrs: { id: `fd-${f.name}`, ...f.attrs } }, (f.options ?? []).map(o => h('option', { text: o.label, attrs: { value: o.value, selected: o.value === f.value } })));
+      else if (f.type === 'checkbox') control = h('input', { attrs: { id: `fd-${f.name}`, type: 'checkbox', ...(f.value ? { checked: '' } : {}), ...f.attrs } });
+      else control = h('input', { attrs: { id: `fd-${f.name}`, type: f.type ?? 'text', value: f.value ?? '', autocomplete: 'off', ...f.attrs } });
+      controls[f.name] = control;
+      const error = h('p', { className: 'field-error', attrs: { hidden: true } });
+      return h('div', { className: 'form-field', dataset: { field: f.name } },
+        h('label', { className: 'field-label', attrs: { for: `fd-${f.name}` } }, f.label, f.required ? h('span', { className: 'field-required', text: ' · obligatori' }) : null),
+        f.type === 'checkbox' ? h('label', { className: 'checkbox-row' }, control, h('span', { text: f.checkboxLabel ?? '' })) : control, error);
+    });
+    const read = () => Object.fromEntries(fields.map(f => [f.name, f.type === 'checkbox' ? controls[f.name].checked : controls[f.name].value]));
+    const submit = () => {
+      for (const f of fields) {
+        const wrap = dialog.querySelector(`[data-field="${f.name}"]`), err = wrap.querySelector('.field-error');
+        const invalid = f.required && !String(controls[f.name].value ?? '').trim();
+        err.hidden = !invalid; err.textContent = invalid ? 'Aquest camp és obligatori' : '';
+        if (invalid) { controls[f.name].focus(); return; }
+      }
+      close(read());
+    };
+    const onKey = event => { if (event.key === 'Escape') { event.preventDefault(); close(null); } else trapTab(dialog, event); };
+    function close(result) { document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); resolve(result); }
+    const dialog = h('div', { className: 'dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': title } },
+      h('h2', { className: 'dialog-title', text: title }),
+      h('div', { className: 'dialog-form' }, nodes),
+      h('div', { className: 'dialog-actions' },
+        h('button', { className: 'btn btn-secondary', text: 'Cancel·la', attrs: { type: 'button' }, on: { click: () => close(null) } }),
+        h('button', { className: `btn btn-${tone}`, text: confirm, attrs: { type: 'button' }, on: { click: submit } })));
+    const layer = h('div', { className: 'dialog-layer', on: { mousedown: e => { if (e.target === layer) close(null); } } }, dialog);
+    document.addEventListener('keydown', onKey, true);
+    document.body.append(layer);
+    (fields[0] && controls[fields[0].name])?.focus();
+  });
+}
+
 // ---------------------------------------------------------------- overflow menu (MOTION 07)
 
 /**

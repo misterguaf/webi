@@ -29,6 +29,31 @@ const HISTORY_REASONS = Object.freeze({ ENROLMENT: 'alta', TRANSFER: 'canvi de s
   REACTIVATION: 'reactivació', BACKFILL: 'registre inicial' });
 export const historyReason = reason => HISTORY_REASONS[reason] ?? reason;
 
+// ---------------------------------------------------------------- guardians and contacts
+export const RELATIONSHIP_LABELS = Object.freeze({ PARENT: 'Mare o pare', LEGAL_GUARDIAN: 'Tutela legal', OTHER: 'Altre vincle' });
+export const relationshipLabel = value => RELATIONSHIP_LABELS[value] ?? value;
+export const RELATIONSHIP_OPTIONS = Object.freeze([{ value: 'PARENT', label: 'Mare o pare' },
+  { value: 'LEGAL_GUARDIAN', label: 'Tutela legal' }, { value: 'OTHER', label: 'Altre vincle' }]);
+export const CONTACT_KIND_LABELS = Object.freeze({ EMAIL: 'Correu', PHONE: 'Telèfon' });
+export const contactKindLabel = value => CONTACT_KIND_LABELS[value] ?? value;
+export const BASIS_LABELS = Object.freeze({ COMUNICAT: 'comunicat', ACREDITAT: 'acreditat' });
+/** "Representant legal · comunicat · pendent de revisió" — three distinct facts, never "verificat". */
+export function representationLine(guardian) {
+  if (!guardian.legalRepresentative) return null;
+  const parts = ['Representant legal', BASIS_LABELS[guardian.representationBasis] ?? guardian.representationBasis];
+  if (guardian.representationReviewed) parts.push('revisat per Secretaria');
+  else if (guardian.representationPending) parts.push('pendent de revisió');
+  return parts.join(' · ');
+}
+
+// ---------------------------------------------------------------- reviews (queue)
+export const REVIEW_KIND_LABELS = Object.freeze({
+  REPRESENTATION_CHANGE: 'Canvi de representació legal', GUARDIAN_DATA_REQUEST: 'Sol·licitud de canvi en un tutor',
+  POSSIBLE_DUPLICATE_PARTICIPANT: 'Possible participant duplicat', POSSIBLE_DUPLICATE_GUARDIAN: 'Possible tutor duplicat' });
+export const reviewKindLabel = value => REVIEW_KIND_LABELS[value] ?? value;
+export const REVIEW_STATUS_LABELS = Object.freeze({ OPEN: 'Per revisar', ACKNOWLEDGED: 'Vista', INCIDENCE: 'Incidència', RESOLVED: 'Resolta', ESCALATED: 'Escalada' });
+export const reviewStatusLabel = value => REVIEW_STATUS_LABELS[value] ?? value;
+
 // ---------------------------------------------------------------- fee status (basic)
 export const FEE_LABELS = Object.freeze({ PAID: 'Pagada', PARTIAL: 'Parcial', PENDING: 'Pendent', ISSUE: 'Incidència' });
 export const feeLabel = status => FEE_LABELS[status] ?? status;

@@ -5,6 +5,8 @@
 import { fetchAllPages } from '../api.js';
 import { announce, confirmDialog, h, icon, openMenu, toast, trapTab } from '../ui.js';
 import { createParticipantEditor } from './participants/editor.js';
+import { createFamiliaTab } from './participants/familia.js';
+import { createReviewQueue } from './participants/reviews.js';
 import { accessibleRowName, canCreate, canManageSection, completenessSignal, ESTAT_FILTERS, feeLabel,
   filterParticipants, filtersDiffer, filtersToQuery, groupBySection, historyReason, initials, manageableSections,
   missingSummary, parseFilters, scopeSubtitle, SECTION_LABELS, sectionCode, sectionName, sectionOptions, statusLabel } from './participants/model.js';
@@ -29,8 +31,11 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
   const editor = createParticipantEditor({ call, caps, sectionIds, rows: () => rows,
     reload: id => call(`/api/participants/${id}`).then(r => r.participant),
     onCreated: created => { invalidate(); toast('Participant afegit'); routes.go({ page: 'participants', path: [created.id] }); },
-    onSaved: id => { invalidate(); toast('Canvis guardats'); if (route.path[0] === id) void showDetail(id); } });
+    onSaved: id => { invalidate(); toast('Canvis guardats'); detailCache = null; if (route.path[0] === id) void showDetail(id, { force: true }); } });
   function openCreate() { if (canCreate(me?.capabilities)) editor.open({ trigger: document.activeElement }); }
+  const familia = createFamiliaTab({ call, caps, onChanged: () => { invalidate(); detailCache = null; familia.clear(); if (route.path[0]) void showDetail(route.path[0], { force: true }); } });
+  const readsContacts = p => { const s = caps()?.participants?.readContacts; return !!s && (s.all || s.sections.some(x => x.id === p.currentSectionId)); };
+  const reviews = createReviewQueue({ call, onOpenParticipant: id => { openedFromList = false; routes.go({ page: 'participants', path: [id] }); } });
 
   async function refresh({ force = false } = {}) {
     if (!me) return;
@@ -97,7 +102,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
   }
   let toolbarState = '';
   function ensureToolbar(filters) {
-    const state = JSON.stringify([filters, sectionOptions(rows ?? [], sections()).map(o => o.value), canCreate(me.capabilities)]);
+    const state = JSON.stringify([filters, sectionOptions(rows ?? [], sections()).map(o => o.value), canCreate(me.capabilities), !!me.capabilities.participants.review]);
     if (toolbarState === state && $('participantResults')) { syncToolbar(filters); return; }
     toolbarState = state;
     const options = sectionOptions(rows ?? [], sections());
@@ -116,11 +121,13 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const reset = h('button', { className: 'link-button filters-reset', text: 'Neteja filtres', attrs: { type: 'button', hidden: !filtersDiffer(filters) }, on: { click: clearFilters } });
     const cta = canCreate(me.capabilities)
       ? h('button', { className: 'btn btn-primary toolbar-cta', attrs: { type: 'button' }, on: { click: () => openCreate() } }, icon('plus'), h('span', { text: 'Nou participant' })) : null;
+    const reviewLink = me.capabilities.participants.review
+      ? h('a', { className: 'btn btn-secondary toolbar-reviews', text: 'Revisions', attrs: { href: '#/participants/revisions' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['revisions'] }); } } }) : null;
     const toolbar = h('div', { className: 'participant-toolbar' },
       h('label', { className: 'search-field', attrs: { for: 'participantSearch' } }, icon('search'), searchInput),
       h('label', { className: 'select-field' }, h('span', { text: 'Secció' }), sectionSelect),
       h('label', { className: 'select-field' }, h('span', { text: 'Estat' }), estatSelect),
-      compToggle, reset, cta);
+      compToggle, reset, reviewLink, cta);
     const results = $('participantResults') ?? h('div', { className: 'participant-surface', attrs: { id: 'participantResults' } });
     listRoot.replaceChildren(toolbar, results);
   }
@@ -156,17 +163,20 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
   }
 
   // ---------------------------------------------------------------- detail (Fitxa)
-  let detailToken = 0;
-  async function showDetail(id) {
+  let detailToken = 0, detailCache = null;
+  async function showDetail(id, { force = false } = {}) {
+    if (!force && detailCache?.id === id) { renderDetail(detailCache.participant); return; }
     const mine = ++detailToken;
     detailRoot.textContent = '';
     detailRoot.append(detailSkeleton());
     try {
       const { participant } = await call(`/api/participants/${id}`);
       if (mine !== detailToken) return;
+      detailCache = { id, participant };
       renderDetail(participant);
     } catch (error) {
       if (mine !== detailToken || error.status === 401) return;
+      detailCache = null;
       detailRoot.replaceChildren(error.status === 404 ? notFound() : detailError(id));
       document.title = 'Participants · Gestió';
     }
@@ -186,8 +196,27 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
         h('div', { className: 'detail-actions' }, detailActions(p))),
       h('p', { className: 'detail-context', text: since }),
       completeness, fee);
-    detailRoot.replaceChildren(h('article', { className: 'participant-detail' }, header, fitxa(p)));
+    const tabs = readsContacts(p) ? [{ id: 'fitxa', label: 'Fitxa' }, { id: 'familia', label: 'Família' }] : [];
+    const tab = tabs.some(t => t.id === route.path[1]) ? route.path[1] : 'fitxa';
+    const panel = h('div', { className: 'detail-tabpanel', attrs: tabs.length ? { role: 'tabpanel', id: 'participantTabPanel', 'aria-labelledby': `ptab-${tab}` } : {} });
+    detailRoot.replaceChildren(h('article', { className: 'participant-detail' }, header, tabs.length ? tabBar(p, tabs, tab) : null, panel));
+    if (tab === 'familia') familia.render(panel, p);
+    else panel.append(fitxa(p));
     title.focus({ preventScroll: true });
+  }
+  function tabBar(p, tabs, selected) {
+    const buttons = tabs.map(t => h('button', { className: 'tab', attrs: { type: 'button', role: 'tab', id: `ptab-${t.id}`, 'aria-selected': String(t.id === selected),
+      'aria-controls': 'participantTabPanel', tabindex: t.id === selected ? '0' : '-1' }, dataset: { tab: t.id } }, h('span', { text: t.label })));
+    const select = tabId => routes.go({ page: 'participants', path: [p.id, tabId] });
+    for (const [index, button] of buttons.entries()) {
+      button.addEventListener('click', () => select(button.dataset.tab));
+      button.addEventListener('keydown', event => {
+        const next = { ArrowRight: index + 1, ArrowLeft: index - 1, Home: 0, End: buttons.length - 1 }[event.key];
+        if (next === undefined) return;
+        event.preventDefault(); select(buttons[(next + buttons.length) % buttons.length].dataset.tab);
+      });
+    }
+    return h('div', { className: 'tabs', attrs: { role: 'tablist', 'aria-label': 'Seccions del participant' } }, buttons);
   }
   function detailActions(p) {
     const code = sectionCode(p.currentSectionId, sections());
@@ -210,10 +239,10 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     return nodes;
   }
   async function mutate(request, { success, note }) {
-    try { await request(); invalidate(); toast(success); await showDetail(route.path[0]); }
+    try { await request(); invalidate(); toast(success); detailCache = null; await showDetail(route.path[0], { force: true }); }
     catch (error) {
       if (error.status === 401) return;
-      if (error.code === 'stale_participant' || error.code === 'invalid_transition') { await showDetail(route.path[0]); toast(note ?? 'La fitxa ha canviat. S’ha actualitzat.'); }
+      if (error.code === 'stale_participant' || error.code === 'invalid_transition') { detailCache = null; await showDetail(route.path[0], { force: true }); toast(note ?? 'La fitxa ha canviat. S’ha actualitzat.'); }
       else toast(error.status === 403 ? 'No tens permís per a fer aquest canvi.' : 'No s’ha pogut completar l’acció.');
     }
   }
@@ -293,10 +322,25 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     if (document.body.dataset.page === 'participants') { setContextAction(false); setPageHeader({ hidden: true }); }
     void showDetail(route.path[0]);
   }
+  function renderReviews() {
+    if (!me.capabilities.participants.review) { routes.go({ page: 'participants' }, { replace: true }); return; }
+    listRoot.hidden = true; detailRoot.hidden = false;
+    if (document.body.dataset.page === 'participants') { setContextAction(false); setPageHeader({ hidden: true }); }
+    const container = h('div', { className: 'review-queue' });
+    const title = h('h1', { className: 'detail-title', text: 'Revisions administratives', attrs: { tabindex: '-1' } });
+    detailRoot.replaceChildren(h('article', { className: 'participant-detail' },
+      h('header', { className: 'detail-header' },
+        h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', query: lastListQuery }); } } }, icon('arrow-left'), h('span', { text: 'Participants' })),
+        h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title))), container));
+    document.title = 'Revisions · Participants · Gestió';
+    reviews.render(container);
+    title.focus({ preventScroll: true });
+  }
   function renderRoute() {
     if (!me) return;
     const id = route.path[0];
-    if (id && UUID.test(id)) renderDetailRoute();
+    if (id === 'revisions') renderReviews();
+    else if (id && UUID.test(id)) renderDetailRoute();
     else if (id) routes.go({ page: 'participants' }, { replace: true });
     else renderList();
   }
@@ -322,6 +366,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     unload() {
       me = null; rows = null; listError = null; loadedAt = 0; view.hidden = true; toolbarState = ''; search = '';
       editor.close({ immediate: true, restoreFocus: false });
+      familia.clear(); reviews.clear(); detailCache = null;
       listRoot.replaceChildren(); detailRoot.replaceChildren(); setContextAction(true);
     },
     openCreate

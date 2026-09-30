@@ -92,6 +92,17 @@ test('duplicate detection matches exact names in the loaded (in-scope) list only
   assert.deepEqual(model.findDuplicates(rows, 'Ningú'), []);
 });
 
+test('family and review labels distinguish communicated, accredited and reviewed', () => {
+  assert.equal(model.relationshipLabel('LEGAL_GUARDIAN'), 'Tutela legal');
+  assert.equal(model.contactKindLabel('PHONE'), 'Telèfon');
+  assert.equal(model.representationLine({ legalRepresentative: false }), null);
+  assert.equal(model.representationLine({ legalRepresentative: true, representationBasis: 'COMUNICAT', representationPending: true }), 'Representant legal · comunicat · pendent de revisió');
+  assert.equal(model.representationLine({ legalRepresentative: true, representationBasis: 'ACREDITAT', representationReviewed: true }), 'Representant legal · acreditat · revisat per Secretaria');
+  assert.doesNotMatch(model.representationLine({ legalRepresentative: true, representationBasis: 'ACREDITAT', representationReviewed: true }), /verificat/);
+  assert.equal(model.reviewKindLabel('GUARDIAN_DATA_REQUEST'), 'Sol·licitud de canvi en un tutor');
+  assert.equal(model.reviewStatusLabel('ESCALATED'), 'Escalada');
+});
+
 test('accessible row name includes name, section, status and pending, never contact data', () => {
   const name = model.accessibleRowName(p('x', { display_name: 'Aina Fictícia', completeness: { complete: false, missing: ['guardian'] } }), S);
   assert.match(name, /^Aina Fictícia, Tropa, Actiu, informació pendent$/);
