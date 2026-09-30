@@ -53,10 +53,12 @@ La aplicación debe bloquear inmediatamente aunque la regularización organizati
 - `SECTION_DELEGATE`
 - `TREASURY`
 - `SECRETARY`
-- `CRM_MANAGER`
+- `CRM_MANAGER` (retirado en 3.5E; ver abajo)
 - `TECH_ADMIN`
 
-Una persona puede acumular roles, pero cada asignación conserva scope, vigencia, otorgante y justificación. No se fusionan tesorería, secretaría y CRM.
+Una persona puede acumular roles, pero cada asignación conserva scope, vigencia, otorgante y justificación.
+
+FASE 3.5E (Participants, [spec](design/screens/PARTICIPANTS.md)): se añaden permisos de gestión de participantes, todos con alcance por **sección actual** y aplicados server-side: `participants.profile.manage`, `participants.contact.read`, `participants.contact.manage`, `participants.guardian.manage` (SCOPED, delegables) y `participants.representation.accredit`, `participants.review.manage` (GLOBAL, no delegables). La matriz por defecto (migración 0015, reflejada en el seed) los concede a `GROUP_COORDINATOR` y `SECRETARY` a nivel de grupo, y los cuatro SCOPED a `SECTION_COORDINATOR` (su sección) y a `SECTION_DELEGATE` (para que una delegación individual sea efectiva). Un permiso sobre un participante nunca da acceso a otros participantes relacionados; las escrituras fuera de alcance responden 404 sin distinguir inexistente de otra sección. La concurrencia usa `participant.version` con el patrón `versionCas`. `SECRETARY` absorbe funcionalmente a `CRM_MANAGER`: este queda **retirado** —ya no se puede asignar por la API (`role_retired`)— pero su código y las asignaciones históricas se conservan (fijados por un CHECK en la migración 0001 y presentes en la auditoría) y no otorgan nada operativo; no hay conversión automática de identidades. Pruebas en `test/gestio-participants.test.js`.
 
 ## 4. Gramática de permisos
 

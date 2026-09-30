@@ -6,7 +6,12 @@ import * as security from '../domains/security/repository.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireFresh, requirePermission, requireUuid, validUuid } from './common.js';
 
-const ROLES=new Set(['GROUP_COORDINATOR','SECTION_COORDINATOR','SECTION_DELEGATE','TREASURY','SECRETARY','CRM_MANAGER','TECH_ADMIN']);
+const ROLES=new Set(['GROUP_COORDINATOR','SECTION_COORDINATOR','SECTION_DELEGATE','TREASURY','SECRETARY','TECH_ADMIN']);
+// 3.5E: SECRETARY absorbs the CRM manager function. CRM_MANAGER is retired — it can no longer be
+// assigned through the API. Its code and any historical assignments stay (fixed by a CHECK in
+// migration 0001 and present in the audit trail); existing assignments keep granting nothing
+// operational and are never converted automatically.
+const RETIRED_ROLES=new Set(['CRM_MANAGER']);
 const SEVERITIES=new Set(['LOW','MEDIUM','HIGH','CRITICAL']);
 const SUMMARY_CODES=new Set(['TEST_SCENARIO','ACCOUNT_SUSPICION','UNEXPECTED_ACCESS','OTHER_TECHNICAL']);
 // M3 conservative policy for elevated roles (see docs/PHASE_3_5_AUDIT_REMEDIATION.md):
@@ -55,6 +60,7 @@ export async function assignRole(db,context,session,requestId,input,now=Date.now
   await requirePermission(db,context,requestId,'auth.role.manage'); requireFresh(session,now);
   const {userId,roleCode,sectionId=null}=input??{};
   requireUuid(userId); notSelf(context,userId);
+  if (RETIRED_ROLES.has(roleCode)) throw new AppError(409,'role_retired');
   if (!ROLES.has(roleCode) || (sectionId!==null && !validUuid(sectionId))) throw new AppError(400,'invalid_role');
   const scoped=roleCode==='SECTION_COORDINATOR'||roleCode==='SECTION_DELEGATE';
   if (scoped!==Boolean(sectionId) || !await organization.roleExists(db,roleCode,sectionId)) throw new AppError(400,'invalid_scope');

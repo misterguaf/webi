@@ -84,8 +84,10 @@ test('elevated roles: only a group coordinator assigns them, audited; the last c
       ('${id(9910)}','${id(104)}','auth.role.manage',1,'Fixture'),('${id(9911)}','${id(104)}','auth.user.manage',1,'Fixture')`);
     for (const user of [101, 104]) await f.login(user);
     assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'TECH_ADMIN' } })).status, 403);
-    assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'CRM_MANAGER' } })).status, 201,
+    assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'SECTION_COORDINATOR', sectionId: TROPA } })).status, 201,
       'non-elevated roles follow the ordinary permission');
+    assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'CRM_MANAGER' } })).status, 409,
+      '3.5E: CRM_MANAGER is retired and can no longer be assigned');
     assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'SECRETARY' } })).status, 409,
       'regression: assigning an already active role is a conflict, not a 500');
     const treasury = await f.request(101, `/api/users/${id(106)}/roles`, { method: 'POST', body: { roleCode: 'TREASURY' } });

@@ -19,7 +19,15 @@
 
 /** @type {Readonly<Record<string, Readonly<PermissionDefinition>>>} */
 export const PERMISSIONS = Object.freeze({
-  'participants.profile.read': { kind: 'SCOPED' },
+  'participants.profile.read': { kind: 'SCOPED', delegable: true },
+  'participants.profile.manage': { kind: 'SCOPED', delegable: true },
+  'participants.contact.read': { kind: 'SCOPED', delegable: true,
+    note: 'Consulting contact values is audited; values never reach logs or audit metadata.' },
+  'participants.contact.manage': { kind: 'SCOPED', delegable: true },
+  'participants.guardian.manage': { kind: 'SCOPED', delegable: true },
+  'participants.representation.accredit': { kind: 'GLOBAL',
+    note: 'Marking legal representation as documentarily accredited: Secretaria or general coordination.' },
+  'participants.review.manage': { kind: 'GLOBAL', note: 'Secretaria administrative review queue and change requests.' },
   'health.record.read': { kind: 'SCOPED', note: 'Section derived from participantId; also needs a health grant.' },
 
   'activities.read': { kind: 'SCOPED', note: 'Any scope also reads GENERAL activities (3.5D); managing them needs activities.general.manage.' },

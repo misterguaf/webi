@@ -104,8 +104,14 @@ async function api(request,env,url,requestId) {
     return json({ok:true,requestId},200,match[1]===context.sessionId?{'Set-Cookie':cookieHeader(url,'',0)}:{});
   }
   if (path==='/api/participants' && method==='GET') return json({...await participants.list(db,context,requestId,url.searchParams),requestId});
+  if (path==='/api/participants' && method==='POST') return json({...await participants.createParticipant(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/participants\/([^/]+)$/);
   if (match && method==='GET') return json({participant:await participants.find(db,context,requestId,match[1]),requestId});
+  if (match && method==='PATCH') return json({...await participants.updateParticipant(db,context,requestId,match[1],await readJson(request)),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/(deactivate|reactivate)$/);
+  if (match && method==='POST') return json({...await participants.setParticipantActive(db,context,requestId,match[1],match[2]==='reactivate',await readJson(request)),requestId});
+  match=path.match(/^\/api\/participants\/([^/]+)\/section$/);
+  if (match && method==='POST') return json({...await participants.changeParticipantSection(db,context,requestId,match[1],await readJson(request)),requestId});
   if (path==='/api/dev/policy/health' && method==='POST' && devEnabled(env,url)) {
     const body=await readJson(request);
     return json({...await participants.healthPolicyCheck(db,context,requestId,body.participantId,body.purpose),requestId});

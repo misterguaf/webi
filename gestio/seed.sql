@@ -18,6 +18,21 @@ INSERT OR IGNORE INTO role_permission VALUES
 ('GROUP_COORDINATOR','audit.event.read'),('GROUP_COORDINATOR','auth.role.manage'),
 ('GROUP_COORDINATOR','auth.permission.manage'),('GROUP_COORDINATOR','health.grant.manage'),
 ('GROUP_COORDINATOR','auth.user.manage'),('GROUP_COORDINATOR','security.incident.manage');
+-- 3.5E participant management matrix (mirrors migration 0015; kept identical for clean-install parity).
+INSERT OR IGNORE INTO permission(code) VALUES
+('participants.profile.manage'),('participants.contact.read'),('participants.contact.manage'),
+('participants.guardian.manage'),('participants.representation.accredit'),('participants.review.manage');
+INSERT OR IGNORE INTO role_permission VALUES
+('GROUP_COORDINATOR','participants.profile.manage'),('GROUP_COORDINATOR','participants.contact.read'),
+('GROUP_COORDINATOR','participants.contact.manage'),('GROUP_COORDINATOR','participants.guardian.manage'),
+('GROUP_COORDINATOR','participants.representation.accredit'),('GROUP_COORDINATOR','participants.review.manage'),
+('SECRETARY','participants.profile.manage'),('SECRETARY','participants.contact.read'),
+('SECRETARY','participants.contact.manage'),('SECRETARY','participants.guardian.manage'),
+('SECRETARY','participants.representation.accredit'),('SECRETARY','participants.review.manage'),
+('SECTION_COORDINATOR','participants.profile.manage'),('SECTION_COORDINATOR','participants.contact.read'),
+('SECTION_COORDINATOR','participants.contact.manage'),('SECTION_COORDINATOR','participants.guardian.manage'),
+('SECTION_DELEGATE','participants.profile.manage'),('SECTION_DELEGATE','participants.contact.read'),
+('SECTION_DELEGATE','participants.contact.manage'),('SECTION_DELEGATE','participants.guardian.manage');
 INSERT INTO app_user(id,display_name,status,created_at,updated_at) VALUES
 ('00000000-0000-4000-8000-000000000101','Coordinación general (ficticia)','ACTIVE',1700000000000,1700000000000),
 ('00000000-0000-4000-8000-000000000102','Coordinación Tropa (ficticia)','ACTIVE',1700000000000,1700000000000),
@@ -54,6 +69,29 @@ INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_
 ('00000000-0000-4000-8000-000000000413','00000000-0000-4000-8000-000000000101','health.grant.manage',1700000000000,NULL,'Fixture sintético'),
 ('00000000-0000-4000-8000-000000000414','00000000-0000-4000-8000-000000000101','auth.user.manage',1700000000000,NULL,'Fixture sintético'),
 ('00000000-0000-4000-8000-000000000415','00000000-0000-4000-8000-000000000101','security.incident.manage',1700000000000,NULL,'Fixture sintético');
+-- 3.5E: individual grants so the seeded operational users actually hold the participant permissions
+-- (the model requires role AND grant). SECTION_COORDINATOR grants are scoped by their role's section.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification) VALUES
+('00000000-0000-4000-8000-000000000421','00000000-0000-4000-8000-000000000101','participants.profile.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000422','00000000-0000-4000-8000-000000000101','participants.contact.read',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000423','00000000-0000-4000-8000-000000000101','participants.contact.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000424','00000000-0000-4000-8000-000000000101','participants.guardian.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000425','00000000-0000-4000-8000-000000000101','participants.representation.accredit',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000426','00000000-0000-4000-8000-000000000101','participants.review.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000428','00000000-0000-4000-8000-000000000105','participants.profile.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000429','00000000-0000-4000-8000-000000000105','participants.contact.read',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000430','00000000-0000-4000-8000-000000000105','participants.contact.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000431','00000000-0000-4000-8000-000000000105','participants.guardian.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000432','00000000-0000-4000-8000-000000000105','participants.representation.accredit',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000433','00000000-0000-4000-8000-000000000105','participants.review.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000434','00000000-0000-4000-8000-000000000102','participants.profile.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000435','00000000-0000-4000-8000-000000000102','participants.contact.read',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000436','00000000-0000-4000-8000-000000000102','participants.contact.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000437','00000000-0000-4000-8000-000000000102','participants.guardian.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000438','00000000-0000-4000-8000-000000000103','participants.profile.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000439','00000000-0000-4000-8000-000000000103','participants.contact.read',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000440','00000000-0000-4000-8000-000000000103','participants.contact.manage',1700000000000,NULL,'Fixture sintético'),
+('00000000-0000-4000-8000-000000000441','00000000-0000-4000-8000-000000000103','participants.guardian.manage',1700000000000,NULL,'Fixture sintético');
 INSERT INTO participant(id,display_name,current_section_id,status,birth_date) VALUES
 ('00000000-0000-4000-8000-000000000501','Participante Manada A (ficticio)','00000000-0000-4000-8000-000000000001','ACTIVE','2017-06-12'),
 ('00000000-0000-4000-8000-000000000502','Participante Tropa A (ficticio)','00000000-0000-4000-8000-000000000002','ACTIVE','2013-05-18'),

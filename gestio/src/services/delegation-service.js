@@ -4,7 +4,9 @@ import { effectiveSections } from '../domains/organization/repository.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireFresh, requirePermission, requireUuid, validUuid } from './common.js';
 
-const DELEGABLE=new Set(['activities.registration.review','finance.payment.verify','finance.fee.payment.review']);
+const DELEGABLE=new Set(['activities.registration.review','finance.payment.verify','finance.fee.payment.review',
+  'participants.profile.read','participants.profile.manage','participants.contact.read','participants.contact.manage',
+  'participants.guardian.manage']);
 const reference=value=>synthetic.reference(value);
 async function active(db,id) {
   return db.prepare("SELECT id FROM app_user WHERE id=? AND status='ACTIVE'").bind(id).first();
