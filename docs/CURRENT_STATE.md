@@ -1,10 +1,22 @@
 # Estado actual del sistema
 
-Fecha de corte: **2026-09-29**
-Fase: **3.5 — diseño de Gestió; remediación de la auditoría independiente completada en local** (3.5D Activitats aún no iniciada)
+Fecha de corte: **2026-09-30**
+Fase: **3.5 — diseño de Gestió; 3.5D Activitats cerrada en local** (3.5E Participants: solo especificación en borrador)
 Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
-Base: `phase-3b-complete`; checkpoint 3.5 `5e59e37` en `phase/3.5-design`; remediación en `phase/3.5-audit-remediation` (sin merge a `main`).
+Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D en `phase/3.5-design`, checkpoint `phase-3.5d-complete` (sin merge a `main`).
 Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
+
+## Actualización FASE 3.5D — Activitats (2026-09-30)
+
+Detalle y evidencias: [PHASE_3_5D_REPORT](PHASE_3_5D_REPORT.md). Especificación: [ACTIVITIES.md](design/screens/ACTIVITIES.md) v0.2.
+
+- **Pantalla Activitats nueva** en Gestió: lista con filtros en la URL, drawer de Nova activitat / Editar, página de detalle con pestañas Inscripcions e Informació. La pantalla legacy y el panel legacy de revisión de inscripciones se han retirado.
+- **Backend (migración 0014):** versión optimista en `activity` (`409 stale_activity`), descarte de borradores sin inscripciones, recuentos de inscripciones con el alcance del revisor en el listado, lectura de GENERAL separada de su gestión, `termsLocked` y transporte familiar a 0 € validado en servidor.
+- **Routing por hash** sin framework (`gestio/public/router.js`), con deep links y restauración tras el login.
+- **Actividades mixtas:** lectura con una sección en alcance; inscripciones, recuentos, revisión y gestión permanecen dentro del alcance de cada sección (regresión específica).
+- **Demo:** escenarios D1–D12 con fechas relativas al seed.
+- **Dependencias:** `wrangler` fijado en 4.144.0; `npm audit` sin vulnerabilidades.
+- Las secciones siguientes describen estados anteriores y se conservan como historial.
 
 ## Actualización FASE 3.5 — remediación de auditoría (2026-09-29)
 

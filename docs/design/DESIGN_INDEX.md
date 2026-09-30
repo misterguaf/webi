@@ -107,9 +107,9 @@ Application shell: sidebar, top area, layout and responsive navigation.
 Dashboard / Inici v0.1 (3.5C): permission-aware home, attention block, upcoming activities, fee summary.
 
 `screens/ACTIVITIES.md`
-Activitats v0.2 (3.5D): activity list, Nova activitat drawer/sheet, activity detail with
-Inscripcions / Informació (no Pagaments tab in v1.0), hash routing, concurrency, states and
-known implementation gaps.
+Activitats v0.2 (3.5D, implemented — checkpoint `phase-3.5d-complete`): activity list, Nova
+activitat drawer/sheet, activity detail with Inscripcions / Informació (no Pagaments tab in
+v1.0), hash routing, concurrency, states and known implementation gaps.
 
 Future specifications may include:
 
