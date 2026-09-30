@@ -18,7 +18,7 @@ const { call, post } = createClient({ onUnauthorized: () => {
 const reportLoadError = error => { if (error?.status !== 401 && error?.status !== 403 && error?.status !== 404) $('shellLoadError').hidden = false; };
 let currentMe = null;
 
-const registrations = createRegistrationsView({ call, message, reportLoadError, navigateTo });
+const registrations = createRegistrationsView({ call, message, reportLoadError });
 const activities = createActivitiesView({ call, message, reportLoadError, routes, setPageHeader, setContextAction });
 // Dashboard entry points land on the activity detail (3.5D), never on a form.
 const dashboard = setupDashboard({ call, navigateTo,

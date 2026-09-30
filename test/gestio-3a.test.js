@@ -223,9 +223,11 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     assert.equal(rows(gestio,state,`SELECT count(*) AS n FROM activity_registration WHERE activity_id='${free.data.id}'
       AND submitted_name='Persona Desconocida (ficticio)' AND status='NEEDS_PARTICIPANT_REVIEW'`)[0].n,2,
     'distinct submitted dates must not silently collapse pending applications');
-    // Audit M8: registration review lives in views/registrations.js, candidate labels in labels.js.
-    assert.match(readFileSync(resolve(gestio,'public/views/registrations.js'),'utf8'),/registration\.submitted_birth_date/);
-    assert.match(readFileSync(resolve(gestio,'public/labels.js'),'utf8'),/person\.birth_date/);
+    // 3.5D: registration review lives in the activity's Inscripcions tab; the declared birth date is shown
+    // only while pending and a candidate's full birth date only when the server returns it.
+    const tab=readFileSync(resolve(gestio,'public/views/activities/registrations-tab.js'),'utf8');
+    assert.match(tab,/row\.submitted_birth_date/);
+    assert.match(tab,/person\.birth_date \?/);
     const clan=await submit(portalInput('DEMO-GENERAL','Persona Clan Desconocida (ficticio)','CLA','2007-08-09',{telefon:''}),session.data.csrf,worker.base,syntheticIp(24));
     assert.equal(clan.status,202,'optional phone must not block submission');
     const paymentInput=portalInput(paid.data.publicCode,'Participante Tropa B (ficticio)','TRO','2012-11-03',{transportCode:'GROUP'});

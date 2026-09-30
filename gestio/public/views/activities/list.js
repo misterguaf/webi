@@ -109,9 +109,9 @@ export function createActivityList({ root, onFilters, onOpen, onCreate, onRetry 
   }
 
   /**
-   * @param {{rows: any[]|null, caps: any, query: any, now?: number, loading?: boolean, error?: any, highlight?: string|null}} state
+   * @param {{rows: any[]|null, caps: any, query: any, now?: number, loading?: boolean, error?: any, highlight?: string|null, removing?: string|null}} state
    */
-  function render({ rows, caps: capabilities, query, now = Date.now(), loading = false, error = null, highlight = null }) {
+  function render({ rows, caps: capabilities, query, now = Date.now(), loading = false, error = null, highlight = null, removing = null }) {
     caps = capabilities;
     filters = parseFilters(query);
     if (document.activeElement !== search) search.value = filters.q;
@@ -165,6 +165,7 @@ export function createActivityList({ root, onFilters, onOpen, onCreate, onRetry 
     const build = list => h('ul', { className: 'activity-rows', attrs: { role: 'list' } }, list.map(activity => {
       const item = row(activity, now, animate);
       if (activity.id === highlight) item.firstChild.classList.add('row-inserted');
+      if (activity.id === removing) item.firstChild.classList.add('row-removing');
       return item;
     }));
     if (filters.estat) results.replaceChildren(build(flatActivities(visible, now)));

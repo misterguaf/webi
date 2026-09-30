@@ -4,5 +4,3 @@ const statusLabel = { DRAFT: 'Esborrany', PUBLISHED: 'Publicada', CLOSED: 'Tanca
   CONFIRMED: 'Confirmada', REJECTED: 'Rebutjada', CLEAR: 'Coincidència clara', AMBIGUOUS: 'Coincidència ambigua',
   NONE: 'Sense coincidència', RESOLVED: 'Vinculada', PENDING_REVIEW: 'Pendent de revisió', VERIFIED: 'Verificat', ISSUE: 'Incidència' };
 export const label = value => statusLabel[value] ?? value;
-// Candidates carry match signals; the full birth date is present only with participant-profile access.
-export const candidateLabel = person => `${person.display_name} · ${person.section_code} · ${person.birth_date_matches ? 'naixement coincideix' : 'naixement no coincideix'}${person.birth_date ? ` (${person.birth_date})` : ''}`;
