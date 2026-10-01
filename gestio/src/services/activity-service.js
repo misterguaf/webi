@@ -177,7 +177,7 @@ export async function discardActivity(db,context,requestId,id,input,now=Date.now
 }
 
 // Registration summary (3.5D, B1): aggregates computed with exactly the scope of
-// GET /api/activities/:id/registrations — registrations submitted for a section the reviewer covers,
+// GET /api/activities/:id/registrations — registrations whose registration section the reviewer covers,
 // or all of them for group-wide reviewers. No personal data; `null` without an overlapping scope.
 async function reviewScope(db,context) {
   const review=await authorize(db,context,{permission:'activities.registration.review',mode:'list'});
@@ -185,13 +185,19 @@ async function reviewScope(db,context) {
   const sections=(await db.prepare('SELECT id,code FROM section ORDER BY id').all()).results;
   return {sections:review.sections,codeOf:new Map(sections.map(row=>[row.id,row.code]))};
 }
+// 3.5F: scope and counts follow the registration section (REGISTRATIONS.md §7). `actionable` is what this
+// reviewer can work: every pending registration for global reviewers, otherwise those not escalated.
 function summarySql(scope) {
   if (!scope) return {sql:'NULL AS registration_summary',values:[]};
-  const filter=scope.sections===null?'':` AND r.submitted_section_id IN (${scope.sections.map(()=>'?').join(',')})`;
+  const filter=scope.sections===null?'':` AND r.registration_section_id IN (${scope.sections.map(()=>'?').join(',')})`;
+  const actionable=scope.sections===null?"r.status='NEEDS_PARTICIPANT_REVIEW'":"r.status='NEEDS_PARTICIPANT_REVIEW' AND r.review_level='SECTION'";
   return {sql:`(SELECT json_object('total',count(*),
       'needsReview',coalesce(sum(r.status='NEEDS_PARTICIPANT_REVIEW'),0),
+      'escalated',coalesce(sum(r.status='NEEDS_PARTICIPANT_REVIEW' AND r.review_level='GLOBAL'),0),
+      'actionable',coalesce(sum(${actionable}),0),
       'awaitingPayment',coalesce(sum(r.status='AWAITING_PAYMENT_REVIEW'),0),
-      'confirmed',coalesce(sum(r.status='CONFIRMED'),0),'rejected',coalesce(sum(r.status='REJECTED'),0))
+      'confirmed',coalesce(sum(r.status='CONFIRMED'),0),'rejected',coalesce(sum(r.status='REJECTED'),0),
+      'withdrawn',coalesce(sum(r.status='WITHDRAWN'),0))
     FROM activity_registration r WHERE r.activity_id=a.id${filter}) AS registration_summary`,values:scope.sections??[]};
 }
 export function summaryFor(scope,audience,sectionIds,raw) {

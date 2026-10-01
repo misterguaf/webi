@@ -53,7 +53,8 @@ test('reviewer without profile access sees match signals only, and only plausibl
       assert.equal(row.birth_date_matches, true);
       assert.equal(row.name_matches, row.id !== id(502));
     }
-    assert.doesNotMatch(JSON.stringify(response.data), /\d{4}-\d{2}-\d{2}/);
+    assert.doesNotMatch(JSON.stringify(response.data.candidates), /\d{4}-\d{2}-\d{2}/);
+    assert.equal(response.data.declared.birthDate, '2013-05-18', 'only the declared date of the pending request (3.5F, moved out of the list)');
     const status = f.sql.prepare('SELECT status FROM activity_registration WHERE id=?').get(registration).status;
     assert.equal(status, 'NEEDS_PARTICIPANT_REVIEW', 'listing candidates never merges automatically');
   } finally { f.close(); }

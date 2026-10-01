@@ -37,11 +37,19 @@ export async function storeEvidence(storage,key,validated) {
   if (!storage?.put) throw new AppError(503,'evidence_storage_unavailable');
   await storage.put(key,validated.bytes,{httpMetadata:{contentType:'application/octet-stream'}});
 }
-export async function readEvidence(storage,key) {
+// Served only through authenticated endpoints. The type is the one detected from the magic bytes at
+// upload (stored in D1), never the client's; `view` renders inline inside Gestió (same-origin frame
+// or image), `download` saves with a safe generated name. Without a known type: opaque attachment.
+const SAFE_MIMES=new Set(formats.map(format=>format.mime));
+export async function readEvidence(storage,key,{mime=null,mode='download',filename=null}={}) {
   if (!storage?.get) throw new AppError(503,'evidence_storage_unavailable');
   const object=await storage.get(key);
   if (!object) throw new AppError(404,'not_found');
-  return new Response(object.body,{headers:{'Content-Type':'application/octet-stream',
-    'Content-Disposition':'attachment; filename="justificant.bin"','Cache-Control':'no-store',
-    'X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow'}});
+  const known=SAFE_MIMES.has(mime) && typeof filename==='string' && /^[a-z0-9.-]{1,80}$/.test(filename);
+  const inline=known && mode==='view';
+  return new Response(object.body,{headers:{'Content-Type':known?mime:'application/octet-stream',
+    'Content-Disposition':inline?'inline':`attachment; filename="${known?filename:'justificant.bin'}"`,'Cache-Control':'no-store',
+    'X-Content-Type-Options':'nosniff','X-Robots-Tag':'noindex, nofollow',
+    'Content-Security-Policy':"default-src 'none'; frame-ancestors 'self'",
+    ...(inline?{'X-Frame-Options':'SAMEORIGIN'}:{'X-Frame-Options':'DENY'})}});
 }

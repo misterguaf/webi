@@ -199,12 +199,12 @@ test('list read model: counts are scoped like the registration list, labelled PA
     const rows = async user => Object.fromEntries((await f.request(user, '/api/activities')).data.activities.map(row => [row.id, row]));
 
     const group = await rows(101);
-    assert.deepEqual(group[GENERAL].registrations, { scope: 'ALL', sections: [], total: 4, needsReview: 1, awaitingPayment: 0, confirmed: 2, rejected: 1 });
+    assert.deepEqual(group[GENERAL].registrations, { scope: 'ALL', sections: [], total: 4, needsReview: 1, escalated: 0, actionable: 1, awaitingPayment: 0, confirmed: 2, rejected: 1, withdrawn: 0 });
     assert.equal(group[TROPA_PUBLISHED].registrations.total, 1);
     assert.equal(group[TROPA_DRAFT].version, 1);
 
     const tropa = await rows(102);
-    assert.deepEqual(tropa[GENERAL].registrations, { scope: 'PARTIAL', sections: ['TROPA'], total: 2, needsReview: 1, awaitingPayment: 0, confirmed: 1, rejected: 0 },
+    assert.deepEqual(tropa[GENERAL].registrations, { scope: 'PARTIAL', sections: ['TROPA'], total: 2, needsReview: 1, escalated: 0, actionable: 1, awaitingPayment: 0, confirmed: 1, rejected: 0, withdrawn: 0 },
       'a Tropa reviewer never receives the global total of a GENERAL activity');
     assert.deepEqual(tropa[TROPA_PUBLISHED].registrations.scope, 'ALL');
     assert.equal(tropa[ESCOLTA_PAID], undefined);
@@ -225,7 +225,7 @@ test('list read model: mixed activities are PARTIAL for a single-section reviewe
     f.sql.exec(`INSERT INTO activity_section(activity_id,section_id) VALUES('${TROPA_DRAFT}','${ESCOLTA}')`);
     register(f, 9201, TROPA_DRAFT, TROPA, 'CONFIRMED', id(502));
     const tropa = Object.fromEntries((await f.request(102, '/api/activities')).data.activities.map(row => [row.id, row]));
-    assert.deepEqual(tropa[TROPA_DRAFT].registrations, { scope: 'PARTIAL', sections: ['TROPA'], total: 1, needsReview: 0, awaitingPayment: 0, confirmed: 1, rejected: 0 });
+    assert.deepEqual(tropa[TROPA_DRAFT].registrations, { scope: 'PARTIAL', sections: ['TROPA'], total: 1, needsReview: 0, escalated: 0, actionable: 0, awaitingPayment: 0, confirmed: 1, rejected: 0, withdrawn: 0 });
     const { summaryFor } = await import('../gestio/src/services/activity-service.js');
     assert.equal(summaryFor({ sections: [ESCOLTA], codeOf: new Map([[ESCOLTA, 'ESCOLTA']]) }, 'SECTIONS', [TROPA], '{"total":3}'), null);
   } finally { f.close(); }
@@ -369,11 +369,11 @@ test('mixed activity: registrations, candidates, reviews and transitions stay st
     assert.equal(candidates.status, 404);
     for (const body of [{ decision: 'REJECT' }, { decision: 'MATCH', participantId: id(504) }]) {
       const review = await f.request(102, `/api/registrations/${id(9302)}/review`, { method: 'POST', body });
-      assert.equal(review.status, 403, JSON.stringify(body));
+      assert.equal(review.status, 404, `${JSON.stringify(body)}: out of scope is indistinguishable from missing (3.5F)`);
     }
     // Linking an own-section registration to a participant of the other section is refused too.
     const cross = await f.request(102, `/api/registrations/${id(9301)}/review`, { method: 'POST', body: { decision: 'MATCH', participantId: id(504) } });
-    assert.equal(cross.status, 403);
+    assert.equal(cross.status, 404, 'a participant outside the reviewer scope is indistinguishable from a missing one');
     assert.equal(f.sql.prepare('SELECT status FROM activity_registration WHERE id=?').get(id(9302)).status, 'NEEDS_PARTICIPANT_REVIEW');
     assert.equal(f.sql.prepare('SELECT participant_id FROM activity_registration WHERE id=?').get(id(9301)).participant_id, null);
     const own = await f.request(102, `/api/registrations/${id(9301)}/candidates`);

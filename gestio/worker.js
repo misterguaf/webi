@@ -164,11 +164,24 @@ async function api(request,env,url,requestId) {
     match[2]==='publish'?'PUBLISHED':'CLOSED',await readJson(request)),requestId});
   match=path.match(/^\/api\/activities\/([^/]+)\/registrations$/);
   if (match && method==='GET') return json({...await registrations.listRegistrations(db,context,requestId,match[1],url.searchParams),requestId});
+  match=path.match(/^\/api\/activities\/([^/]+)\/registrations\/confirmed$/);
+  if (match && method==='GET') return json({...await registrations.confirmedList(db,context,requestId,match[1]),requestId});
+  if (path==='/api/registrations/queue' && method==='GET') return json({...await registrations.registrationQueue(db,context,requestId,url.searchParams),requestId});
+  if (path==='/api/registrations/queue/summary' && method==='GET') return json({...await registrations.queueSummary(db,context,requestId),requestId});
+  match=path.match(/^\/api\/registrations\/([^/]+)\/contact$/);
+  if (match && method==='GET') return json({contact:await registrations.registrationContact(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/registrations\/([^/]+)\/(escalate|section|withdraw)$/);
+  if (match && method==='POST') {
+    const action={escalate:registrations.escalateRegistration,section:registrations.correctSection,withdraw:registrations.withdrawRegistration}[match[2]];
+    return json({...await action(db,context,requestId,match[1],await readJson(request)),requestId});
+  }
   match=path.match(/^\/api\/registrations\/([^/]+)\/review$/);
   if (match && method==='POST') return json({...await registrations.reviewMatch(db,context,requestId,match[1],await readJson(request)),requestId});
   match=path.match(/^\/api\/registrations\/([^/]+)\/candidates$/);
   if (match && method==='GET') return json({...await registrations.reviewCandidates(db,context,requestId,match[1],url.searchParams.get('search')),requestId});
   if (path==='/api/payments' && method==='GET') return json({...await registrations.listPayments(db,context,requestId,url.searchParams),requestId});
+  match=path.match(/^\/api\/payments\/([^/]+)$/);
+  if (match && method==='GET') return json({...await registrations.paymentDetail(db,context,requestId,match[1]),requestId});
   match=path.match(/^\/api\/payments\/([^/]+)\/review$/);
   if (match && method==='POST') {
     const body=await readJson(request);
@@ -176,7 +189,7 @@ async function api(request,env,url,requestId) {
     return json({...await registrations.reviewPayment(db,context,requestId,match[1],body.decision),requestId});
   }
   match=path.match(/^\/api\/payments\/([^/]+)\/evidence$/);
-  if (match && method==='GET') return registrations.evidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1]);
+  if (match && method==='GET') return registrations.evidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1],url.searchParams.get('mode')??'download');
   if (path==='/api/delegations' && method==='GET') return json({...await delegations.listDelegations(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/delegations' && method==='POST') return json({...await delegations.grantDelegation(db,context,session,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/delegations\/([^/]+)\/(ratify|revoke|confirm)$/);

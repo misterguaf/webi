@@ -55,6 +55,13 @@ export async function capabilities(db, context, now = Date.now()) {
       reviewRegistrations: scope('activities.registration.review'),
       verifyPayments: scope('finance.payment.verify')
     },
+    // 3.5F Inscripcions (REGISTRATIONS.md §4.3). reviewGlobal = group-wide registration review.
+    registrations: {
+      review: scope('activities.registration.review'),
+      reviewGlobal: scope('activities.registration.review')?.all === true,
+      readContacts: scope('activities.registration.contact.read'),
+      verifyPayments: scope('finance.payment.verify')
+    },
     fees: {
       status: scope('finance.fee.status.read'),
       read: scope('finance.fee.read'),

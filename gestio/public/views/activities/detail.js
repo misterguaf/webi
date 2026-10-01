@@ -16,7 +16,8 @@ const TABS = [{ id: 'inscripcions', label: 'Inscripcions' }, { id: 'informacio',
 export function createActivityDetail({ root, call, caps, sections, go, back, onEdit, onChanged }) {
   let current = null, token = 0, message = null;
   const registrations = createRegistrationsTab({ call, caps, sections, onChanged: () => { void reload({ keepTab: true }); onChanged(); },
-    setFilter: (id, filter) => go({ page: 'activitats', path: [id, 'inscripcions'], query: filter ? { filtre: filter } : {} }, { replace: true }) });
+    setFilter: (id, filter) => go({ page: 'activitats', path: [id, 'inscripcions'], query: filter ? { filtre: filter } : {} }, { replace: true }),
+    setQuery: (id, query) => go({ page: 'activitats', path: [id, 'inscripcions'], query }) });
 
   async function fetchActivity(id) { return (await call(`/api/activities/${id}`)).activity; }
 

@@ -226,7 +226,7 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     // 3.5D: registration review lives in the activity's Inscripcions tab; the declared birth date is shown
     // only while pending and a candidate's full birth date only when the server returns it.
     const tab=readFileSync(resolve(gestio,'public/views/activities/registrations-tab.js'),'utf8');
-    assert.match(tab,/row\.submitted_birth_date/);
+    assert.match(tab,/data\.declared\?\.birthDate/);
     assert.match(tab,/person\.birth_date \?/);
     const clan=await submit(portalInput('DEMO-GENERAL','Persona Clan Desconocida (ficticio)','CLA','2007-08-09',{telefon:''}),session.data.csrf,worker.base,syntheticIp(24));
     assert.equal(clan.status,202,'optional phone must not block submission');
@@ -270,20 +270,25 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     assert.equal(freeRows.status,200);
     assert.equal((await request(worker.base,`/api/activities/${id(802)}/registrations`,{cookie:delegate})).status,404,
       'audit L1: an out-of-scope activity is not confirmed to exist');
-    const confirmed=freeRows.data.registrations.find(row=>row.participant_id===id(502));
+    // 3.5F: the linked participant appears only with profile access; lists carry no contact data and
+    // no declared birth date (those are separate, explicit requests).
+    const confirmed=freeRows.data.registrations.find(row=>row.participant?.id===id(502));
     assert.equal(confirmed.status,'CONFIRMED');
-    assert.equal(confirmed.submitted_birth_date,null);
-    assert.equal(confirmed.submitted_by_name,'Persona remitenta fictícia');
-    assert.equal(confirmed.receipt_email,'sollicitant@example.test');
-    assert.equal(freeRows.data.registrations.filter(row=>row.participant_id===id(502)).length,1);
-    const ambiguousRow=freeRows.data.registrations.find(row=>row.match_status==='AMBIGUOUS' && row.submitted_name==='Participant Doble (ficticio)');
-    const wrongBirthRow=freeRows.data.registrations.find(row=>row.match_status==='AMBIGUOUS' && row.submitted_name==='Participante Tropa A (ficticio)');
-    const unknownRow=freeRows.data.registrations.find(row=>row.match_status==='NONE');
-    assert.equal(ambiguousRow.status,'NEEDS_PARTICIPANT_REVIEW');assert.ok(unknownRow);assert.ok(wrongBirthRow);
-    assert.equal(ambiguousRow.submitted_birth_date,'2013-05-18');
-    assert.equal(wrongBirthRow.submitted_birth_date,'2010-01-01');
+    for (const key of ['submitted_birth_date','submitted_by_name','receipt_email','contact_phone','participant_id','match_status'])
+      assert.ok(!(key in confirmed),key);
+    const contact=await request(worker.base,`/api/registrations/${confirmed.id}/contact`,{cookie:group2});
+    assert.equal(contact.data.contact.submittedByName,'Persona remitenta fictícia');
+    assert.equal(contact.data.contact.email,'sollicitant@example.test');
+    assert.equal(freeRows.data.registrations.filter(row=>row.participant?.id===id(502)).length,1);
+    const pendingNamed=name=>freeRows.data.registrations.find(row=>row.status==='NEEDS_PARTICIPANT_REVIEW' && row.submitted_name===name);
+    const ambiguousRow=pendingNamed('Participant Doble (ficticio)');
+    const wrongBirthRow=pendingNamed('Participante Tropa A (ficticio)');
+    const unknownRow=pendingNamed('Persona Desconocida (ficticio)');
+    assert.ok(ambiguousRow);assert.ok(unknownRow);assert.ok(wrongBirthRow);
     const candidates=await request(worker.base,`/api/registrations/${ambiguousRow.id}/candidates`,{cookie:delegate});
     assert.equal(candidates.status,200);assert.ok(candidates.data.candidates.some(row=>row.id===id(901) && row.birth_date==='2013-05-18'));
+    assert.equal(candidates.data.declared.birthDate,'2013-05-18');
+    assert.equal((await request(worker.base,`/api/registrations/${wrongBirthRow.id}/candidates`,{cookie:delegate})).data.declared.birthDate,'2010-01-01');
     assert.equal((await request(worker.base,`/api/registrations/${ambiguousRow.id}/review`,{method:'POST',cookie:delegate,
       body:{decision:'MATCH',participantId:id(901)}})).data.status,'CONFIRMED');
     assert.equal(rows(gestio,state,`SELECT submitted_birth_date FROM activity_registration WHERE id='${ambiguousRow.id}'`)[0].submitted_birth_date,null);
@@ -294,10 +299,11 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     assert.equal(rows(gestio,state,`SELECT submitted_birth_date FROM activity_registration WHERE id='${wrongBirthRow.id}'`)[0].submitted_birth_date,null);
     const clanRow=rows(gestio,state,`SELECT id FROM activity_registration WHERE submitted_name='Persona Clan Desconocida (ficticio)'`)[0];
     assert.equal((await request(worker.base,`/api/registrations/${clanRow.id}/review`,{method:'POST',cookie:delegate,
-      body:{decision:'REJECT'}})).status,403);
+      body:{decision:'REJECT'}})).status,404,'3.5F: out of scope is indistinguishable from missing');
     const payments=await request(worker.base,'/api/payments',{cookie:treasury});assert.equal(payments.status,200);
-    const paidRow=payments.data.payments.find(row=>row.activity_name==='Activitat completament fictícia' && row.expected_amount_cents===1500);
-    assert.ok(paidRow);assert.equal(paidRow.review_status,'PENDING_REVIEW');
+    const paidRow=payments.data.payments.find(row=>row.activity.name==='Activitat completament fictícia' && row.amountCents===1500);
+    assert.ok(paidRow);assert.equal(paidRow.paymentState,'PENDING_REVIEW');
+    paidRow.registration_id=paidRow.registrationId;
     assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:troop2,body:{decision:'VERIFIED'}})).status,403);
     const evidenceResponse=await fetch(worker.base+`/api/payments/${paidRow.id}/evidence`,{headers:{Cookie:treasury}});
     assert.equal(evidenceResponse.status,200);assert.match(evidenceResponse.headers.get('content-disposition'),/attachment/);

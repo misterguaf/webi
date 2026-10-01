@@ -15,7 +15,10 @@ function compose(row) {
     case 'RECEIVED': return {subject:'Inscripció rebuda (prova)',body:shared+'Estat: rebuda. La revisarem i contactarem si cal.'};
     case 'PENDING_PAYMENT': return {subject:'Justificant rebut (prova)',body:shared+'Estat: pagament pendent de revisió.'};
     case 'CONFIRMED': return {subject:'Inscripció confirmada (prova)',body:shared+'Estat: confirmada.'};
-    case 'PAYMENT_ISSUE': return {subject:'Incidència de pagament (prova)',body:shared+'S’ha detectat un problema amb el pagament de la inscripció. Ens posarem en contacte amb tu prompte.'};
+    // 3.5F (REGISTRATIONS.md §13.3): neutral texts; nothing internal, no promise of an in-app flow.
+    case 'PAYMENT_ISSUE': return {subject:'Incidència de pagament (prova)',body:shared+'Hem detectat un problema amb el justificant de pagament d’aquesta inscripció. Posa’t en contacte amb el grup per a resoldre-ho.'};
+    case 'REJECTED': return {subject:'Sol·licitud no acceptada (prova)',body:shared+'No hem pogut acceptar aquesta sol·licitud d’inscripció. Si tens cap dubte, posa’t en contacte amb el grup.'};
+    case 'WITHDRAWN': return {subject:'Retirada registrada (prova)',body:shared+'Hem registrat la retirada d’aquesta inscripció.'};
     default: throw new AppError(500,'invalid_notification');
   }
 }
