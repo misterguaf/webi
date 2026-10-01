@@ -935,6 +935,16 @@ delivers the outcome above (e.g. a ceiling that is eligibility only, plus a capa
 expiring delegation record), including any rebuild implied by the role-code CHECK of migration
 0001. This document fixes the outcome, not the SQL.
 
+**Resolved in 3.5G.1A (migration 0022).** No new role and no rebuild of `role`. Permissions marked
+`financialDelegation` in `gestio/src/permissions.js` (today `finance.payment.verify`,
+`finance.fee.payment.review`, `finance.fee.contact.read`) are effective for a user through either
+(a) a role that contains them plus an individual grant (Tresoreria, Coordinació general), or (b) a
+ratified, expiring, capability-limited `delegated_permission`, evaluated **without** any role ceiling.
+An undated delegation is never effective. The named authoriser must hold the same capability (role +
+grant) over the delegated scope. `SECTION_DELEGATE` no longer carries any financial permission, and
+grants it can no longer support were revoked. Later treasury permissions join the same mechanism by
+being marked `financialDelegation`.
+
 # 26. Audit
 
 Audit events contain identifiers, action, actor, session, result and reason code only **[D]**.

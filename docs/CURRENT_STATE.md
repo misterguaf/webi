@@ -6,6 +6,15 @@ Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
 Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D y 3.5E en `phase/3.5-design`, checkpoints `phase-3.5d-complete` y `phase-3.5e-complete` (sin merge a `main`).
 Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
 
+## Actualización FASE 3.5G.1A — seguridad previa a Tresoreria (2026-10-01, pendiente de revisión)
+
+Detalle: [PHASE_3_5G1A_REPORT](PHASE_3_5G1A_REPORT.md). Especificación: [TREASURY.md](design/TREASURY.md) (`phase-3.5g0-complete`). Rama `phase/3.5g-treasury` (sin merge, sin tag de 1A).
+
+- **Privacidad de Quotes:** proyecciones explícitas en listados y detalle de pagos; contacto del remitente solo bajo demanda con `finance.fee.contact.read`, auditado.
+- **Justificantes de cuota:** vista y descarga auditadas (`FEE_EVIDENCE_VIEWED/DOWNLOADED`) con cabeceras seguras.
+- **Delegación de sección sin autoridad financiera**; **delegación financiera explícita** (capacidad concreta, sección, caducidad obligatoria, revocable, auditada) sin rol nuevo (migración 0022).
+- No se ha empezado el nuevo dominio financiero (3.5G.1).
+
 ## Actualización FASE 3.5F — Inscripcions (2026-10-01, pendiente de revisión)
 
 Detalle y evidencias: [PHASE_3_5F_REPORT](PHASE_3_5F_REPORT.md). Especificación: [REGISTRATIONS.md](design/screens/REGISTRATIONS.md) v0.2. Rama `phase/3.5f-registrations` (sin merge, sin tag).
