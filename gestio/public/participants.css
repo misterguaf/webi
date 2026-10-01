@@ -88,7 +88,7 @@ body[data-page="participants"] .page-main,body[data-page="participants"] .page-h
 .contact-kind{color:var(--text-secondary);min-width:120px}
 .contact-value{font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
 .contact-reveal{padding-left:0}
-.contact-end{color:var(--danger);margin-left:auto}
+.contact-more{margin-left:auto}
 .info-empty.small{font-size:13px;margin:0!important}
 .ended-relations{margin-top:var(--space-3)}
 .ended-relations summary{cursor:pointer;color:var(--text-secondary);font-weight:560}
@@ -112,7 +112,7 @@ body[data-page="participants"] .page-main,body[data-page="participants"] .page-h
 .badge-incidence{background:color-mix(in srgb,var(--warning) 16%,transparent);color:var(--text-primary)}
 .badge-escalated{background:color-mix(in srgb,var(--danger) 14%,transparent);color:var(--text-primary)}
 .badge-resolved{background:color-mix(in srgb,var(--success) 14%,transparent);color:var(--text-primary)}
-@media(max-width:767px){ .contact-kind{min-width:0} .contact-end{margin-left:0} }
+@media(max-width:767px){ .contact-kind{min-width:0} }
 .toolbar-reviews{margin-left:auto}
 .toolbar-reviews+.toolbar-cta{margin-left:var(--space-2)}
 @media(max-width:767px){.toolbar-reviews{display:none!important}}

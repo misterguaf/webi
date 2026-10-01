@@ -86,9 +86,9 @@ export function createFamiliaTab({ call, caps, onChanged }) {
 
   function contactRow(participant, ct, { canContact }) {
     const valueSpan = h('span', { className: 'contact-value', text: '•••' });
-    const reveal = h('button', { className: 'link-button contact-reveal', text: 'Consulta el contacte', attrs: { type: 'button', 'aria-expanded': 'false' } });
+    const reveal = h('button', { className: 'link-button contact-reveal', text: 'Mostra el contacte', attrs: { type: 'button', 'aria-expanded': 'false' } });
     reveal.addEventListener('click', async () => {
-      if (reveal.getAttribute('aria-expanded') === 'true') { valueSpan.textContent = '•••'; reveal.textContent = 'Consulta el contacte'; reveal.setAttribute('aria-expanded', 'false'); return; }
+      if (reveal.getAttribute('aria-expanded') === 'true') { valueSpan.textContent = '•••'; reveal.textContent = 'Mostra el contacte'; reveal.setAttribute('aria-expanded', 'false'); return; }
       try { const { contact } = await call(`/api/contacts/${ct.id}`); valueSpan.textContent = contact.value; reveal.textContent = 'Amaga'; reveal.setAttribute('aria-expanded', 'true'); }
       catch (error) { if (error.status !== 401) toast('No s’ha pogut consultar el contacte.'); }
     });
@@ -96,9 +96,10 @@ export function createFamiliaTab({ call, caps, onChanged }) {
       h('span', { className: 'contact-kind', text: `${contactKindLabel(ct.kind)}${ct.isPrimary ? ' · principal' : ''}` }),
       valueSpan, reveal);
     if (canContact) {
-      const end = h('button', { className: 'link-button contact-end', text: 'Retira', attrs: { type: 'button' } });
-      end.addEventListener('click', () => endContact(participant, ct));
-      row.append(end);
+      // Retiring is secondary: it lives in the contact's own menu and keeps the confirmation dialog.
+      const more = h('button', { className: 'btn btn-quiet btn-icon btn-small contact-more', attrs: { type: 'button', 'aria-label': `Accions del contacte (${contactKindLabel(ct.kind)})`, 'aria-haspopup': 'menu', 'aria-expanded': 'false' } }, icon('more'));
+      more.addEventListener('click', () => openMenu(more, [{ label: 'Retira', tone: 'danger', onSelect: () => endContact(participant, ct) }]));
+      row.append(more);
     }
     return row;
   }

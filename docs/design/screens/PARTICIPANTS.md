@@ -26,6 +26,9 @@ Changes in 0.5 (technical closure, 2026-10-01 — no product decision changed):
   immutable history; an ended relationship can be followed by a new one
   (§9.4, migration 0017).
 - **Delegation duration:** implemented as decided (§5.2).
+- **Contacts:** the reveal button reads `Mostra el contacte`; `Retira` moved
+  from the contact row into that contact's `···` menu, with the same
+  confirmation dialog.
 
 Changes in 0.4 (final decisions, 2026-10-01 — spec approved for implementation):
 
@@ -416,7 +419,7 @@ Edit uses the 3.5D drawer with optimistic concurrency (`expectedVersion`,
 ```text
 Tutors
 ┌ Nom del tutor · Mare                          Representant legal · comunicat
-│ ✆ Telèfon  ✉ Correu                           [ Consulta el contacte ]
+│ ✆ Telèfon  ✉ Correu                           [ Mostra el contacte ]
 └ Afegit el 12 de set. · procedència: documentació física
 
                                                 [ Afegeix un tutor ]
@@ -426,11 +429,13 @@ Tutors
 
 - Loading the tab returns guardians, relationships and **which kinds** of
   contact exist — not the values.
-- `Consulta el contacte` fetches the values of one owner (a guardian or the
+- `Mostra el contacte` fetches the values of one owner (a guardian or the
   participant). **Each consultation is audited**: user, resource (the
   participant and the owner), action, date and the permitted context (the
   permission and section that authorised it). **Phones, addresses and e-mails
   are never written to audit events or logs.**
+- Retiring a contact is in that contact's `···` menu (`Retira`), always after
+  a confirmation dialog; it is never a button on the row.
 - Authorised coordinators add, correct and end ordinary contacts of their
   participants. A correction ends the old value and adds the new one.
 
@@ -745,7 +750,7 @@ No backend code, UUID or English identifier is ever visible.
   morph, list insert/remove), with reduced-motion and reduced-transparency
   support. No artistic pass.
 - **Accessibility:** one link per row named by name + section; status and
-  completeness always as text; `Consulta el contacte` is a button with
+  completeness always as text; `Mostra el contacte` is a button with
   `aria-expanded`; the guided flow announces the step; dialogs default to the
   safe choice; focus management as in 3.5D.
 
@@ -906,7 +911,7 @@ mobile (~390):
 - [ ] The completeness step states clearly what is missing.
 - [ ] Inici shows `n fitxes pendents de completar` with the right number for
       each profile and opens the right list; Inici looks the same as before.
-- [ ] `Consulta el contacte` feels deliberate, not obstructive; values are not
+- [ ] `Mostra el contacte` feels deliberate, not obstructive; values are not
       visible before it.
 - [ ] Editing a shared guardian as a section coordinator shows the Secretaria
       message and says nothing about other sections or people.
