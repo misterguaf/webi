@@ -35,7 +35,7 @@ export function createAccountView({ call, message, reportLoadError, reload }) {
 export function createFeesView({ call, message, reportLoadError }) {
   const loadFees = setupFees({ call, message, reportLoadError });
   return { id: 'fees', page: 'quotes', available: caps => !!(caps.fees.read?.all || caps.fees.reviewPayments),
-    load: me => loadFees({ reviewOnly: !me.capabilities.fees.read?.all }),
+    load: me => loadFees({ reviewOnly: !me.capabilities.fees.read?.all, readContacts: !!me.capabilities.fees.readContacts }),
     unload() { $('feePanel').hidden = true; $('feeRound').replaceChildren(); $('feeRoundForm').reset(); for (const id of FEE_LISTS) $(id).replaceChildren(); } };
 }
 

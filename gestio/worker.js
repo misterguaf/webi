@@ -245,8 +245,10 @@ async function api(request,env,url,requestId) {
   if (match && method==='POST') return json({...await fees.reviewFeeMatch(db,context,requestId,match[1],await readJson(request)),requestId});
   match=path.match(/^\/api\/fees\/people\/([^/]+)\/candidates$/);
   if (match && method==='GET') return json({...await fees.feeMatchCandidates(db,context,requestId,match[1],url.searchParams.get('search')),requestId});
+  match=path.match(/^\/api\/fees\/payments\/([^/]+)\/contact$/);
+  if (match && method==='GET') return json({contact:await fees.feePaymentContact(db,context,requestId,match[1]),requestId});
   match=path.match(/^\/api\/fees\/evidence\/([^/]+)$/);
-  if (match && method==='GET') return fees.feeEvidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1]);
+  if (match && method==='GET') return fees.feeEvidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1],url.searchParams.get('mode')??'download');
   if (path==='/api/fees/issues' && method==='POST') return json({...await fees.openFeeIssue(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/fees\/issues\/([^/]+)\/resolve$/);
   if (match && method==='POST') return json({...await fees.resolveFeeIssue(db,context,requestId,match[1]),requestId});

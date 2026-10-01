@@ -238,7 +238,7 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
     assert.equal((await request(worker.base,`/api/fees/rounds/${round}/payments`,{cookie:delegate})).status,403);
     const detail=await request(worker.base,`/api/fees/payments/${primary.id}`,{cookie:treasury2});
     assert.equal(detail.status,200);assert.equal(detail.data.people.length,3);
-    assert.ok(detail.data.people.every(person=>person.match_status==='CLEAR' && person.submitted_birth_date===null));
+    assert.ok(detail.data.people.every(person=>person.match_status==='CLEAR' && !('submitted_birth_date' in person)));
     assert.equal((await request(worker.base,`/api/fees/evidence/${primary.evidence_id}`,{cookie:treasury2})).status,200);
     assert.equal((await as(worker.base,treasury2,`/api/fees/payments/${primary.id}/review`,
       {verifiedAmountCents:20000,allocations:[{obligationId:obligationId(501),amountCents:10000},

@@ -1,7 +1,7 @@
 import { versionCas } from '../concurrency.js';
 import { pageRequest, pageResult } from '../pagination.js';
 import { synthetic } from '../environment-policy.js';
-import { statement } from '../domains/audit/repository.js';
+import { append, statement } from '../domains/audit/repository.js';
 import { AppError, requireGroupWide, requirePermission, requireUuid, validUuid } from './common.js';
 import { evidenceKey, readEvidence, storeEvidence, validateSyntheticEvidence } from './evidence-service.js';
 import { findMatch, matchCandidates, matchKey } from './registration-service.js';
@@ -448,8 +448,10 @@ export async function listFeePayments(db,context,requestId,roundId,params=null) 
       JOIN annual_fee_obligation o ON o.id=a.obligation_id
       JOIN participant person ON person.id=o.participant_id WHERE a.payment_id=p.id
       AND person.current_section_id NOT IN (${sections}))`;
+  // 3.5G.1A: no submitter name, e-mail or phone in listings (contact only through feePaymentContact).
   const rows=(await db.prepare(`SELECT p.id,p.round_id,p.review_status,p.declared_amount_cents,p.verified_amount_cents,
-    p.submitted_by_name,p.receipt_email,p.created_at,e.id AS evidence_id,
+    p.created_at,e.id AS evidence_id,
+    (SELECT count(*) FROM annual_fee_submission_person s WHERE s.payment_id=p.id) AS people_count,
     (SELECT count(*) FROM annual_fee_submission_person s WHERE s.payment_id=p.id AND s.match_status IN ('AMBIGUOUS','NONE')) AS pending_matches
     FROM annual_fee_payment p JOIN annual_fee_evidence e ON e.payment_id=p.id WHERE p.round_id=?${scope}
     ${page.after?'AND (p.created_at<? OR (p.created_at=? AND p.id<?))':''}
@@ -458,10 +460,17 @@ export async function listFeePayments(db,context,requestId,roundId,params=null) 
   const result=pageResult(rows,page.limit,row=>[row.created_at,row.id]);
   return {payments:result.items,nextCursor:result.nextCursor};
 }
+// 3.5G.1A: an explicit projection. Contact (submitter, e-mail, phone), idempotency key, payload hash,
+// privacy-notice metadata and the declared birth date never leave the server through this read.
 export async function feePaymentDetail(db,context,requestId,id) {
-  const payment=await paymentAccess(db,context,requestId,id,undefined,true);
+  const row=await paymentAccess(db,context,requestId,id,undefined,true);
   const balance=await db.prepare('SELECT unallocated_cents FROM annual_fee_payment_balance WHERE id=?').bind(id).first();
-  const people=(await db.prepare(`SELECT s.id,s.submitted_name,s.submitted_birth_date,s.section_id,s.participant_id,
+  const evidence=await db.prepare('SELECT id,detected_mime,size_bytes,created_at FROM annual_fee_evidence WHERE payment_id=?').bind(id).first();
+  const payment={id:row.id,round_id:row.round_id,review_status:row.review_status,
+    declared_amount_cents:row.declared_amount_cents,verified_amount_cents:row.verified_amount_cents,
+    allocation_version:row.allocation_version,created_at:row.created_at,reviewed_at:row.reviewed_at,
+    evidence:evidence?{id:evidence.id,mime:evidence.detected_mime,sizeBytes:evidence.size_bytes,receivedAt:evidence.created_at}:null};
+  const people=(await db.prepare(`SELECT s.id,s.submitted_name,s.section_id,s.participant_id,
     s.match_status FROM annual_fee_submission_person s WHERE s.payment_id=? ORDER BY s.rowid`).bind(id).all()).results;
   const allocations=(await db.prepare(`SELECT a.id,a.obligation_id,a.amount_cents FROM annual_fee_allocation a
     WHERE a.payment_id=? ORDER BY a.created_at,a.id`).bind(id).all()).results;
@@ -507,11 +516,29 @@ export async function feeMatchCandidates(db,context,requestId,id,search=null) {
   return matchCandidates(db,context,{submittedName:row.submitted_name,submittedBirthDate:row.submitted_birth_date,
     sectionIds:[row.section_id],search});
 }
-export async function feeEvidenceDownload(db,storage,context,requestId,id) {
-  const row=await db.prepare('SELECT id,payment_id,object_key FROM annual_fee_evidence WHERE id=?').bind(requireUuid(id)).first();
+// Submitter contact of a fee payment, on demand (3.5G.1A): explicit permission, the same scope rule as
+// the payment (every person and funded obligation), audited without the values.
+export async function feePaymentContact(db,context,requestId,id) {
+  const row=await paymentAccess(db,context,requestId,id,'finance.fee.contact.read',true);
+  await append(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'SENSITIVE_DATA_READ',
+    resourceType:'annual_fee_payment',resourceId:id,result:'SUCCESS',reasonCode:'FEE_CONTACT_CONSULTED'});
+  return {submittedByName:row.submitted_by_name,email:row.receipt_email,phone:row.contact_phone??null};
+}
+const EVIDENCE_EXTENSIONS={'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
+// View (inline inside Gestió) or download, both audited like 3.5F payment evidence (3.5G.1A).
+export async function feeEvidenceDownload(db,storage,context,requestId,id,mode='download') {
+  if (!['view','download'].includes(mode)) throw new AppError(400,'invalid_filter');
+  const row=await db.prepare('SELECT id,payment_id,object_key,detected_mime,created_at FROM annual_fee_evidence WHERE id=?')
+    .bind(requireUuid(id)).first();
   if (!row) throw new AppError(404,'not_found');
   await paymentAccess(db,context,requestId,row.payment_id,undefined,true);
-  return readEvidence(storage,row.object_key);
+  const extension=EVIDENCE_EXTENSIONS[row.detected_mime];
+  if (!extension) throw new AppError(500,'invalid_evidence');
+  const response=await readEvidence(storage,row.object_key,{mime:row.detected_mime,mode,
+    filename:`justificant-quota-${new Date(row.created_at).toISOString().slice(0,10)}.${extension}`});
+  await append(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
+    action:mode==='view'?'FEE_EVIDENCE_VIEWED':'FEE_EVIDENCE_DOWNLOADED',resourceType:'annual_fee_evidence',resourceId:id,result:'SUCCESS'});
+  return response;
 }
 
 export async function reviewFeePayment(db,context,requestId,id,input,now=Date.now()) {

@@ -10,7 +10,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
   const input=(type,placeholder)=>{const node=document.createElement('input');node.type=type;node.placeholder=placeholder;return node;};
   const send=(path,method,body)=>call(path,{method,body:JSON.stringify(body)});
   const act=async(task)=>{await task();message('Operació registrada en l’auditoria local.');await load();};
-  let rounds=[],selected='',obligations=[],reviewOnly=false;
+  let rounds=[],selected='',obligations=[],reviewOnly=false,readContacts=false;
   const roundPath=()=>`/api/fees/rounds/${selected}`;
   function clearFinancialView(){
     rounds=[];selected='';obligations=[];
@@ -20,7 +20,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
   // `options.reviewOnly` comes from /api/me capabilities (delegated payment reviewer without
   // finance.fee.read); later internal reloads keep the last mode. The server authorises every call.
   async function load(options) {
-    if (options) reviewOnly=!!options.reviewOnly;
+    if (options) {reviewOnly=!!options.reviewOnly;readContacts=!!options.readContacts;}
     try {
       const result=await call(reviewOnly?'/api/fees/review-rounds':'/api/fees/rounds');
       rounds=result.rounds;$('feePanel').hidden=false;$('feeManagePanel').hidden=reviewOnly;
@@ -86,7 +86,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
   async function loadPayments() {
     try {const rows=(await fetchAllPages(call,roundPath()+'/payments','payments')).payments;
       $('feePayments').replaceChildren(...rows.map(row=>item(
-        `${row.submitted_by_name} · ${row.review_status} · declarat ${row.declared_amount_cents==null?'no consta':euros(row.declared_amount_cents)} · coincidències pendents ${row.pending_matches} `,
+        `Enviament ${new Date(row.created_at).toLocaleDateString('ca-ES')} · ${row.people_count} educand(s) · ${row.review_status} · declarat ${row.declared_amount_cents==null?'no consta':euros(row.declared_amount_cents)} · coincidències pendents ${row.pending_matches} `,
         button('Revisa',()=>showPayment(row.id)))));
     }catch(error){$('feePayments').textContent='No tens permís per revisar pagaments.';}
   }
@@ -94,9 +94,15 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     const {payment,people,allocations,allocationRevisions,eligibleObligations}=await call(`/api/fees/payments/${id}`);
     const box=$('feePaymentDetail');box.replaceChildren();
     const title=document.createElement('h4');title.textContent=`Transferència ${id} · ${payment.review_status}`;box.append(title);
-    const info=document.createElement('p');info.textContent=`Enviat per ${payment.submitted_by_name} · correu de rebut ${payment.receipt_email} · verificat ${payment.verified_amount_cents==null?'no':euros(payment.verified_amount_cents)} · verificat sense assignar ${payment.verified_amount_cents==null?'no':euros(payment.unallocated_cents)}.`;box.append(info);
-    const evidence=(await fetchAllPages(call,roundPath()+'/payments','payments')).payments.find(row=>row.id===id)?.evidence_id;
-    if(evidence){const link=document.createElement('a');link.href=`/api/fees/evidence/${evidence}`;link.textContent='Consulta el justificant de prova';link.download='justificant-sintetic';box.append(link);}
+    const info=document.createElement('p');info.textContent=`Verificat ${payment.verified_amount_cents==null?'no':euros(payment.verified_amount_cents)} · verificat sense assignar ${payment.verified_amount_cents==null?'no':euros(payment.unallocated_cents)}.`;box.append(info);
+    // 3.5G.1A: the submitter's contact is never part of the payment; it is consulted on demand (audited).
+    if(readContacts){const contact=document.createElement('p');
+      contact.append(button('Mostra el contacte',async()=>{const {contact:value}=await call(`/api/fees/payments/${id}/contact`);
+        contact.textContent=`Enviat per ${value.submittedByName} · correu ${value.email}${value.phone?` · telèfon ${value.phone}`:''}`;}));
+      box.append(contact);}
+    if(payment.evidence){const view=document.createElement('a');view.href=`/api/fees/evidence/${payment.evidence.id}?mode=view`;view.target='_blank';view.rel='noopener';
+      view.textContent='Veure justificant';const download=document.createElement('a');download.href=`/api/fees/evidence/${payment.evidence.id}?mode=download`;
+      download.textContent='Descarrega';const links=document.createElement('p');links.append(view,' · ',download);box.append(links);}
     for(const row of people){const line=document.createElement('p');line.textContent=`${row.submitted_name} · ${row.match_status} `;box.append(line);
       if(['AMBIGUOUS','NONE'].includes(row.match_status)){
         const found=await call(`/api/fees/people/${row.id}/candidates`),candidates=found.candidates;

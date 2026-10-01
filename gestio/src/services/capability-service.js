@@ -67,6 +67,7 @@ export async function capabilities(db, context, now = Date.now()) {
       read: scope('finance.fee.read'),
       manage: scope('finance.fee.manage'),
       reviewPayments: scope('finance.fee.payment.review'),
+      readContacts: scope('finance.fee.contact.read'),
       authorizeInstallments: installmentRole ? scope('finance.fee.installment.authorize') : null,
       configure: global('finance.fee.config.manage')
     },
