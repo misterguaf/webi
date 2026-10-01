@@ -71,7 +71,7 @@ test('large synthetic photo → optimised (no EXIF) → provenance kept → acce
     const storage = { async put(key, value) { stored.set(key, value); }, async delete(key) { stored.delete(key); } };
     const result = await submitRegistration(f.db, storage, { publicCode: 'DEMO-PAID-ESCOLTA', participantName: 'Persona Optimitzada (ficticia)',
       birthDate: '2009-04-26', submittedByName: 'Tutor fictici', sectionCode: 'ESCOLTA', transportCode: 'FAMILY', receiptEmail: 'optim@example.test',
-      idempotencyKey: 'optimised-evidence-0001', participationTermsVersion: 'DEMO-3A-PARTICIPATION-V1', privacyNoticeVersion: 'DEMO-3A-PRIVACY-NOTICE-V1',
+      idempotencyKey: 'evidence-test-00000001', participationTermsVersion: 'DEMO-3A-PARTICIPATION-V1', privacyNoticeVersion: 'DEMO-3A-PRIVACY-NOTICE-V1',
       evidence }, crypto.randomUUID());
     assert.deepEqual(result, { ok: true });
     const row = f.sql.prepare("SELECT e.detected_mime,e.size_bytes FROM payment_evidence e JOIN activity_registration r ON r.id=e.registration_id WHERE r.receipt_email='optim@example.test'").get();

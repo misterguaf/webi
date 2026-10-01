@@ -1,0 +1,3 @@
+# False positive (generic-api-key on a synthetic test idempotency key, entropy just above the threshold)
+# in commit 51c07c1; the value was replaced by a lower-entropy synthetic key in the next commit.
+51c07c16de77f9c7c031795099292c3cf3b1b73f:test/portal-evidence-optimizer.test.js:generic-api-key:74
