@@ -81,6 +81,8 @@ test('a review from an earlier episode never marks a new episode as reviewed', a
     assert.equal(current.representationReviewed, true);
     await end(f, 102, TROPA_P, gid);
     f.sql.prepare("UPDATE participant_review SET status='RESOLVED' WHERE guardian_id=?").run(gid);
+    // Reviews belong to an episode by time; a human never ends and relinks within the same millisecond.
+    await new Promise(resolve => setTimeout(resolve, 5));
     assert.equal((await link(f, 102, TROPA_P, { guardianId: gid, relationship: 'PARENT', legalRepresentative: true })).status, 201);
     current = (await f.request(102, `/api/participants/${TROPA_P}/familia`)).data.guardians.find(g => !g.ended);
     assert.equal(current.representationBasis, 'COMUNICAT');

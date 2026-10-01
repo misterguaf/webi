@@ -35,6 +35,8 @@ export const PERMISSIONS = Object.freeze({
   'activities.general.manage': { kind: 'GLOBAL', scopedHolders: 'ALLOWED',
     note: 'Product decision 2026-09-29: section coordinators may create, edit, publish and close GENERAL activities.' },
   'activities.registration.review': { kind: 'SCOPED', delegable: true },
+  'activities.registration.contact.read': { kind: 'SCOPED', delegable: true,
+    note: 'Submitter name, phone and e-mail of a registration, on demand and audited (3.5F). Not participants.contact.read.' },
   'finance.payment.verify': { kind: 'SCOPED', delegable: true },
 
   'finance.fee.read': { kind: 'SCOPED' },

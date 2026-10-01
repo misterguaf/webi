@@ -203,3 +203,21 @@ WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.status.read');
 INSERT OR IGNORE INTO role_permission(role_code,permission_code)
 SELECT 'SECTION_COORDINATOR','finance.fee.status.read'
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.status.read');
+
+-- FASE 3.5F: submitter contact on demand (activities.registration.contact.read) for the operational
+-- reviewers. Conditional so older migration sets that load this seed stay compatible. User 105 keeps
+-- its role as the Tropa delegate fixture; Secretaria's global registration review (0018 matrix) needs
+-- individual grants that tests and the demo add explicitly.
+INSERT OR IGNORE INTO role_permission(role_code,permission_code)
+SELECT role_code,'activities.registration.contact.read' FROM
+  (SELECT 'GROUP_COORDINATOR' AS role_code UNION ALL SELECT 'SECRETARY' UNION ALL SELECT 'SECTION_COORDINATOR' UNION ALL SELECT 'SECTION_DELEGATE')
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='activities.registration.contact.read');
+INSERT OR IGNORE INTO role_permission(role_code,permission_code)
+SELECT 'SECRETARY',code FROM (SELECT 'activities.read' AS code UNION ALL SELECT 'activities.registration.review')
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='activities.registration.contact.read');
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT id,user_id,'activities.registration.contact.read',1700000000000,NULL,'Fixture sintético' FROM
+  (SELECT '00000000-0000-4000-8000-000000000451' AS id,'00000000-0000-4000-8000-000000000101' AS user_id
+   UNION ALL SELECT '00000000-0000-4000-8000-000000000452','00000000-0000-4000-8000-000000000102'
+   UNION ALL SELECT '00000000-0000-4000-8000-000000000453','00000000-0000-4000-8000-000000000103')
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='activities.registration.contact.read');

@@ -4,7 +4,7 @@ import { effectiveSections } from '../domains/organization/repository.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireFresh, requirePermission, requireUuid, validUuid } from './common.js';
 
-const DELEGABLE=new Set(['activities.registration.review','finance.payment.verify','finance.fee.payment.review',
+const DELEGABLE=new Set(['activities.registration.review','activities.registration.contact.read','finance.payment.verify','finance.fee.payment.review',
   'participants.profile.read','participants.profile.manage','participants.contact.read','participants.contact.manage',
   'participants.guardian.manage']);
 // 3.5E delegation duration: 90 days by default, up to 365 days, always with an expiry. Never indefinite.
