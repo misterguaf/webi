@@ -48,6 +48,22 @@ export const PERMISSIONS = Object.freeze({
   'finance.fee.installment.authorize': { kind: 'SCOPED', note: 'Also requires a current TREASURY or GROUP_COORDINATOR role.' },
   'finance.fee.config.manage': { kind: 'GLOBAL' },
 
+  // 3.5G.1 financial foundation (TREASURY.md §25.1). All group-wide; the delegable ones reach other users only
+  // through explicit financial delegations (no role grants them by being held).
+  'finance.treasury.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.round.manage': { kind: 'GLOBAL', note: 'Round configuration and state; not delegable.' },
+  'finance.position.manage': { kind: 'GLOBAL', note: 'Positions, opening balances and initial reserves; not delegable.' },
+  'finance.movement.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.movement.import': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.movement.classify': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.bank_description.reveal': { kind: 'GLOBAL',
+    note: 'Original bank description, audited; explicit grant only (LEGAL DECISION REQUIRED); not delegable.' },
+  'finance.expense.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.expense.manage': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.budget.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.budget.propose': { kind: 'GLOBAL', note: 'Prepare the budget and propose revisions; not delegable.' },
+  'finance.budget.approve': { kind: 'GLOBAL', note: 'Coordinació general approves the budget and its revisions; not delegable.' },
+
   'audit.event.read': { kind: 'GLOBAL' },
   'auth.user.suspend': { kind: 'GLOBAL' },
   'auth.user.manage': { kind: 'GLOBAL' },

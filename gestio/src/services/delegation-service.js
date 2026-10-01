@@ -3,7 +3,7 @@ import { synthetic } from '../environment-policy.js';
 import { effectiveSections } from '../domains/organization/repository.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireFresh, requirePermission, requireUuid, validUuid } from './common.js';
-import { FINANCIAL_DELEGATIONS } from '../permissions.js';
+import { FINANCIAL_DELEGATIONS, permissionDefinition } from '../permissions.js';
 
 const FINANCIAL=new Set(FINANCIAL_DELEGATIONS);
 const DELEGABLE=new Set(['activities.registration.review','activities.registration.contact.read',
@@ -31,6 +31,8 @@ export async function grantDelegation(db,context,session,requestId,input,now=Dat
   // Separation of duties (M3): nobody delegates to themselves, as provisioner or as named authoriser.
   if (input.userId===context.userId || input.userId===input.authorizedBy) throw new AppError(403,'separation_of_duties');
   const sectionId=input.sectionId??null;
+  // A group-wide (GLOBAL) permission is delegated group-wide only: a section scope would never be effective.
+  if (sectionId!==null && permissionDefinition(input.permissionCode)?.kind==='GLOBAL') throw new AppError(400,'invalid_delegation');
   if (sectionId && !await db.prepare('SELECT 1 FROM section WHERE id=?').bind(sectionId).first()) throw new AppError(400,'invalid_delegation');
   const authorizer=await effectiveSections(db,input.authorizedBy,'auth.permission.authorize',now);
   if (!authorizer.length || (sectionId===null?!authorizer.includes(null):!authorizer.includes(null) && !authorizer.includes(sectionId)))

@@ -161,6 +161,35 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(secondAttempt.attempts,2);
     assert.equal((await worker.request('/api/payments/'+id(870)+'/review',{method:'POST',cookie:group,
       body:{decision:'VERIFIED',amountCents:700,expectedVersion:secondAttempt.registrationVersion}})).data.paymentState,'PAID');
+    // 3.5G.1 financial foundation: round, positions, opening balance, an import, an internal transfer, a settled
+    // card expense and an approved budget with a revision must survive backup and restore.
+    const treasurer=await worker.login('seed-104');
+    const finance=(path,body,method='POST',cookie=treasurer)=>worker.request('/api/finance/'+path,{method,cookie,body});
+    const round=(await finance('rounds',{code:'2026/2027',periodStart:'2026-10-01',periodEnd:'2027-09-30'})).data.id;
+    assert.equal((await finance('rounds/'+round+'/open',{expectedVersion:1})).status,200);
+    const bank=(await finance('positions',{kind:'BANK',name:'Compte corrent'})).data.id;
+    const card=(await finance('positions',{kind:'CARD',name:'Targeta'})).data.id;
+    const cash=(await finance('positions',{kind:'CASH',name:'Caixa'})).data.id;
+    assert.equal((await finance('rounds/'+round+'/opening-balances',{positionId:bank,amountCents:1500000,expectedRevision:0})).status,201);
+    const imported=await finance('import-batches',{positionId:bank,format:'SYNTHETIC_CSV_V1',content:['# synthetic',
+      'operation_date,value_date,amount_cents,reference,description,balance_cents','2026-11-03,,10000,R-1,TRF. Família Recuperació (fictícia),1510000',
+      '2026-11-04,,-50000,,Retirada de caixer (fictici),1460000'].join('\n')});
+    assert.equal(imported.data.createdCount,2);
+    const bankMoves=(await worker.request('/api/finance/movements?positionId='+bank,{cookie:treasurer})).data.movements;
+    const cashIn=(await finance('movements',{positionId:cash,operationDate:'2026-11-04',amountCents:50000,label:'Entrada a caixa'})).data.id;
+    assert.equal((await finance('internal-transfers',{fromMovementId:bankMoves.find(row=>row.amountCents===-50000).id,toMovementId:cashIn,
+      fromExpectedVersion:0,toExpectedVersion:0})).status,201);
+    const root=(await finance('budget-lines',{roundId:round,code:'2',name:'Campaments',nature:'EXPENSE'})).data.id;
+    const kitchen=(await finance('budget-lines',{roundId:round,code:'2.1',name:'Cuina',nature:'EXPENSE',parentId:root,plannedCents:100000})).data.id;
+    const budget=(await finance('rounds/'+round+'/budget',{})).data.id;
+    assert.equal((await finance('budgets/'+budget+'/propose',{expectedVersion:1})).status,200);
+    assert.equal((await finance('budgets/'+budget+'/approve',{expectedVersion:2},'POST',group)).status,200);
+    const revision=(await finance('budget-revisions',{budgetId:budget,lineId:kitchen,deltaCents:5000})).data.id;
+    assert.equal((await finance('budget-revisions/'+revision+'/decision',{decision:'APPROVE',expectedVersion:1},'POST',group)).status,200);
+    const expense=(await finance('expenses',{roundId:round,expenseDate:'2026-11-05',totalCents:3000,paymentMethod:'CARD',
+      lines:[{budgetLineId:kitchen,amountCents:3000}],recognise:true})).data.id;
+    const purchase=(await finance('movements',{positionId:card,operationDate:'2026-11-05',amountCents:-3000,label:'Compra amb targeta'})).data.id;
+    assert.equal((await finance('movements/'+purchase+'/allocations',{expectedVersion:0,allocations:[{kind:'EXPENSE_SETTLEMENT',amountCents:3000,expenseId:expense}]})).status,200);
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -169,7 +198,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,22);
+    assert.equal(manifest.schema_version,27);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -178,7 +207,9 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0013_privilege_governance.sql','0014_activity_version.sql','0015_participant_management.sql','0016_guardians_contacts_review.sql',
       '0017_guardian_relationship_episodes.sql','0018_registrations_v1.sql',
       '0019_activity_payment_allocations.sql','0020_payment_attempts.sql',
-      '0021_issue_notices_per_attempt.sql','0022_financial_delegation.sql']);
+      '0021_issue_notices_per_attempt.sql','0022_financial_delegation.sql','0023_finance_rounds_positions.sql',
+      '0024_finance_movements.sql','0025_finance_counterparties_budget.sql','0026_finance_expenses_allocations.sql',
+      '0027_finance_permissions.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);
@@ -192,6 +223,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.ok(manifest.table_counts.notification_outbox>=2);
     assert.equal(manifest.table_counts.annual_fee_round,1);
     assert.equal(manifest.table_counts.annual_fee_payment,0);
+    assert.equal(manifest.table_counts.finance_round,1);
+    assert.equal(manifest.table_counts.finance_movement,4);
+    assert.equal(manifest.table_counts.finance_movement_description,2);
+    assert.equal(manifest.table_counts.finance_allocation,3);
+    assert.equal(manifest.table_counts.finance_budget_revision,1);
     for (const object of ['table:annual_fee_family_revision','table:annual_fee_family_revision_member',
       'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
       'trigger:annual_fee_installment_total_insert',
@@ -268,6 +304,13 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(restoredCounts.evidence,manifest.table_counts.payment_evidence);
     assert.equal(restoredCounts.delegations,manifest.table_counts.delegated_permission);
     assert.equal(restoredCounts.outbox,manifest.table_counts.notification_outbox);
+    const restoredFinance=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT (SELECT expense_gross_cents FROM finance_round_economics) AS expenses,(SELECT income_cents FROM finance_round_economics) AS income,"+
+      "(SELECT count(*) FROM finance_allocation_current) AS current_allocations,(SELECT current_cents FROM finance_budget_line_amount a JOIN finance_budget_line l ON l.id=a.line_id WHERE l.code='2') AS budget_current",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredFinance.status,0);
+    assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:3000,income:0,current_allocations:3,budget_current:105000},
+      'the transfer counts nothing, the card expense once; current budget = initial + approved revision');
     const restoredFeeSchema=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"SELECT (SELECT count(*) FROM annual_fee_installment_part) AS parts,(SELECT count(*) FROM annual_fee_family_revision) AS family_revisions",'--json'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});

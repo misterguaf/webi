@@ -71,6 +71,21 @@ export async function capabilities(db, context, now = Date.now()) {
       authorizeInstallments: installmentRole ? scope('finance.fee.installment.authorize') : null,
       configure: global('finance.fee.config.manage')
     },
+    // 3.5G.1 financial foundation (TREASURY.md §25). No workspace yet; the projection only tells the UI what exists.
+    treasury: {
+      read: global('finance.treasury.read'),
+      manageRounds: global('finance.round.manage'),
+      managePositions: global('finance.position.manage'),
+      readMovements: global('finance.movement.read'),
+      importMovements: global('finance.movement.import'),
+      classifyMovements: global('finance.movement.classify'),
+      revealDescriptions: global('finance.bank_description.reveal'),
+      readExpenses: global('finance.expense.read'),
+      manageExpenses: global('finance.expense.manage'),
+      readBudget: global('finance.budget.read'),
+      proposeBudget: global('finance.budget.propose'),
+      approveBudget: global('finance.budget.approve')
+    },
     administration: {
       audit: global('audit.event.read'),
       suspendUsers: global('auth.user.suspend'),

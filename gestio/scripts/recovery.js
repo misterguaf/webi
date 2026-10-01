@@ -32,7 +32,12 @@ const TABLES=[
   'participant_section_membership','guardian','participant_guardian','contact_point','consent_record',
   'auth_identity_invitation','delegated_permission_confirmation',
   'participant_representation_event','participant_review','activity_registration_section_change',
-  'activity_payment_allocation'
+  'activity_payment_allocation',
+  'finance_round','finance_position','finance_opening_balance','finance_reserve_opening','finance_round_close',
+  'finance_post_close_adjustment','finance_import_batch','finance_movement','finance_movement_description',
+  'finance_counterparty','finance_counterparty_revision','finance_budget','finance_budget_line','finance_budget_line_revision',
+  'finance_budget_revision','finance_expense','finance_expense_line','finance_expense_revision','finance_expense_evidence',
+  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_allocation'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -85,7 +90,22 @@ const REQUIRED_OBJECTS=[
   'trigger:activity_payment_allocation_no_delete','trigger:payment_review_transition',
   'index:auth_identity_invitation_open_unique','trigger:auth_identity_invitation_recipient_active',
   'trigger:delegated_permission_confirmation_by_authoriser','trigger:delegated_permission_no_self_insert',
-  'trigger:delegated_permission_ratification_governance'
+  'trigger:delegated_permission_ratification_governance',
+  'index:finance_round_one_open','index:finance_round_one_closing','trigger:finance_round_no_overlap_insert',
+  'trigger:finance_round_no_overlap_update','trigger:finance_round_transition','trigger:finance_round_closed_immutable',
+  'trigger:finance_round_close_required','trigger:finance_opening_balance_guard','trigger:finance_reserve_opening_guard',
+  'trigger:finance_post_close_adjustment_carry','view:finance_opening_balance_current',
+  'index:finance_movement_batch_row_unique','trigger:finance_movement_immutable','trigger:finance_movement_void_guard',
+  'trigger:finance_movement_void_unallocated','trigger:finance_movement_no_delete','trigger:finance_movement_description_no_delete',
+  'trigger:finance_allocation_kind_enabled','trigger:finance_allocation_current_set','trigger:finance_allocation_not_above_movement',
+  'trigger:finance_allocation_direction','trigger:finance_allocation_income_guard','trigger:finance_allocation_expense_guard',
+  'trigger:finance_allocation_transfer_guard','trigger:finance_allocation_no_update','trigger:finance_allocation_no_delete',
+  'trigger:finance_expense_insert_guard','trigger:finance_expense_update_guard','trigger:finance_expense_line_guard',
+  'trigger:finance_expense_line_no_delete','trigger:finance_expense_evidence_immutable','trigger:finance_reimbursement_self_approval',
+  'trigger:finance_counterparty_user_link_guard','trigger:finance_budget_transition','trigger:finance_budget_line_insert_guard',
+  'trigger:finance_budget_line_update_guard','trigger:finance_budget_line_no_delete','trigger:finance_budget_line_parent_in_use',
+  'trigger:finance_budget_revision_insert_guard','trigger:finance_budget_revision_transition',
+  'view:finance_budget_line_amount','view:finance_allocation_current','view:finance_movement_allocation_balance','view:finance_round_economics'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};
@@ -194,7 +214,11 @@ function inspectSql(sqlPath,info) {
       "(SELECT count(*) FROM annual_fee_notification_outbox WHERE recipient_email NOT LIKE '%@example.test') AS external_fee_notice,"+
       "(SELECT count(*) FROM contact_point WHERE kind='EMAIL' AND value NOT LIKE '%@example.test') AS external_contact_point,"+
       "(SELECT count(*) FROM guardian WHERE display_name NOT LIKE '%(fictici%') AS external_guardian,"+
-      "(SELECT count(*) FROM auth_identity_invitation WHERE email NOT LIKE '%@example.test') AS external_invitation")[0];
+      "(SELECT count(*) FROM auth_identity_invitation WHERE email NOT LIKE '%@example.test') AS external_invitation,"+
+      "(SELECT count(*) FROM finance_counterparty WHERE display_name NOT LIKE '%(fict%') AS external_counterparty,"+
+      "(SELECT count(*) FROM finance_expense WHERE supplier_label IS NOT NULL AND supplier_label NOT LIKE '%(fict%') AS external_supplier,"+
+      "(SELECT count(*) FROM finance_expense_evidence WHERE object_key NOT LIKE 'synthetic/%') AS external_expense_object,"+
+      "(SELECT count(*) FROM finance_import_batch WHERE source_object_key IS NOT NULL AND source_object_key NOT LIKE 'synthetic/%') AS external_import_object")[0];
     if (Object.values(syntheticBusiness).some(value=>value!==0)) fail('SYNTHETIC_BUSINESS_REQUIRED');
     const sessionColumns=sqliteQuery(database,'PRAGMA table_info(app_session)').map(row=>row.name);
     if (sessionColumns.includes('token') || !sessionColumns.includes('token_hash')) fail('PLAINTEXT_SESSION_SCHEMA');
@@ -310,7 +334,17 @@ function verifyRestoredState(info,state,manifest) {
     "(SELECT count(*) FROM participant p WHERE p.status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM participant_section_membership m WHERE m.participant_id=p.id AND m.ended_at IS NULL AND m.section_id=p.current_section_id)) AS membership_projection_gap,"+
     "(SELECT count(*) FROM participant_section_membership m JOIN participant p ON p.id=m.participant_id WHERE m.ended_at IS NULL AND (p.status!='ACTIVE' OR m.section_id!=p.current_section_id)) AS membership_projection_mismatch,"+
     "(SELECT count(*) FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id WHERE p.review_status!='VERIFIED' OR p.reviewed_by IS NULL OR p.reviewed_at IS NULL) AS unreviewed_fee_allocation,"+
-    "(SELECT count(*) FROM annual_fee_payment_balance b WHERE b.unallocated_cents>0 AND b.review_status='VERIFIED' AND NOT EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=b.id AND i.code='ALLOCATION_UNCLEAR' AND i.status='OPEN')) AS unexplained_fee_balance")[0];
+    "(SELECT count(*) FROM annual_fee_payment_balance b WHERE b.unallocated_cents>0 AND b.review_status='VERIFIED' AND NOT EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=b.id AND i.code='ALLOCATION_UNCLEAR' AND i.status='OPEN')) AS unexplained_fee_balance,"+
+    // 3.5G.1 financial foundation invariants (TREASURY.md §4).
+    "(SELECT count(*) FROM finance_movement_allocation_balance WHERE unallocated_cents<0) AS overallocated_movement,"+
+    "(SELECT count(*) FROM finance_allocation a JOIN finance_movement m ON m.id=a.movement_id WHERE a.set_version>m.allocation_version) AS future_allocation_set,"+
+    "(SELECT count(*) FROM finance_allocation_current a JOIN finance_movement m ON m.id=a.movement_id JOIN finance_movement p ON p.id=a.paired_movement_id WHERE a.kind='INTERNAL_TRANSFER' AND (p.position_id=m.position_id OR p.amount_cents!=-m.amount_cents OR a.amount_cents!=abs(m.amount_cents) OR EXISTS(SELECT 1 FROM finance_allocation_current b WHERE b.movement_id=p.id AND b.kind='INTERNAL_TRANSFER' AND b.paired_movement_id!=m.id))) AS bad_internal_transfer,"+
+    "(SELECT count(*) FROM finance_expense e WHERE e.status='RECOGNISED' AND COALESCE((SELECT sum(l.amount_cents) FROM finance_expense_line l WHERE l.expense_id=e.id AND l.lines_version=e.lines_version),0)!=e.total_cents) AS unbalanced_expense,"+
+    "(SELECT count(*) FROM finance_expense e WHERE COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.expense_id=e.id AND a.kind='EXPENSE_SETTLEMENT'),0)>CASE WHEN e.status='RECOGNISED' THEN e.total_cents ELSE 0 END) AS oversettled_expense,"+
+    "(SELECT count(*) FROM finance_budget_line c JOIN finance_budget_line p ON p.id=c.parent_id WHERE p.round_id!=c.round_id OR p.nature!=c.nature OR p.planned_cents IS NOT NULL) AS bad_budget_tree,"+
+    "(SELECT count(*) FROM (SELECT round_id,position_id FROM finance_opening_balance GROUP BY round_id,position_id HAVING count(*)!=max(revision))) AS gapped_opening_balance,"+
+    "(SELECT count(*) FROM finance_round r WHERE r.status='CLOSED' AND NOT EXISTS(SELECT 1 FROM finance_round_close c WHERE c.round_id=r.id)) AS closed_without_snapshot,"+
+    "(SELECT count(*) FROM finance_round WHERE status='OPEN')>1 AS several_open_rounds")[0];
   if (Object.values(business).some(value=>value!==0)) fail('D1_BUSINESS_INVARIANT_FAILED');
 }
 export function restoreBackup(backupPath,destination,configPath=resolve(root,'wrangler.toml')) {
