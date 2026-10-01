@@ -112,7 +112,7 @@ activitat drawer/sheet, activity detail with Inscripcions / Informació (no Paga
 v1.0), hash routing, concurrency, states and known implementation gaps.
 
 `screens/PARTICIPANTS.md`
-Participants v0.5 (3.5E, implemented — pending review): participant list and record, section
+Participants v0.5 (3.5E, implemented — checkpoint `phase-3.5e-complete`): participant list and record, section
 history, provisional records with age-based completeness (minors need a guardian and a
 contact; adults need a contact), manual progressive incorporation, guardians and contacts
 with audited consultation and shared-guardian protection, legal-representation history and
@@ -120,6 +120,16 @@ administrative review by Secretaria, guardian relationship episodes (a former re
 start again), Inici follow-up items, basic fee status, and delegation
 duration (default 90 days, maximum 365). Secretaria absorbs the retired CRM manager role.
 Consent catalogue and texts stay in the legal phase.
+
+`screens/REGISTRATIONS.md`
+Inscripcions v0.2 (3.5F, approved for implementation): global work queue across activities,
+registration section distinct from the declared section and the participant's current section,
+authorisation order without existence oracles, escalation to global review and section
+correction, submitter contact on demand (audited), withdrawal (`Retirada`) distinct from
+rejection, neutral family notices, a purpose-limited payment projection for verifiers until
+3.5G Tresoreria, authenticated evidence preview/download (audited), photo optimisation in the
+portal, retention-ready evidence, linked participant with profile access, and the confirmed
+list per activity.
 
 Future specifications may include:
 
