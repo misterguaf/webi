@@ -98,6 +98,8 @@ test('database invariants: one current episode, ended episodes immutable, no del
     const insert = (rowId, startedAt) => f.sql.prepare(`INSERT INTO participant_guardian(id,participant_id,guardian_id,relationship,started_at)
       VALUES(?,?,?,'OTHER',?)`).run(rowId, TROPA_P, gid, startedAt);
     assert.throws(() => insert(id(9801), Date.now()), /UNIQUE/, 'a second current episode of the same pair');
+    // Let the clock move so the ended episode has a non-empty interval (same-millisecond flake).
+    await new Promise(resolve => setTimeout(resolve, 5));
     await end(f, 102, TROPA_P, gid);
     const [first] = episodes(f, TROPA_P, gid);
     assert.throws(() => insert(id(9802), first.started_at), /guardian_episode_overlap/, 'cannot start inside an ended episode');
