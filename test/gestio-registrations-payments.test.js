@@ -323,3 +323,69 @@ test('migration 0020: attempts and allocations copied unchanged; several attempt
     assert.deepEqual(sql.prepare('PRAGMA foreign_key_list(activity_payment_allocation)').all().map(r => r.table).sort(), ['activity_registration', 'app_user', 'payment_evidence']);
   } finally { sql.close(); }
 });
+
+// Incidence notices are per payment attempt (0021): at most one per attempt, independent between attempts.
+const issueNotices = (t, attemptId = null) => t.f.sql.prepare(`SELECT * FROM notification_outbox WHERE registration_id=? AND kind='PAYMENT_ISSUE'
+  ${attemptId ? 'AND evidence_id=?' : ''} ORDER BY created_at,rowid`).all(...[t.reg.id, ...(attemptId ? [attemptId] : [])]);
+
+test('incidence notices: A notified once; A resolved; B notified again; two attempts, two notices', async () => {
+  const t = await setup();
+  try {
+    const a = t.evidence, b = await t.addAttempt('B');
+    // 1. first incidence on A → one notice about A
+    assert.equal((await t.reviewAttempt(104, a, { decision: 'ISSUE' })).status, 200);
+    assert.equal(issueNotices(t, a).length, 1);
+    // 2. A stays flagged: a repeated incidence is refused and nothing is queued again
+    assert.equal((await t.reviewAttempt(104, a, { decision: 'ISSUE' })).data.error, 'invalid_transition');
+    assert.equal(issueNotices(t, a).length, 1);
+    // 3. A is resolved by verifying its amount; flagging it again later never notifies A a second time
+    await t.reviewAttempt(104, a, { decision: 'VERIFIED', amountCents: 3000 });
+    assert.equal((await t.reviewAttempt(104, a, { decision: 'ISSUE' })).status, 200);
+    assert.equal(issueNotices(t, a).length, 1, 'at most one notice per attempt');
+    // 4–5. a new incidence on B → a second notice, about B
+    assert.equal((await t.reviewAttempt(104, b, { decision: 'ISSUE' })).status, 200);
+    assert.deepEqual(issueNotices(t).map(n => n.evidence_id), [a, b]);
+    // The database enforces it too, independently of the service.
+    assert.throws(() => t.f.sql.prepare(`INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at,evidence_id)
+      VALUES(?,?,'PAYMENT_ISSUE','plaços@example.test','PENDING',1,?)`).run(id(9985), t.reg.id, b), /UNIQUE/);
+    assert.throws(() => t.f.sql.prepare(`INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at,evidence_id)
+      VALUES(?,?,'RECEIVED','plaços@example.test','PENDING',1,NULL)`).run(id(9986), t.reg.id), /UNIQUE/, 'other kinds stay once per registration');
+    assert.throws(() => t.f.sql.prepare(`INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at,evidence_id)
+      VALUES(?,?,'CONFIRMED','plaços@example.test','PENDING',1,?)`).run(id(9987), t.reg.id, a), /CHECK/, 'only incidences name an attempt');
+    // Neutral content and audit unchanged: one NOTIFICATION_QUEUED per notice, nothing personal in the log.
+    const queued = t.f.sql.prepare("SELECT count(*) AS n FROM audit_event WHERE action='NOTIFICATION_QUEUED' AND resource_id IN (SELECT id FROM notification_outbox WHERE kind='PAYMENT_ISSUE')").get().n;
+    assert.equal(queued, 2);
+    await t.f.login(101);
+    const drained = await t.call(101, '/api/dev/notifications/drain', { method: 'POST', body: {} });
+    assert.equal(drained.status, 200);
+    const bodies = t.f.sql.prepare(`SELECT c.body FROM notification_capture c JOIN notification_outbox o ON o.id=c.outbox_id
+      WHERE o.kind='PAYMENT_ISSUE'`).all().map(r => r.body);
+    assert.equal(bodies.length, 2);
+    for (const body of bodies) {
+      assert.match(body, /Posa’t en contacte amb el grup/);
+      assert.doesNotMatch(body, /justificant [AB]|attempt|verificat|30,00|IBAN/i);
+    }
+  } finally { t.f.close(); }
+});
+
+test('migration 0021: notices copied unchanged; a legacy incidence notice is linked to its attempt', () => {
+  const sql = new DatabaseSync(':memory:');
+  try {
+    sql.exec('PRAGMA foreign_keys=ON');
+    for (const name of readdirSync(migrations).filter(n => n.endsWith('.sql') && n < '0021').sort()) sql.exec(readFileSync(join(migrations, name), 'utf8'));
+    sql.exec(readFileSync(join(root, 'gestio/seed.sql'), 'utf8'));
+    sql.exec(`UPDATE payment_evidence SET review_status='ISSUE',reviewed_by='${id(104)}',reviewed_at=5 WHERE id='${id(831)}';
+      INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at) VALUES('${id(9988)}','${id(822)}','PAYMENT_ISSUE','demo822@example.test','SENT',6);
+      INSERT INTO notification_capture(outbox_id,recipient_email,subject,body,captured_at) VALUES('${id(9988)}','demo822@example.test','Assumpte','Cos',7);`);
+    const before = sql.prepare('SELECT * FROM notification_outbox ORDER BY id').all().map(r => ({ ...r }));
+    const captures = JSON.stringify(sql.prepare('SELECT * FROM notification_capture').all());
+    sql.exec(readFileSync(join(migrations, '0021_issue_notices_per_attempt.sql'), 'utf8'));
+    const after = sql.prepare('SELECT * FROM notification_outbox ORDER BY id').all().map(r => ({ ...r }));
+    assert.deepEqual(after.map(({ evidence_id: _e, ...rest }) => rest), before);
+    assert.deepEqual(after.filter(r => r.kind === 'PAYMENT_ISSUE').map(r => r.evidence_id), [id(831)]);
+    assert.ok(after.filter(r => r.kind !== 'PAYMENT_ISSUE').every(r => r.evidence_id === null));
+    assert.equal(JSON.stringify(sql.prepare('SELECT * FROM notification_capture').all()), captures);
+    assert.equal(sql.prepare('PRAGMA foreign_key_check').all().length, 0);
+    assert.deepEqual(sql.prepare('PRAGMA foreign_key_list(notification_capture)').all().map(r => r.table), ['notification_outbox']);
+  } finally { sql.close(); }
+});

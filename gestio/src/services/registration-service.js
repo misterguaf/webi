@@ -83,8 +83,8 @@ export async function findMatch(db,name,birthDate,sectionId,allowedSections) {
 }
 function notificationStatements(db,registrationId,items,now,requestId,context=null) {
   const result=[];
-  for (const [kind,email] of items) {
-    const queued=queueStatement(db,registrationId,kind,email,now);
+  for (const [kind,email,evidenceId=null] of items) {
+    const queued=queueStatement(db,registrationId,kind,email,now,evidenceId);
     result.push(queued.statement,statement(db,{requestId,actorUserId:context?.userId??null,sessionId:context?.sessionId??null,
       action:'NOTIFICATION_QUEUED',resourceType:'notification_outbox',resourceId:queued.id,occurredAt:now}));
   }
@@ -665,8 +665,9 @@ export async function reviewPayment(db,context,requestId,id,input,now=Date.now()
   const confirms=completes && row.registration_status==='AWAITING_PAYMENT_REVIEW';
   const withdrawn=row.registration_status==='WITHDRAWN';
   const allocationId=crypto.randomUUID();
-  // Notices are once per kind (outbox): a later incidence after one already notified is recorded but not re-sent.
-  const issueNotified=!verified && !!await db.prepare("SELECT 1 FROM notification_outbox WHERE registration_id=? AND kind='PAYMENT_ISSUE'").bind(row.registration_id).first();
+  // Incidence notices are once per payment attempt: a new incidence on another attempt is notified; the
+  // same attempt is never notified twice (also enforced by a unique index on the outbox).
+  const issueNotified=!verified && !!await db.prepare("SELECT 1 FROM notification_outbox WHERE kind='PAYMENT_ISSUE' AND evidence_id=?").bind(id).first();
   const notice=withdrawn?null:confirms?'CONFIRMED':!verified && !issueNotified?'PAYMENT_ISSUE':null;
   try {
     await db.batch([
@@ -681,7 +682,7 @@ export async function reviewPayment(db,context,requestId,id,input,now=Date.now()
       audit(db,context,requestId,verified?'PAYMENT_VERIFIED':'PAYMENT_ISSUE','payment_evidence',id,now,verified?(completes?'PAID':'PARTIAL'):null),
       ...(verified?[audit(db,context,requestId,'DATA_CREATED','activity_payment_allocation',allocationId,now,'PAYMENT_ALLOCATION')]:[]),
       ...(confirms?[audit(db,context,requestId,'REGISTRATION_CONFIRMED','activity_registration',row.registration_id,now)]:[]),
-      ...(notice?notificationStatements(db,row.registration_id,[[notice,reg.receipt_email]],now,requestId,context):[])
+      ...(notice?notificationStatements(db,row.registration_id,[[notice,reg.receipt_email,notice==='PAYMENT_ISSUE'?id:null]],now,requestId,context):[])
     ]);
   } catch (error) {
     const message=String(error?.message??'');

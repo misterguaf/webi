@@ -2,11 +2,12 @@ import { synthetic } from '../environment-policy.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requirePermission } from './common.js';
 
-export function queueStatement(db,registrationId,kind,recipient,now=Date.now()) {
+// evidenceId: the payment attempt a PAYMENT_ISSUE notice is about (at most one notice per attempt).
+export function queueStatement(db,registrationId,kind,recipient,now=Date.now(),evidenceId=null) {
   if (!synthetic.email(recipient)) throw new AppError(400,'synthetic_email_required');
   const id=crypto.randomUUID();
-  return {id,statement:db.prepare(`INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at)
-    VALUES(?,?,?,?,'PENDING',?)`).bind(id,registrationId,kind,recipient,now)};
+  return {id,statement:db.prepare(`INSERT INTO notification_outbox(id,registration_id,kind,recipient_email,status,created_at,evidence_id)
+    VALUES(?,?,?,?,'PENDING',?,?)`).bind(id,registrationId,kind,recipient,now,kind==='PAYMENT_ISSUE'?evidenceId:null)};
 }
 function compose(row) {
   const price=(row.expected_amount_cents/100).toFixed(2)+' EUR';

@@ -27,6 +27,8 @@ Technical closure of 3.5F (Borja/Atlas, 2026-10-01; no product rule reopened):
   rule, audited denial). Once resolved, the usual access applies (§11, §12.2).
 - Optimised synthetic photos keep their synthetic provenance through a fresh
   JPEG comment, without keeping any original metadata (§15.5).
+- Incidence notices are deduplicated per payment attempt, not per
+  registration (migration 0021); the same file resent is one attempt (approved).
 - Several payment attempts per registration (Atlas review, migration 0020):
   0..N proofs per registration, each with its own review and incidence; each
   verified amount keeps its link to the proof that supports it (or none, for a
@@ -399,7 +401,9 @@ resolved on B, by verifying its amount.
 - An incidence is opened on one attempt (a pending proof at any time — also a
   surplus proof —, a verified one while something remains) and never removes
   verified amounts; verifying that attempt closes it. The family's incidence
-  notice is sent once per registration (outbox).
+  notice is sent **at most once per attempt** (migration 0021): A flagged →
+  notice A; A still flagged or flagged again → no repeat; B flagged → notice B.
+  Other notices stay once per registration.
 - A further proof sent from the portal for a registration still waiting for
   matching or payment is stored as a new attempt of that registration (the same
   file twice is one attempt); the portal answer stays neutral.
@@ -578,7 +582,7 @@ No self-service withdrawal in the portal.
 | `RECEIVED` | intake | unchanged |
 | `PENDING_PAYMENT` | linked, paid | unchanged |
 | `CONFIRMED` | confirmed | unchanged |
-| `PAYMENT_ISSUE` | incidence | **revised**: `Hem detectat un problema amb el justificant de pagament d'aquesta inscripció. Posa't en contacte amb el grup per a resoldre-ho.` (no promise of an in-app flow) |
+| `PAYMENT_ISSUE` | incidence (at most once per payment attempt) | **revised**: `Hem detectat un problema amb el justificant de pagament d'aquesta inscripció. Posa't en contacte amb el grup per a resoldre-ho.` (no promise of an in-app flow) |
 | `REJECTED` (**new**) | rejection | `No hem pogut acceptar aquesta sol·licitud d'inscripció. Si tens cap dubte, posa't en contacte amb el grup.` |
 | `WITHDRAWN` (**new**) | withdrawal with notice | `Hem registrat la retirada d'aquesta inscripció.` |
 

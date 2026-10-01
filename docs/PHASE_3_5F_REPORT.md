@@ -152,8 +152,12 @@ pagos de retiradas, proyección, vista previa/descarga/MIME y auditoría, conser
   inscripción (409 `stale_payment`). Auditoría por plazo (`PAYMENT_VERIFIED` con `PARTIAL`/`PAID` y un evento por
   asignación); los importes quedan en la fila, no en el log.
 - Compatible con 3.5G: las asignaciones tienen id propio para enlazarlas después con movimientos bancarios.
-- Límites: no se registra más del importe debido (sobrepagos y devoluciones son 3.5G); el aviso de incidencia a la
-  familia se envía una sola vez por inscripción.
+- Límites: no se registra más del importe debido (sobrepagos y devoluciones son 3.5G).
+- Avisos de incidencia por intento (migración 0021): `notification_outbox` se reconstruye (copiando todas las filas y
+  `notification_capture`) para deduplicar `PAYMENT_ISSUE` por justificante (`evidence_id`, índice único parcial) y el
+  resto de avisos por inscripción y tipo. A en incidencia → aviso A; A sigue o vuelve a incidencia → sin repetir;
+  B en incidencia → aviso B. Los avisos de incidencia antiguos quedan enlazados a su justificante. Contenido neutro y
+  auditoría sin cambios.
 
 ## Varios intentos de pago por inscripción (revisión Atlas, migración 0020)
 
