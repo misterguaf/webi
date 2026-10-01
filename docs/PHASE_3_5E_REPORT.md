@@ -4,7 +4,7 @@ Fecha: **2026-10-01**
 Especificación: [`design/screens/PARTICIPANTS.md`](design/screens/PARTICIPANTS.md) v0.5
 Rama de trabajo: `phase/3.5e-participants` (desde `phase-3.5d-complete`, `a99d851`). Sin merge a
 `phase/3.5-design` ni a `main`, sin tag.
-Estado: **implementada, pendiente de revisión de Borja/Atlas. No declarada v1-ready.**
+Estado: **cerrada** — revisada por Borja/Atlas, integrada en `phase/3.5-design` (`97fb9f3`), tag `phase-3.5e-complete`.
 **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY.**
 
 ## Commits

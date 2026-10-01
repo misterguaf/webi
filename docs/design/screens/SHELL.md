@@ -240,6 +240,10 @@ Incidències · 3
 
 Inscripcions · 7
 
+3.5F: the Inscripcions count comes from `GET /api/registrations/queue/summary`
+(registrations the user can act on + payments pending + payment incidences);
+no badge at 0; sessions that can neither review nor verify do not see the item.
+
 Do not badge normal navigation simply to create visual activity.
 
 Attention states must follow `UX_RULES.md`.

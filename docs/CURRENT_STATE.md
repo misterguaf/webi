@@ -1,14 +1,24 @@
 # Estado actual del sistema
 
 Fecha de corte: **2026-10-01**
-Fase: **3.5 — diseño de Gestió; 3.5D Activitats cerrada en local; 3.5E Participants implementada en `phase/3.5e-participants`, pendiente de revisión** (no declarada v1-ready)
+Fase: **3.5 — diseño de Gestió; 3.5D Activitats y 3.5E Participants cerradas en local (`phase-3.5e-complete`); 3.5F Inscripcions implementada en `phase/3.5f-registrations`, pendiente de revisión** (no declarada v1-ready)
 Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
-Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D en `phase/3.5-design`, checkpoint `phase-3.5d-complete` (sin merge a `main`).
+Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D y 3.5E en `phase/3.5-design`, checkpoints `phase-3.5d-complete` y `phase-3.5e-complete` (sin merge a `main`).
 Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
 
-## Actualización FASE 3.5E — Participants (2026-10-01, pendiente de revisión)
+## Actualización FASE 3.5F — Inscripcions (2026-10-01, pendiente de revisión)
 
-Detalle y evidencias: [PHASE_3_5E_REPORT](PHASE_3_5E_REPORT.md). Especificación: [PARTICIPANTS.md](design/screens/PARTICIPANTS.md) v0.5. Rama `phase/3.5e-participants` (sin merge a `phase/3.5-design` ni a `main`, sin tag).
+Detalle y evidencias: [PHASE_3_5F_REPORT](PHASE_3_5F_REPORT.md). Especificación: [REGISTRATIONS.md](design/screens/REGISTRATIONS.md) v0.2. Rama `phase/3.5f-registrations` (sin merge, sin tag).
+
+- **Migración 0018:** reconstrucción sin pérdida de `activity_registration`, `payment_evidence`, `notification_outbox` y `notification_capture`; sección de la inscripción, versión, escalado, `WITHDRAWN`, historial de correcciones de sección, avisos `REJECTED`/`WITHDRAWN`, metadatos de conservación de justificantes y permiso `activities.registration.contact.read`.
+- **Autorización:** 404 indistinguible antes de cualquier 409; alcance por sección de la inscripción; escalado a revisión global sin revelar candidatos; corrección de sección con historial.
+- **Contacto del remitente** fuera de los listados, bajo demanda y auditado. **Justificantes** con vista previa y descarga autenticadas y auditadas; optimización de fotos en el portal.
+- **Cola global Inscripcions** (pendientes, incidencias, todas) y superficie temporal de pagos para Tresoreria hasta 3.5G; Inici y contador de navegación desde el resumen.
+- **Participante vinculado** con acceso de perfil y **lista de confirmados** por actividad.
+
+## Actualización FASE 3.5E — Participants (2026-10-01, cerrada: `phase-3.5e-complete`)
+
+Detalle y evidencias: [PHASE_3_5E_REPORT](PHASE_3_5E_REPORT.md). Especificación: [PARTICIPANTS.md](design/screens/PARTICIPANTS.md) v0.5. Integrada en `phase/3.5-design` (`97fb9f3`), tag `phase-3.5e-complete`.
 
 - **Permisos y dominio (0015):** gestión de participantes por sección actual, server-side; Secretaria absorbe a `CRM_MANAGER`, retirado en el servicio (sin trigger).
 - **Altas provisionales, edición, cambio de sección, baja**, completitud por edad derivada en servidor.

@@ -1,7 +1,7 @@
 # Gestió — Activitats
 
 Status: ACTIVE
-Version: 0.2
+Version: 0.2 (updated for 3.5F — Inscripcions, see REGISTRATIONS.md v0.2)
 Project: Grup Scout Parpalló — Gestió
 Phase: 3.5D
 Baseline: `phase-3.5-audit-remediated` (`55cbf96`)
@@ -22,6 +22,13 @@ Changes in 0.2: product decisions of Atlas/Borja (2026-09-29).
 - GENERAL read is separated from manage.
 - There is no generic Pagaments tab in v1.0.
 - The Dashboard opens the new detail.
+
+Updates from 3.5F (REGISTRATIONS.md v0.2, implemented): the Inscripcions tab
+gains `Retirades`, escalated rows (`En revisió global`), a row menu (correct
+section, send to global review, register a withdrawal), the linked participant
+with profile access, contact through an audited request, an in-app evidence
+preview and the confirmed list. Sections below are updated where they
+contradicted those decisions.
 
 ---
 
@@ -484,6 +491,7 @@ Uses the existing labels in `public/labels.js`, never the backend codes:
 | AWAITING_PAYMENT_REVIEW | `Pendent de pagament` |
 | CONFIRMED | `Confirmada` |
 | REJECTED | `Rebutjada` |
+| WITHDRAWN (3.5F) | `Retirada` |
 | PENDING_REVIEW | `Pendent de revisió` |
 | VERIFIED | `Verificat` |
 | ISSUE | `Incidència` |
@@ -700,8 +708,10 @@ four facts in one row, each a value plus a label.
 ## 11.1 Filters
 
 ```text
-[ Totes 12 ] [ Per revisar 3 ] [ Pendents de pagament 2 ] [ Confirmades 6 ] [ Rebutjades 1 ]
+[ Totes 12 ] [ Per revisar 3 ] [ Pendents de pagament 2 ] [ Confirmades 6 ] [ Rebutjades 1 ] [ Retirades 1 ]
 ```
+
+- `Retirades` (3.5F) appears only when there is at least one.
 
 - `Per revisar` = NEEDS_PARTICIPANT_REVIEW.
 - `Pendents de pagament` = AWAITING_PAYMENT_REVIEW; shown only for paid
@@ -737,8 +747,14 @@ expands it in place (disclosure, MOTION 13 height transition) to show:
 
 Other rows:
 
-- `Mostra el contacte` reveals phone and email on demand, within the row.
-  Contact data is never shown in the collapsed list.
+- `Mostra el contacte` requests the submitter's name, phone and e-mail on
+  demand (3.5F: `GET /api/registrations/:id/contact`, permission
+  `activities.registration.contact.read`, audited without values). Lists never
+  carry contact data.
+- The declared birth date comes with the candidates call while pending (3.5F),
+  never in the list.
+- Row menu, escalation, section correction, withdrawal and the linked
+  participant: REGISTRATIONS.md §10–§13, §16. The confirmed list: §17.
 
 ## 11.3 Scope note
 
@@ -752,16 +768,16 @@ For paid activities, when the user also has `verifyPayments` overlapping the
 activity, rows in `Pendent de pagament` show the pending evidence inline:
 
 - the expected amount and the review state;
-- `Veure justificant`: an authorised attachment download; never an inline
-  preview of personal documents;
+- `Veure justificant`: authenticated preview inside Gestió (image or PDF) with
+  `Descarrega` as fallback, each audited (3.5F, REGISTRATIONS.md §15.3);
 - actions:
   - **`Verifica`** — confirmation `Confirmes que el pagament de 15,00 € s'ha
     rebut al banc?`; the result uses MOTION 09;
   - **`Marca incidència`** — only from `Pendent de revisió`.
 
-The evidence is related to its registration through `registration_id`
-(`/api/payments` rows for the same registrations that the tab has already
-loaded). The UI never guesses by name or amount.
+The evidence is related to its registration through `registrationId` in
+`/api/payments?activityId=…` (3.5F: server-filtered to this activity). The UI
+never guesses by name or amount.
 
 If the relation cannot be established safely for a row, that row shows only its
 state label. Verified evidence and payment history are not listed in v1.0
@@ -810,8 +826,8 @@ For v1.0:
 - the operational summary shows `N pagaments per revisar` from the registration
   summary (B1);
 - review happens contextually in Inscripcions (§11.4);
-- the Dashboard attention item `pagaments per revisar` keeps opening the
-  existing payments review (unchanged in 3.5D).
+- the Dashboard attention item `pagaments per revisar` opens the Inscripcions
+  queue, the temporary payment surface until 3.5G (REGISTRATIONS.md §14, §18).
 
 If during implementation a correct per-activity read model already exists, the
 tab may be reconsidered with an explicit spec update. Otherwise it is deferred
@@ -1059,8 +1075,8 @@ Every result stays understandable without motion.
 - Declared birth dates appear only on rows pending review. Candidate birth dates
   appear only when the server includes them (profile access); otherwise only
   `coincideix / no coincideix`.
-- Payment evidence is only downloaded as an attachment. There is no inline
-  preview in v1.0.
+- Payment evidence is previewed inside Gestió or downloaded, only through
+  authenticated endpoints, and every view or download is audited (3.5F).
 - URLs (hash) contain only the activity UUID, section codes and filter keywords.
   No personal data. The fragment is never sent to the server.
 - No raw UUIDs, backend codes or English identifiers in visible UI text.
@@ -1196,15 +1212,16 @@ existing flow.
 - Client-side filtering is sufficient at current volume. Revisit if the list
   grows significantly.
 
-**G6 — No per-activity payment read model.**
-- `/api/payments` lists only evidence awaiting review, without `activity_id`,
-  and verified evidence is not listed.
+**G6 — No per-activity payment history.**
+- 3.5F: `/api/payments` filters by `activityId` and lists verified evidence in
+  the `totes` view (purpose-limited projection). A Pagaments tab and financial
+  history remain for 3.5G.
 - v1.0 uses contextual evidence (§11.4) and summary counts. The full Pagaments
   tab and payment history are deferred.
 
-**G8 — Registrations show the submitted name only.**
-- The matched participant's display name is not returned. Acceptable for v1.0;
-  revisit with 3.5E.
+**G8 — Resolved in 3.5F.**
+- The linked participant's name and record link are returned with
+  `participants.profile.read` over that participant.
 
 **G10 — No human-readable activity history** ("publicada per …").
 - Deferred, as for Dashboard Recent Activity.
@@ -1262,7 +1279,7 @@ existing flow.
 - creator display;
 - a full activity payment history or Pagaments tab;
 - server-side list filtering;
-- redesign of Participants, Quotes, Inscripcions (global page), Incidències,
+- redesign of Participants, Quotes, Incidències (Inscripcions global page: delivered in 3.5F),
   Administració;
 - calendar views;
 - historical charts;

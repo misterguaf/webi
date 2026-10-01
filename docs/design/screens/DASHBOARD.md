@@ -232,13 +232,16 @@ Attention items must lead directly to the relevant filtered workflow.
 
 Examples:
 
-`3 inscripcions per revisar`
+`3 inscripcions per revisar · <activitat>`
 
-opens Inscripcions filtered to those records.
+opens that activity's Inscripcions tab filtered to those records; global
+registration items (`n inscripcions en revisió global`, global reviewers only)
+open the Inscripcions queue (3.5F, REGISTRATIONS.md §18).
 
-`2 pagaments per revisar`
+`2 pagaments per revisar` / `1 incidència de pagament`
 
-opens the corresponding review queue.
+open the Inscripcions queue, the temporary payment surface until 3.5G
+Tresoreria.
 
 `1 incidència de quotes`
 
@@ -326,8 +329,8 @@ Images and PDFs should be viewable directly where technically feasible.
 
 Downloads may remain available as a secondary action.
 
-This behaviour will be fully specified in the Inscripcions / Payments screen
-documentation.
+Specified and implemented for activity payments in REGISTRATIONS.md §15.3
+(3.5F): authenticated preview with download fallback, both audited.
 
 The dashboard itself should link to the review workflow rather than implement
 the complete review UI.

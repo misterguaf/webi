@@ -122,7 +122,7 @@ duration (default 90 days, maximum 365). Secretaria absorbs the retired CRM mana
 Consent catalogue and texts stay in the legal phase.
 
 `screens/REGISTRATIONS.md`
-Inscripcions v0.2 (3.5F, approved for implementation): global work queue across activities,
+Inscripcions v0.2 (3.5F, implemented — pending review): global work queue across activities,
 registration section distinct from the declared section and the participant's current section,
 authorisation order without existence oracles, escalation to global review and section
 correction, submitter contact on demand (audited), withdrawal (`Retirada`) distinct from
@@ -133,7 +133,6 @@ list per activity.
 
 Future specifications may include:
 
-- REGISTRATIONS
 - FEES
 - SEARCH
 - SETTINGS

@@ -819,6 +819,7 @@ search, any change to ratification.
 | **T7** | "Contacts consulted are audited with their context" vs audit metadata that accepts only `count` and `source` | Context is recorded as a reason code and resource identifiers; no free text |
 | **T8** | Basic fee status "when authorised": Secretaria has no fee permission | Secretaria sees no fee line unless later granted |
 | **T9** | A provisional record has no birth date, and automatic registration matching needs it | Registrations for such participants go to human review (existing behaviour, not a new exclusion) |
+| — | (3.5F note) Registrations show the linked participant's name and record link only with `participants.profile.read` over that participant (REGISTRATIONS.md §16); no Activitats tab in the record yet | — |
 | **T10** | The relationship table could not hold a new relationship after an ended one and kept no author or provenance | Resolved: migration 0016 (author, provenance, basis) and 0017 (episodes, §9.4) |
 | **T11** | "Notify Secretaria" vs no staff notification mechanism | In-app attention items only |
 | **T12** | Initial incorporation of current members vs a synthetic-only environment | The flow is delivered with synthetic data; real entry is a production gate |
