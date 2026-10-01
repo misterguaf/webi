@@ -941,7 +941,10 @@ expiring delegation record), including any rebuild implied by the role-code CHEC
 (a) a role that contains them plus an individual grant (Tresoreria, Coordinació general), or (b) a
 ratified, expiring, capability-limited `delegated_permission`, evaluated **without** any role ceiling.
 An undated delegation is never effective. The named authoriser must hold the same capability (role +
-grant) over the delegated scope. `SECTION_DELEGATE` no longer carries any financial permission, and
+grant) over the delegated scope; a capability received by delegation can be used but never re-delegated.
+In v1 only Coordinació general authorises financial delegations: Tresoreria does not receive the general
+administrative `auth.permission.authorize` **[D]**; a narrow `auth.financial_delegation.authorize` may be
+studied in 3.5H. `SECTION_DELEGATE` no longer carries any financial permission, and
 grants it can no longer support were revoked. Later treasury permissions join the same mechanism by
 being marked `financialDelegation`.
 

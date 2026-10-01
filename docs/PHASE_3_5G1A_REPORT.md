@@ -77,6 +77,14 @@ el pago para corregir sus asignaciones) en lugar de «Resol». Con el saldo asig
 se audita. Un exceso que no cabe en ninguna obligación sigue sin poder cerrarse: es el sobrepago que
 3.5G.3 tratará aparte. Tests: `test/gestio-fee-allocation-unclear.test.js` (3).
 
+## Decisión: quién autoriza delegaciones financieras (Borja/Atlas)
+
+En v1 solo Coordinación general autoriza delegaciones financieras. Tesorería no recibe
+`auth.permission.authorize` (capacidad administrativa general que también alcanzaría delegaciones no
+financieras). Es una decisión, no una deuda; 3.5H podrá estudiar una capacidad estrecha equivalente a
+`auth.financial_delegation.authorize`. Lo recibido por delegación se usa pero no se redelega (test de
+regresión de no subdelegación).
+
 ## Deuda restante
 
 - Retención de justificantes y de datos bancarios: LEGAL DECISION REQUIRED.
@@ -84,3 +92,6 @@ se audita. Un exceso que no cabe en ninguna obligación sigue sin poder cerrarse
 - La caducidad se evalúa en cada petición; no hay evento propio de caducidad (los denegados quedan como
   `AUTHZ_DENY`).
 - `finance.fee.reconcile` sigue reservado; lo sustituirá `finance.reconcile` en 3.5G.3.
+- 3.5G.3: separar el estado de la obligación del saldo sin asignar/sobrepago (gap legacy de 3B); un
+  `ALLOCATION_UNCLEAR` que no cabe en ninguna obligación no puede cerrarse hasta entonces.
+- 3.5H: posible `auth.financial_delegation.authorize` para Tesorería.
