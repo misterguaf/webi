@@ -160,7 +160,9 @@
       transportCode:transport.value||null,participacio:x.participacio.checked,privacitat:x.privacitat.checked,idioma:lang(),
       idempotencyKey:x.idempotencyKey.value,malnom:x.malnom.value,_ts:x._ts.value,
       ...(base64?{comprovant:{nom:file.name,tipus:file.type,base64}}:{})})});};
-    (requiresEvidence?fileBase64(file).then(send):Promise.resolve(send(null))).then(parseResponse).then(function (result) {
+    // Large receipt photos are optimised before upload (evidence-optimizer.js); PDFs never.
+    var optimize = window.ParpalloEvidence ? window.ParpalloEvidence.optimize : function (f) { return Promise.resolve(f); };
+    (requiresEvidence?optimize(file).then(function (ready) { file = ready; return fileBase64(ready); }).then(send):Promise.resolve(send(null))).then(parseResponse).then(function (result) {
       if (result.status === 401) return location.reload(); if (result.status === 202 && result.body.ok) { activityForm.hidden = true; document.getElementById("activity-success-name").textContent = activityName(chosenActivity()); document.getElementById("activity-success").hidden = false; document.getElementById("activity-success").focus(); return; }
       if(result.body.code==="activity_unavailable" || result.body.code==="registration_closed") result.body.message=TXT.unavailable;
       clearErrors(activityForm); var marked = serverErrors(activityForm, result.body.errors); alertBox("activity-alert", result.body.message || TXT.review); (marked || document.getElementById("activity-alert")).focus();
