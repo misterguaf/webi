@@ -31,7 +31,7 @@ const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_rol
   'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',
   'annual_fee_evidence','annual_fee_notification_outbox','annual_fee_issue_outbox',
   'auth_identity','auth_identity_invitation',
-  'guardian','participant_guardian','contact_point','participant_review']);
+  'guardian','participant_guardian','contact_point','participant_review','activity_payment_allocation']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);
 const SOURCES = new Set(['local-fixture','retention-job']);
 const safeId = value => value === null || (typeof value === 'string' && UUID.test(value));

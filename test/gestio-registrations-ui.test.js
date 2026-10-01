@@ -79,11 +79,14 @@ test('queue: views, count lines, partial note, previous activities and the tab f
   assert.equal(model.evidenceKind('application/octet-stream'), null);
 });
 
-test('payment actions: incidence only from pending (never on a withdrawn registration); verified has none', () => {
-  assert.deepEqual(model.paymentActions({ paymentState: 'PENDING_REVIEW', registrationState: 'AWAITING_PAYMENT_REVIEW' }), ['verify', 'issue']);
-  assert.deepEqual(model.paymentActions({ paymentState: 'ISSUE', registrationState: 'AWAITING_PAYMENT_REVIEW' }), ['verify']);
-  assert.deepEqual(model.paymentActions({ paymentState: 'PENDING_REVIEW', registrationState: 'WITHDRAWN' }), ['verify']);
-  assert.deepEqual(model.paymentActions({ paymentState: 'VERIFIED', registrationState: 'CONFIRMED' }), []);
+test('payment actions: verify while something remains; incidence not twice nor on withdrawn; paid has none', () => {
+  const pay = (paymentState, registrationState, remainingCents) => ({ paymentState, registrationState, remainingCents });
+  assert.deepEqual(model.paymentActions(pay('PENDING', 'AWAITING_PAYMENT_REVIEW', 8000)), ['verify', 'issue']);
+  assert.deepEqual(model.paymentActions(pay('PARTIAL', 'AWAITING_PAYMENT_REVIEW', 5000)), ['verify', 'issue'], 'a partial payment can receive more instalments');
+  assert.deepEqual(model.paymentActions(pay('ISSUE', 'AWAITING_PAYMENT_REVIEW', 5000)), ['verify']);
+  assert.deepEqual(model.paymentActions(pay('PARTIAL', 'WITHDRAWN', 5000)), ['verify']);
+  assert.deepEqual(model.paymentActions(pay('PAID', 'CONFIRMED', 0)), []);
+  assert.deepEqual(model.paymentActions(pay('PAID', 'WITHDRAWN', 0)), []);
 });
 
 test('rows in global review: no contact and no actions for section reviewers; resolved rows are ordinary again', () => {
@@ -95,4 +98,19 @@ test('rows in global review: no contact and no actions for section reviewers; re
   assert.equal(model.inGlobalReview(row({ review_level: 'GLOBAL', status: 'CONFIRMED' })), false);
   assert.equal(model.canRevealContact(tropa, row({ review_level: 'GLOBAL', status: 'CONFIRMED' })), true);
   assert.deepEqual(model.rowActions({ audience: 'GENERAL' }, tropa, row({ review_level: 'GLOBAL', status: 'CONFIRMED' }), S), ['withdraw']);
+});
+
+test('instalments: payment line, euro parsing and amount validation mirror the server', () => {
+  const line = model.paymentLine({ paymentState: 'PARTIAL', amountCents: 8000, paidCents: 5000, remainingCents: 3000 });
+  assert.match(line, /^Pagament parcial · 50,00\s€ \/ 80,00\s€ · 30,00\s€ pendents$/);
+  assert.match(model.paymentLine({ paymentState: 'PENDING', amountCents: 8000, paidCents: 0, remainingCents: 8000 }), /^Pendent de pagament · 80,00\s€ per pagar$/);
+  assert.match(model.paymentLine({ paymentState: 'ISSUE', amountCents: 8000, paidCents: 3000, remainingCents: 5000 }), /^Incidència · 30,00\s€ \/ 80,00\s€/,
+    'an incidence still shows what was paid');
+  assert.equal(model.paymentLine({ paymentState: 'PAID', amountCents: 8000, paidCents: 8000, remainingCents: 0 }), 'Pagat');
+  for (const [text, cents] of [['20', 2000], ['20,5', 2050], ['20,50', 2050], ['20.50', 2050], ['1.234,50', 123450], ['1.234', 123400], [' 30 € ', 3000]])
+    assert.equal(model.parseEurosToCents(text), cents, text);
+  for (const text of ['', '0', 'abc', '20,555', '-5', '1,2,3']) assert.equal(model.parseEurosToCents(text), null, text);
+  assert.equal(model.validateVerifiedAmount(2000, 5000), null);
+  assert.match(model.validateVerifiedAmount(6000, 5000), /No pot superar/);
+  assert.match(model.validateVerifiedAmount(null, 5000), /import vàlid/);
 });

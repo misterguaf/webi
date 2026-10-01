@@ -463,3 +463,10 @@ body.drawer-open{overflow:hidden}
 .queue-activity-arrow{grid-area:arrow;color:var(--text-secondary)}
 .queue-previous summary{cursor:pointer;color:var(--text-secondary);font-weight:560;padding:var(--space-2) 0}
 .queue-payments{border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary)}
+/* 3.5F instalments: verification dialog figures */
+.verify-figures{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--space-2);margin:0}
+.verify-figure{padding:var(--space-2) var(--space-3);border-radius:var(--radius-control);background:var(--surface-elevated)}
+.verify-figure dt{font-size:12px;color:var(--text-secondary)}
+.verify-figure dd{margin:0;font-weight:600;font-variant-numeric:tabular-nums}
+.verify-figure-strong{background:var(--iris-soft)}
+.verify-figure-strong dd{color:var(--iris-strong)}

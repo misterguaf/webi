@@ -27,6 +27,10 @@ Technical closure of 3.5F (Borja/Atlas, 2026-10-01; no product rule reopened):
   rule, audited denial). Once resolved, the usual access applies (§11, §12.2).
 - Optimised synthetic photos keep their synthetic provenance through a fresh
   JPEG comment, without keeping any original metadata (§15.5).
+- Payments in instalments (previously approved requirement, missing in 0.2):
+  obligation ≠ evidence ≠ allocation; each verified amount is an append-only
+  allocation (migration 0019); the payment state PENDING / PARTIAL / PAID /
+  ISSUE is derived; `Verifica` asks for the amount (§9.2, §14).
 
 Changes in 0.2 (decisions of Borja/Atlas on D1–D12, 2026-10-01):
 
@@ -359,16 +363,35 @@ payment state.
 
 | State | Label | Source |
 |---|---|---|
-| `NOT_REQUIRED` | `Sense pagament` | `expected_amount_cents = 0` |
-| `PENDING_REVIEW` | `Pendent de revisió` | evidence `PENDING_REVIEW` |
-| `ISSUE` | `Incidència` | evidence `ISSUE` |
-| `VERIFIED` | `Verificat` | evidence `VERIFIED` |
+Instalments (3.5F closure, migration 0019), following the annual-fee
+principle **obligation ≠ payment ≠ allocation**:
 
-Transitions (unchanged trigger): `PENDING_REVIEW → VERIFIED | ISSUE`,
-`ISSUE → VERIFIED`. Verifying evidence moves the registration to `CONFIRMED`
-**only** from `AWAITING_PAYMENT_REVIEW`. On a `WITHDRAWN` registration the
-evidence can still be reviewed (so Tresoreria records what was received); the
-registration stays `WITHDRAWN`. Refunds: 3.5G.
+- obligation = `activity_registration.expected_amount_cents`;
+- evidence = the family's proof (`payment_evidence`, one per registration);
+- allocation = each verified amount (`activity_payment_allocation`:
+  registration, evidence, amount, who, when), **append-only** — instalments
+  accumulate and are never overwritten; the database refuses more than the
+  obligation. `activity_payment_balance` derives the paid amount. Evidence
+  verified before 0019 became one full allocation (`LEGACY_FULL_VERIFICATION`).
+
+| State | Label | Rule |
+|---|---|---|
+| `NOT_REQUIRED` | `Sense pagament` | obligation 0 |
+| `PENDING` | `Pendent de pagament` | nothing verified yet |
+| `PARTIAL` | `Pagament parcial` | 0 < paid < due |
+| `PAID` | `Pagat` | paid = due |
+| `ISSUE` | `Incidència` | open incidence and paid < due (verified amounts kept) |
+
+- Verifying the remaining amount moves the registration to `CONFIRMED`
+  **only** from `AWAITING_PAYMENT_REVIEW`; a partial amount leaves it waiting.
+- An incidence can be opened while something remains (also after a partial
+  payment) and never removes verified amounts; a later verification closes it.
+  The family's incidence notice is sent once per registration (outbox).
+- On a `WITHDRAWN` registration amounts can still be verified (what was
+  received is recorded); the registration stays `WITHDRAWN`. Refunds: 3.5G.
+- Evidence review states describe the proof: `PENDING_REVIEW`, `VERIFIED`
+  (≥ 1 amount, no open incidence), `ISSUE` (open incidence).
+- 3.5G can link allocations to bank movements by allocation id.
 
 ## 9.3 Evidence object state
 
@@ -566,7 +589,10 @@ registration section). Row:
 | `transport` | only when the activity has transport options |
 | `section` | registration section code, only for GENERAL activities |
 | `registrationState` | including `WITHDRAWN` |
-| `paymentState` | §9.2 |
+| `paymentState`, `evidenceStatus` | §9.2 (derived) |
+| `paidCents`, `remainingCents` | derived from allocations |
+| `registrationVersion` | for the review's optimistic concurrency |
+| `allocations` (detail only) | `{ amountCents, verifiedAt }` per instalment; who verified stays in the audit |
 | `evidence` `{ mime, sizeBytes, receivedAt, available }` | `available=false` when purged |
 | `reviewedAt` | |
 
@@ -576,14 +602,23 @@ action.
 ## 14.2 Surface
 
 In the queue (`Pagaments` block): one row per payment — activity · name ·
-amount · state; actions `Veure justificant`, `Descarrega`, `Verifica`
-(confirmation as 3.5D), `Marca incidència` (only from pending, confirmation).
+amount · state with paid / total / remaining (`Pagament parcial · 50,00 € /
+80,00 € · 30,00 € pendents`); actions `Veure justificant`, `Descarrega`,
+`Verifica`, `Marca incidència` (while something remains; confirmation).
+
+`Verifica` opens a dialog with **Total**, **Ja verificat**, **Pendent** and the
+amount verified now (default: the remaining amount; 1 cent … remaining). The
+request is `{ decision: VERIFIED, amountCents, expectedVersion }`; a concurrent
+verification answers 409 `stale_payment` and writes nothing. `pendents` lists
+PENDING and PARTIAL payments; the badge counts only proofs nobody verified yet
+and open incidences.
 Withdrawn registrations show `Inscripció retirada`. Errors next to the action.
 The legacy list (`#paymentPanel`) is removed.
 
 ## 14.3 Incidence
 
-- Stays in `Incidències` until verified.
+- Stays in `Incidències` until a further amount is verified; the amounts
+  already verified are kept and shown.
 - Evidence viewable and downloadable.
 - `Verifica` available when it has been resolved outside Gestió.
 - Not in 3.5F: bank reconciliation, structured request of new evidence,

@@ -31,7 +31,8 @@ const TABLES=[
   'annual_fee_issue_outbox','annual_fee_issue_capture','d1_migrations',
   'participant_section_membership','guardian','participant_guardian','contact_point','consent_record',
   'auth_identity_invitation','delegated_permission_confirmation',
-  'participant_representation_event','participant_review','activity_registration_section_change'
+  'participant_representation_event','participant_review','activity_registration_section_change',
+  'activity_payment_allocation'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -80,6 +81,8 @@ const REQUIRED_OBJECTS=[
   'trigger:registration_section_on_insert','trigger:registration_section_fill','trigger:registration_withdrawal_immutable',
   'trigger:registration_escalation_pending_only','trigger:payment_evidence_purge_once',
   'trigger:activity_registration_section_change_no_update','trigger:activity_registration_section_change_no_delete',
+  'view:activity_payment_balance','trigger:activity_payment_allocation_guard','trigger:activity_payment_allocation_no_update',
+  'trigger:activity_payment_allocation_no_delete','trigger:payment_review_transition',
   'index:auth_identity_invitation_open_unique','trigger:auth_identity_invitation_recipient_active',
   'trigger:delegated_permission_confirmation_by_authoriser','trigger:delegated_permission_no_self_insert',
   'trigger:delegated_permission_ratification_governance'

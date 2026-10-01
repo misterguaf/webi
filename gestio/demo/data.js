@@ -125,7 +125,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     const adjustment=activity.transport?.find(([code])=>code===transport)?.[1]??0;
     regs.push({number,activityNumber,person,status,matchStatus,name,sectionNumber:opts.section||person?.section||2,
       birth:opts.birth||null,amount:opts.amount??activity.price+adjustment,transport,
-      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),mime:opts.mime||'application/pdf',
+      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),mime:opts.mime||'application/pdf',paid:opts.paid??null,
       escalation:opts.escalation||null,withdrawn:opts.withdrawn||null,correctedTo:opts.correctedTo||null,reviewed:!!opts.reviewed,
       created:opts.created||Math.min(T-2*DAY,activity.deadline-DAY)-number*60000});
   };
@@ -138,10 +138,12 @@ export function buildDemoData({ now = Date.now() } = {}) {
   for(const n of [1002,1006,1010,1018,1022,1026,1030])addReg(11003,n,'CONFIRMED');
   // 3.5F: confirmed and paid, then withdrawn by the family; the verified payment stays (no refund implied).
   addReg(11003,1034,'WITHDRAWN','CLEAR',{evidence:'VERIFIED',withdrawn:'FAMILY_COMMUNICATION'});
-  addReg(11003,502,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
+  // 3.5F instalments: a partial payment (5 € of 15 €) still awaiting the rest.
+  addReg(11003,502,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'VERIFIED',paid:500});
   // 3.5F: image evidence (PNG) next to the PDF ones.
   addReg(11003,503,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW',mime:'image/png'});
-  addReg(11003,1014,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'ISSUE'});
+  // An incidence after a first instalment: the 5 € already verified are kept.
+  addReg(11003,1014,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'ISSUE',paid:500});
   [['Demo Sol·licitud sense fitxa','2013-07-11'],['Demo Persona Nova Tropa','2012-02-03'],['Demo Germana Petita','2014-09-21']]
     .forEach(([name,birth])=>pending(11003,name,2,birth));
   [['Demo Sol·licitud duplicada',2],['Demo Secció equivocada',2]].forEach(([name,sectionNumber])=>rejected(11003,name,sectionNumber));
@@ -194,6 +196,9 @@ export function buildDemoData({ now = Date.now() } = {}) {
     return [id(13000+r.number-12000),id(r.number),key,image?pngDigest:digest,image?png.length:pdf.length,r.mime,r.evidence,r.created,
       r.evidence==='PENDING_REVIEW'?null:r.created,r.evidence==='PENDING_REVIEW'?null:coordinator];
   });
+  // Verified amounts (3.5F instalments): full for verified evidence, partial where the scenario says so.
+  const allocationRowsActivity=regs.filter(r=>r.evidence && (r.evidence==='VERIFIED' || r.paid)).map((r,index)=>[id(19700+index+1),id(r.number),
+    id(13000+r.number-12000),r.paid??r.amount,'VERIFICATION',treasury,r.created+HOUR]);
   const familyGroupRows=[];const familyMemberRows=[];const familyForPerson=new Map();
   for(const family of families.filter(f=>f.members.length>=2)){
     const groupId=id(2000+family.number);
@@ -289,6 +294,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     insert('activity_transport_option',['activity_id','code','price_adjustment_cents'],transportRows),
     insert('activity_registration',['id','activity_id','participant_id','submitted_name','match_key','submitted_section_id','receipt_email','transport_code','expected_amount_cents','match_status','status','consent_version','participation_terms_version','participation_authorized_at','privacy_notice_version','privacy_notice_acknowledged_at','idempotency_key','payload_sha256','created_at','updated_at','reviewed_by','reviewed_at','submitted_by_name','contact_phone','submitted_birth_date','review_level','escalation_reason','escalated_at','escalated_by','withdrawn_at','withdrawn_by','withdrawal_source'],registrationRows),
     insert('payment_evidence',['id','registration_id','object_key','sha256','size_bytes','detected_mime','review_status','created_at','reviewed_at','reviewed_by'],activityEvidenceRows),
+    insert('activity_payment_allocation',['id','registration_id','evidence_id','amount_cents','source','created_by','created_at'],allocationRowsActivity),
     correctionSql,
     // 3.5F: in the demo, Secretaria (seed-105) also works as the global registration reviewer.
     insert('user_permission_grant',['id','user_id','permission_code','valid_from','granted_by','justification'],

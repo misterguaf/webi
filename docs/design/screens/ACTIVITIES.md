@@ -771,8 +771,9 @@ activity, rows in `Pendent de pagament` show the pending evidence inline:
 - `Veure justificant`: authenticated preview inside Gestió (image or PDF) with
   `Descarrega` as fallback, each audited (3.5F, REGISTRATIONS.md §15.3);
 - actions:
-  - **`Verifica`** — confirmation `Confirmes que el pagament de 15,00 € s'ha
-    rebut al banc?`; the result uses MOTION 09;
+  - **`Verifica`** — 3.5F: dialog with total, already verified and remaining,
+    asking for the amount verified now (instalments, REGISTRATIONS.md §9.2,
+    §14.2); the result uses MOTION 09;
   - **`Marca incidència`** — only from `Pendent de revisió`.
 
 The evidence is related to its registration through `registrationId` in

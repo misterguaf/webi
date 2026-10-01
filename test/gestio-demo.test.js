@@ -130,6 +130,14 @@ test('demo activity scenarios are relative to the seed time and cover D1–D12',
         one('SELECT count(*) n FROM activity_registration_section_change').n, 'every corrected section has its history');
       assert.ok(one("SELECT count(*) n FROM activity_registration WHERE match_status='RESOLVED' AND reviewed_by IS NOT NULL").n >= 1, 'manual link');
       assert.ok(one("SELECT count(*) n FROM payment_evidence WHERE detected_mime='image/png'").n >= 1, 'image evidence');
+      assert.ok(one(`SELECT count(*) n FROM activity_payment_balance b JOIN payment_evidence e ON e.registration_id=b.registration_id
+        WHERE b.paid_cents>0 AND b.paid_cents<b.due_cents AND e.review_status='VERIFIED'`).n >= 1, 'partial payment');
+      assert.ok(one(`SELECT count(*) n FROM activity_payment_balance b JOIN payment_evidence e ON e.registration_id=b.registration_id
+        WHERE b.paid_cents>0 AND b.paid_cents<b.due_cents AND e.review_status='ISSUE'`).n >= 1, 'incidence keeping a verified instalment');
+      assert.equal(one(`SELECT count(*) n FROM payment_evidence e JOIN activity_payment_balance b ON b.registration_id=e.registration_id
+        WHERE e.review_status='VERIFIED' AND b.paid_cents=0`).n, 0, 'every verified proof has its verified amount');
+      assert.equal(one(`SELECT count(*) n FROM activity_registration r JOIN activity_payment_balance b ON b.registration_id=r.id
+        WHERE r.status='CONFIRMED' AND b.due_cents>0 AND b.paid_cents<b.due_cents`).n, 0, 'confirmed paid registrations are fully paid');
       assert.ok(one("SELECT count(*) n FROM payment_evidence WHERE detected_mime='application/pdf'").n >= 1, 'PDF evidence');
       assert.equal(one("SELECT count(*) n FROM activity_registration WHERE submitted_birth_date IS NOT NULL AND status!='NEEDS_PARTICIPANT_REVIEW'").n, 0);
       assert.deepEqual(sql.prepare('PRAGMA foreign_key_check').all(), []);

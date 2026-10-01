@@ -15,6 +15,7 @@ Detalle y evidencias: [PHASE_3_5F_REPORT](PHASE_3_5F_REPORT.md). Especificación
 - **Contacto del remitente** fuera de los listados, bajo demanda y auditado. **Justificantes** con vista previa y descarga autenticadas y auditadas; optimización de fotos en el portal.
 - **Cola global Inscripcions** (pendientes, incidencias, todas) y superficie temporal de pagos para Tresoreria hasta 3.5G; Inici y contador de navegación desde el resumen.
 - **Participante vinculado** con acceso de perfil y **lista de confirmados** por actividad.
+- **Pagos en varios plazos (migración 0019):** cada importe verificado es una asignación append-only; estado PENDING/PARTIAL/PAID/ISSUE derivado; la inscripción se confirma al cubrir el total.
 
 ## Actualización FASE 3.5E — Participants (2026-10-01, cerrada: `phase-3.5e-complete`)
 

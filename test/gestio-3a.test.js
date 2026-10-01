@@ -302,15 +302,24 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
       body:{decision:'REJECT'}})).status,404,'3.5F: out of scope is indistinguishable from missing');
     const payments=await request(worker.base,'/api/payments',{cookie:treasury});assert.equal(payments.status,200);
     const paidRow=payments.data.payments.find(row=>row.activity.name==='Activitat completament fictícia' && row.amountCents===1500);
-    assert.ok(paidRow);assert.equal(paidRow.paymentState,'PENDING_REVIEW');
+    assert.ok(paidRow);assert.equal(paidRow.paymentState,'PENDING');
     paidRow.registration_id=paidRow.registrationId;
     assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:troop2,body:{decision:'VERIFIED'}})).status,403);
     const evidenceResponse=await fetch(worker.base+`/api/payments/${paidRow.id}/evidence`,{headers:{Cookie:treasury}});
     assert.equal(evidenceResponse.status,200);assert.match(evidenceResponse.headers.get('content-disposition'),/attachment/);
-    assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:treasury,body:{decision:'ISSUE'}})).data.status,'ISSUE');
+    const paymentVersion=async cookie=>(await request(worker.base,`/api/payments/${paidRow.id}`,{cookie})).data.payment.registrationVersion;
+    assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:treasury,
+      body:{decision:'ISSUE',expectedVersion:await paymentVersion(treasury)}})).data.status,'ISSUE');
     assert.equal(rows(gestio,state,`SELECT recipient_email FROM notification_outbox WHERE registration_id='${paidRow.registration_id}' AND kind='PAYMENT_ISSUE'`)[0].recipient_email,'sollicitant@example.test');
-    assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:delegate,body:{decision:'VERIFIED'}})).data.status,'VERIFIED');
-    assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:delegate,body:{decision:'VERIFIED'}})).status,409);
+    // 3.5F instalments: 5 € then the remaining 10 €; nothing more once paid.
+    const partial=await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:delegate,
+      body:{decision:'VERIFIED',amountCents:500,expectedVersion:await paymentVersion(delegate)}});
+    assert.deepEqual([partial.data.paymentState,partial.data.paidCents],['PARTIAL',500]);
+    assert.equal(rows(gestio,state,`SELECT status FROM activity_registration WHERE id='${paidRow.registration_id}'`)[0].status,'AWAITING_PAYMENT_REVIEW');
+    assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:delegate,
+      body:{decision:'VERIFIED',amountCents:1000,expectedVersion:await paymentVersion(delegate)}})).data.paymentState,'PAID');
+    assert.equal((await request(worker.base,`/api/payments/${paidRow.id}/review`,{method:'POST',cookie:delegate,
+      body:{decision:'VERIFIED',amountCents:100,expectedVersion:await paymentVersion(delegate)}})).status,409);
     const paidRegistration=rows(gestio,state,`SELECT status FROM activity_registration WHERE id='${paidRow.registration_id}'`)[0];
     assert.equal(paidRegistration.status,'CONFIRMED');
     assert.equal(rows(gestio,state,`SELECT birth_date FROM participant WHERE id='${id(503)}'`)[0].birth_date,'2012-11-03');

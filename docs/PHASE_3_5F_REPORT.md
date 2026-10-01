@@ -139,6 +139,22 @@ pagos de retiradas, proyección, vista previa/descarga/MIME y auditoría, conser
    (foto sintética grande → optimización → alta aceptada en modo synthetic-only) y comprobación negativa (una foto
    real sigue rechazada); verificado también con el códec real del navegador (12,8 MB → 0,88 MB, 2000×1500, sin EXIF).
 
+## Pagos en varios plazos (requisito previo recuperado)
+
+- Modelo (migración 0019), con el principio de cuotas obligación ≠ pago ≠ asignación: cada importe verificado es una
+  fila append-only de `activity_payment_allocation` (inscripción, justificante, importe, quién, cuándo); la vista
+  `activity_payment_balance` deriva lo pagado; la base de datos rechaza superar el importe debido. Los justificantes
+  verificados antes de 0019 pasan a una asignación completa (`LEGACY_FULL_VERIFICATION`). No hace falta más de un
+  justificante por inscripción: varios plazos se verifican como varias asignaciones.
+- Estado derivado PENDING / PARTIAL / PAID / ISSUE; la incidencia nunca borra ni oculta importes verificados y una
+  verificación posterior la cierra. La inscripción solo pasa a confirmada al cubrir el total (y no en una retirada).
+- «Verifica» pide el importe (total, ya verificado, pendiente; propone el pendiente). Concurrencia con la versión de la
+  inscripción (409 `stale_payment`). Auditoría por plazo (`PAYMENT_VERIFIED` con `PARTIAL`/`PAID` y un evento por
+  asignación); los importes quedan en la fila, no en el log.
+- Compatible con 3.5G: las asignaciones tienen id propio para enlazarlas después con movimientos bancarios.
+- Límites: no se registra más del importe debido (sobrepagos y devoluciones son 3.5G); el aviso de incidencia a la
+  familia se envía una sola vez por inscripción.
+
 ## Revisión humana necesaria
 
 Ver checklist de REGISTRATIONS.md §27: cola global, pestaña, revisión manual, contacto, justificante, rechazo,

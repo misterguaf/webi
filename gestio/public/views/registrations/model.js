@@ -10,8 +10,9 @@ export const sectionLabelOf = (id, sections) => SECTION_LABELS[sectionCodeOf(id,
 export const REGISTRATION_STATE_LABELS = Object.freeze({
   NEEDS_PARTICIPANT_REVIEW: 'Pendent de vincular', AWAITING_PAYMENT_REVIEW: 'Pendent de pagament',
   CONFIRMED: 'Confirmada', REJECTED: 'Rebutjada', WITHDRAWN: 'Retirada' });
+// Payment state across instalments (derived server-side from verified allocations).
 export const PAYMENT_STATE_LABELS = Object.freeze({
-  NOT_REQUIRED: 'Sense pagament', PENDING_REVIEW: 'Pendent de revisió', ISSUE: 'Incidència', VERIFIED: 'Verificat' });
+  NOT_REQUIRED: 'Sense pagament', PENDING: 'Pendent de pagament', PARTIAL: 'Pagament parcial', PAID: 'Pagat', ISSUE: 'Incidència' });
 export const registrationStateLabel = state => REGISTRATION_STATE_LABELS[state] ?? 'Estat desconegut';
 export const paymentStateLabel = state => PAYMENT_STATE_LABELS[state] ?? 'Estat desconegut';
 export const ESCALATION_LABELS = Object.freeze({ POSSIBLE_OTHER_SECTION: 'Possible secció diferent', REVIEWER_REQUEST: 'Enviada per la secció' });
@@ -74,7 +75,7 @@ export function secondaryLine(row, activity, sections, shortDate) {
     row.status === 'WITHDRAWN' && row.withdrawn_at ? `Retirada el ${shortDate(row.withdrawn_at)}` : null].filter(Boolean).join(' · ');
 }
 export function accessibleRowName(row) {
-  return [displayName(row), registrationStateLabel(row.status), row.payment_status ? `justificant ${paymentStateLabel(row.payment_status).toLocaleLowerCase('ca-ES')}` : null,
+  return [displayName(row), registrationStateLabel(row.status), row.payment_status && row.payment_status !== 'NOT_REQUIRED' ? paymentStateLabel(row.payment_status).toLocaleLowerCase('ca-ES') : null,
     row.review_level === 'GLOBAL' ? 'en revisió global' : null].filter(Boolean).join(', ');
 }
 
@@ -112,11 +113,38 @@ export const scopeNote = activity => activity.scope === 'PARTIAL'
 export const splitPrevious = activities => ({ current: activities.filter(a => !a.previous), previous: activities.filter(a => a.previous) });
 /** Filter for the activity tab opened from the queue. */
 export const tabFilterFor = view => view === 'pendents' ? 'per-revisar' : 'totes';
-/** Payment actions a verifier may see (§14.2); the evidence trigger enforces the same transitions. */
+/** Payment actions a verifier may see (§14.2); the server and the database enforce the same rules. */
 export function paymentActions(payment) {
   const actions = [];
-  if (['PENDING_REVIEW', 'ISSUE'].includes(payment.paymentState)) actions.push('verify');
-  if (payment.paymentState === 'PENDING_REVIEW' && payment.registrationState !== 'WITHDRAWN') actions.push('issue');
+  const open = payment.remainingCents > 0 && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(payment.registrationState);
+  if (open) actions.push('verify');
+  if (open && payment.paymentState !== 'ISSUE' && payment.registrationState !== 'WITHDRAWN') actions.push('issue');
   return actions;
+}
+export const formatEuros = cents => new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
+/** "Pagament parcial · 50,00 € / 80,00 € · 30,00 € pendents" — never hides what was already paid. */
+export function paymentLine(payment) {
+  const label = paymentStateLabel(payment.paymentState);
+  if (payment.paymentState === 'PAID' || payment.paymentState === 'NOT_REQUIRED') return label;
+  const parts = [label];
+  if (payment.paidCents > 0) parts.push(`${formatEuros(payment.paidCents)} / ${formatEuros(payment.amountCents)}`);
+  parts.push(`${formatEuros(payment.remainingCents)} ${payment.paidCents > 0 ? 'pendents' : 'per pagar'}`);
+  return parts.join(' · ');
+}
+/** Euros typed by a person ("20", "20,5", "20,50", "1.234,50") → cents, or null. */
+export function parseEurosToCents(value) {
+  const text = String(value ?? '').trim().replace(/\s|€/g, '');
+  let normalised;
+  if (/^\d+([,.]\d{1,2})?$/.test(text)) normalised = text.replace(',', '.');           // 20 · 20,5 · 20.50
+  else if (/^\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(text)) normalised = text.replace(/\./g, '').replace(',', '.'); // 1.234,50
+  else return null;
+  const cents = Math.round(Number(normalised) * 100);
+  return Number.isSafeInteger(cents) && cents > 0 ? cents : null;
+}
+/** Verification amount check, mirroring the server: 1 cent … remaining. */
+export function validateVerifiedAmount(cents, remainingCents) {
+  if (cents == null) return 'Escriu un import vàlid.';
+  if (cents > remainingCents) return `No pot superar el que falta (${formatEuros(remainingCents)}).`;
+  return null;
 }
 export const evidenceKind = mime => mime === 'application/pdf' ? 'pdf' : mime?.startsWith('image/') ? 'image' : null;

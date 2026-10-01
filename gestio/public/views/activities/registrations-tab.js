@@ -7,7 +7,7 @@ import { confirmDialog, formDialog, h, icon, openMenu, toast } from '../../ui.js
 import { canVerifyPayments, dateTime, errorCopy, partialLabel, shortDate } from './model.js';
 import {
   ESCALATION_LABELS, SECTION_LABELS, WITHDRAWAL_SOURCES, accessibleRowName, canRevealContact, correctionTargets, defaultNotify,
-  displayName, groupConfirmed, isActionable, isGlobalReviewer, paymentStateLabel, registrationStateLabel, rowActions, secondaryLine,
+  displayName, groupConfirmed, isActionable, isGlobalReviewer, paymentLine, paymentStateLabel, registrationStateLabel, rowActions, secondaryLine,
   transportTotals, visibleFilters
 } from '../registrations/model.js';
 import { evidenceBlock } from '../registrations/evidence.js';
@@ -95,8 +95,8 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     const evidence = cache.evidence?.get(row.id) ?? null;
     const redraw = () => draw(container, activity, query);
     const state = h('span', { className: `badge reg-${row.status.toLowerCase().replaceAll('_', '-')}`, text: registrationStateLabel(row.status) });
-    const payment = activity.price_cents > 0 && row.payment_status && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status)
-      ? h('span', { className: 'reg-payment', text: `Justificant: ${paymentStateLabel(row.payment_status).toLocaleLowerCase('ca-ES')}` }) : null;
+    const payment = activity.price_cents > 0 && row.payment_status && row.payment_status !== 'NOT_REQUIRED' && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status)
+      ? h('span', { className: 'reg-payment', text: evidence ? paymentLine(evidence) : paymentStateLabel(row.payment_status) }) : null;
     const escalated = row.review_level === 'GLOBAL' && row.status === 'NEEDS_PARTICIPANT_REVIEW'
       ? h('span', { className: 'badge reg-escalated', text: 'En revisió global' }) : null;
     const reason = escalated && row.escalation_reason ? h('span', { className: 'reg-payment', text: ESCALATION_LABELS[row.escalation_reason] }) : null;
@@ -144,7 +144,7 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     }
     if (row.status === 'NEEDS_PARTICIPANT_REVIEW' && expanded.has(row.id) && isActionable(capabilities, row))
       item.append(reviewPanel(row, activity, () => { expanded.delete(row.id); redraw(); document.querySelector(`[data-id="${row.id}"] .reg-toggle`)?.focus(); }));
-    if (evidence && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status) && evidence.paymentState !== 'VERIFIED')
+    if (evidence && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status) && evidence.remainingCents > 0)
       item.append(evidenceBlock({ call, payment: evidence, onChanged: refresh }));
     return item;
   }

@@ -184,9 +184,7 @@ async function api(request,env,url,requestId) {
   if (match && method==='GET') return json({...await registrations.paymentDetail(db,context,requestId,match[1]),requestId});
   match=path.match(/^\/api\/payments\/([^/]+)\/review$/);
   if (match && method==='POST') {
-    const body=await readJson(request);
-    if (Object.keys(body).some(key=>key!=='decision')) throw new AppError(400,'invalid_review');
-    return json({...await registrations.reviewPayment(db,context,requestId,match[1],body.decision),requestId});
+    return json({...await registrations.reviewPayment(db,context,requestId,match[1],await readJson(request)),requestId});
   }
   match=path.match(/^\/api\/payments\/([^/]+)\/evidence$/);
   if (match && method==='GET') return registrations.evidenceDownload(db,env.EVIDENCE_STORAGE,context,requestId,match[1],url.searchParams.get('mode')??'download');

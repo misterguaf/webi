@@ -27,6 +27,11 @@ async function setup() {
 }
 const row = (f, rid) => f.sql.prepare('SELECT * FROM activity_registration WHERE id=?').get(rid);
 const auditRows = (f, action, resourceId) => f.sql.prepare('SELECT * FROM audit_event WHERE action=? AND resource_id=?').all(action, resourceId);
+// Payment review with instalments: amount + the registration version from the projection.
+async function payReview(call, user, paymentId, body) {
+  const detail = (await call(user, `/api/payments/${paymentId}`)).data.payment;
+  return call(user, `/api/payments/${paymentId}/review`, { method: 'POST', body: { expectedVersion: detail?.registrationVersion ?? 1, ...body } });
+}
 const notices = (f, rid) => f.sql.prepare('SELECT kind FROM notification_outbox WHERE registration_id=? ORDER BY kind').all(rid).map(r => r.kind);
 let seq = 0;
 const intake = (f, over) => submitRegistration(f.db, storage(), {
@@ -72,7 +77,7 @@ test('authorisation order: no capability → 403; missing and out of scope → t
       const response = await call(105, path);
       assert.equal(response.status, 404, path);
     }
-    assert.equal((await call(105, `/api/payments/${EVIDENCE}/review`, { method: 'POST', body: { decision: 'VERIFIED' } })).status, 404);
+    assert.equal((await call(105, `/api/payments/${EVIDENCE}/review`, { method: 'POST', body: { decision: 'VERIFIED', amountCents: 100, expectedVersion: 1 } })).status, 404);
     // Linking to a participant outside the reviewer's scope is indistinguishable from a missing participant.
     await intake(f, { participantName: 'Persona Sense Fitxa (ficticia)', publicCode: 'DEMO-FREE-TROPA' });
     const pending = latest(f, 'Persona Sense Fitxa (ficticia)');
@@ -234,8 +239,8 @@ test('rejection notifies neutrally; withdrawal keeps link, evidence and payment;
     assert.equal((await call(103, `/api/registrations/${AWAITING_ESCOLTA}/withdraw`, { method: 'POST', body: { source: 'OTHER', expectedVersion: paid.version } })).status, 200);
     assert.ok(!notices(f, AWAITING_ESCOLTA).includes('WITHDRAWN'));
     const payment = (await call(104, `/api/payments/${EVIDENCE}`)).data.payment;
-    assert.deepEqual([payment.registrationState, payment.paymentState], ['WITHDRAWN', 'PENDING_REVIEW']);
-    assert.equal((await call(104, `/api/payments/${EVIDENCE}/review`, { method: 'POST', body: { decision: 'VERIFIED' } })).data.status, 'VERIFIED');
+    assert.deepEqual([payment.registrationState, payment.paymentState], ['WITHDRAWN', 'PENDING']);
+    assert.equal((await payReview(call, 104, EVIDENCE, { decision: 'VERIFIED', amountCents: 1200 })).data.paymentState, 'PAID');
     assert.equal(row(f, AWAITING_ESCOLTA).status, 'WITHDRAWN', 'verifying never revives a withdrawn registration (no refund implied)');
     assert.ok(!notices(f, AWAITING_ESCOLTA).includes('CONFIRMED'));
     // Explicit choice overrides the default.
@@ -252,7 +257,8 @@ test('payment projection: purpose-limited fields, server-side activity filter, i
     assert.equal((await call(104, '/api/activities')).status, 403, 'Tresoreria does not read Activitats');
     const list = (await call(104, `/api/payments?activityId=${PAID_ESCOLTA}`)).data.payments;
     assert.equal(list.length, 1);
-    assert.deepEqual(Object.keys(list[0]).sort(), ['activity', 'amountCents', 'evidence', 'id', 'paymentState', 'registrationId', 'registrationState', 'reviewedAt', 'submittedName', 'transport'].sort(),
+    assert.deepEqual(Object.keys(list[0]).sort(), ['activity', 'amountCents', 'evidence', 'evidenceStatus', 'id', 'paidCents', 'paymentState', 'registrationId', 'registrationState',
+      'registrationVersion', 'remainingCents', 'reviewedAt', 'submittedName', 'transport'].sort(),
       'no participant without profile access; transport because the activity has options; no section (not GENERAL); no contact');
     assert.deepEqual(Object.keys(list[0].activity).sort(), ['id', 'name', 'startsAt']);
     assert.deepEqual((await call(104, `/api/payments?activityId=${FREE_TROPA}`)).data.payments, []);
@@ -260,16 +266,16 @@ test('payment projection: purpose-limited fields, server-side activity filter, i
     assert.deepEqual(withProfile.participant, { id: id(504), name: 'Participante Escolta A (ficticio)' });
     assert.equal((await call(104, '/api/payments?vista=x')).status, 400);
     // Incidence: listed under incidències, evidence still viewable, later verified.
-    assert.equal((await call(104, `/api/payments/${EVIDENCE}/review`, { method: 'POST', body: { decision: 'ISSUE' } })).data.status, 'ISSUE');
+    assert.equal((await payReview(call, 104, EVIDENCE, { decision: 'ISSUE' })).data.status, 'ISSUE');
     assert.deepEqual((await call(104, '/api/payments?vista=pendents')).data.payments.map(p => p.id), []);
     assert.deepEqual((await call(104, '/api/payments?vista=incidencies')).data.payments.map(p => p.id), [EVIDENCE]);
     assert.equal((await call(104, `/api/payments/${EVIDENCE}/evidence?mode=view`)).status, 200);
-    assert.equal((await call(104, `/api/payments/${EVIDENCE}/review`, { method: 'POST', body: { decision: 'VERIFIED' } })).data.status, 'VERIFIED');
+    assert.equal((await payReview(call, 104, EVIDENCE, { decision: 'VERIFIED', amountCents: 1200 })).data.status, 'VERIFIED');
     assert.equal(row(f, AWAITING_ESCOLTA).status, 'CONFIRMED');
     assert.deepEqual(notices(f, AWAITING_ESCOLTA), ['CONFIRMED', 'PAYMENT_ISSUE', 'PENDING_PAYMENT']);
     assert.ok(f.sql.prepare("SELECT 1 FROM notification_outbox o WHERE o.kind='PAYMENT_ISSUE'").get());
     const summary = (await call(104, '/api/registrations/queue/summary')).data;
-    assert.deepEqual([summary.registrations, summary.payments], [null, { pending: 0, issues: 0 }]);
+    assert.deepEqual([summary.registrations, summary.payments], [null, { pending: 0, partial: 0, issues: 0 }]);
     // Section coordinators do not verify.
     assert.equal((await call(103, `/api/payments`)).status, 403);
   } finally { f.close(); }
@@ -295,12 +301,14 @@ test('evidence: authenticated preview and download with the detected type, separ
     assert.ok(!JSON.stringify(f.sql.prepare('SELECT * FROM audit_event').all()).includes('synthetic evidence fixture'));
     // Retention-ready: only verified evidence; the row and its history stay; the file is gone.
     await assert.rejects(purgeVerifiedEvidence(f.db, store, crypto.randomUUID(), EVIDENCE), /invalid_transition/);
-    await call(104, `/api/payments/${EVIDENCE}/review`, { method: 'POST', body: { decision: 'VERIFIED' } });
+    await payReview(call, 104, EVIDENCE, { decision: 'VERIFIED', amountCents: 500 });
+    await assert.rejects(purgeVerifiedEvidence(f.db, store, crypto.randomUUID(), EVIDENCE), /invalid_transition/, 'not while partially paid');
+    await payReview(call, 104, EVIDENCE, { decision: 'VERIFIED', amountCents: 700 });
     await purgeVerifiedEvidence(f.db, store, crypto.randomUUID(), EVIDENCE);
     assert.equal(store.objects.has('fixture-only/no-binary'), false);
     assert.equal((await call(104, `/api/payments/${EVIDENCE}/evidence?mode=view`)).status, 410);
     const payment = (await call(104, `/api/payments/${EVIDENCE}`)).data.payment;
-    assert.deepEqual([payment.paymentState, payment.evidence.available], ['VERIFIED', false]);
+    assert.deepEqual([payment.paymentState, payment.evidence.available, payment.allocations.length], ['PAID', false, 2]);
     assert.equal(auditRows(f, 'PAYMENT_EVIDENCE_PURGED', EVIDENCE).length, 1);
   } finally { f.close(); }
 });
