@@ -21,7 +21,7 @@ const dataEvents = (f, action, resourceId) => f.sql.prepare('SELECT count(*) AS 
 function addGuardianWithContact(f, participantId, { sectionId = TROPA } = {}) {
   const gid = crypto.randomUUID();
   f.sql.prepare("INSERT INTO guardian(id,display_name,status,created_at,updated_at) VALUES(?,?,'ACTIVE',1,1)").run(gid, 'Tutor Fictici');
-  f.sql.prepare("INSERT INTO participant_guardian(participant_id,guardian_id,relationship,legal_representative,started_at) VALUES(?,?,'PARENT',1,1)").run(participantId, gid);
+  f.sql.prepare("INSERT INTO participant_guardian(id,participant_id,guardian_id,relationship,legal_representative,started_at) VALUES(?,?,?,'PARENT',1,1)").run(crypto.randomUUID(), participantId, gid);
   f.sql.prepare("INSERT INTO contact_point(id,guardian_id,kind,value,purpose,is_primary,created_at) VALUES(?,?,'PHONE','600000000','GENERAL',1,1)").run(crypto.randomUUID(), gid);
   void sectionId;
   return gid;

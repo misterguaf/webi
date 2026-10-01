@@ -1,10 +1,20 @@
 # Estado actual del sistema
 
-Fecha de corte: **2026-09-30**
-Fase: **3.5 — diseño de Gestió; 3.5D Activitats cerrada en local** (3.5E Participants: solo especificación en borrador)
+Fecha de corte: **2026-10-01**
+Fase: **3.5 — diseño de Gestió; 3.5D Activitats cerrada en local; 3.5E Participants implementada en `phase/3.5e-participants`, pendiente de revisión** (no declarada v1-ready)
 Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
 Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D en `phase/3.5-design`, checkpoint `phase-3.5d-complete` (sin merge a `main`).
 Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
+
+## Actualización FASE 3.5E — Participants (2026-10-01, pendiente de revisión)
+
+Detalle y evidencias: [PHASE_3_5E_REPORT](PHASE_3_5E_REPORT.md). Especificación: [PARTICIPANTS.md](design/screens/PARTICIPANTS.md) v0.5. Rama `phase/3.5e-participants` (sin merge a `phase/3.5-design` ni a `main`, sin tag).
+
+- **Permisos y dominio (0015):** gestión de participantes por sección actual, server-side; Secretaria absorbe a `CRM_MANAGER`, retirado en el servicio (sin trigger).
+- **Altas provisionales, edición, cambio de sección, baja**, completitud por edad derivada en servidor.
+- **Família (0016):** tutores, contactos con consulta auditada, representación legal comunicada/acreditada con historial, cola de revisión de Secretaria y regla de tutor compartido.
+- **Episodios de relación (0017):** una relación terminada con un tutor se conserva y puede seguirse de una nueva con el mismo tutor.
+- **Inici:** fichas pendientes y revisiones; **delegaciones:** 90 días por defecto, máximo 365.
 
 ## Actualización FASE 3.5D — Activitats (2026-09-30)
 

@@ -1,11 +1,11 @@
 // Família tab (3.5E §9–§10): guardians and contacts. Contact values only on an explicit, audited
 // consultation. Shared-guardian edits the user cannot make directly become a request to Secretaria.
 import { confirmDialog, formDialog, h, icon, openMenu, toast } from '../../ui.js';
-import { RELATIONSHIP_OPTIONS, contactKindLabel, relationshipLabel, representationLine } from './model.js';
+import { RELATIONSHIP_OPTIONS, contactKindLabel, relationshipLabel, relationshipPeriod, relinkableIds, representationLine } from './model.js';
 
 const errorCopy = code => ({ forbidden: 'No tens permís per a fer aquest canvi.', invalid_guardian: 'Revisa les dades.',
   invalid_contact: 'Revisa les dades del contacte.', primary_contact_exists: 'Ja hi ha un contacte principal d’aquest tipus.',
-  not_found: 'Ja no està disponible.', invalid_transition: 'L’estat ha canviat.' }[code] ?? 'No s’ha pogut completar l’acció.');
+  not_found: 'Ja no està disponible.', invalid_transition: 'L’estat ha canviat.', already_linked: 'Aquesta relació ja està vigent.' }[code] ?? 'No s’ha pogut completar l’acció.');
 
 /**
  * @param {{call, caps:()=>any, onChanged:()=>void}} options
@@ -43,8 +43,9 @@ export function createFamiliaTab({ call, caps, onChanged }) {
     const active = guardians.filter(g => !g.ended), ended = guardians.filter(g => g.ended);
     if (!active.length) guardianBlock.append(h('p', { className: 'info-empty', text: 'Encara no hi ha tutors registrats.' }));
     else guardianBlock.append(h('ul', { className: 'guardian-list', attrs: { role: 'list' } }, active.map(g => guardianRow(participant, g, { canGuardian, canContact, canAccredit }))));
+    const relinkable = canGuardian ? relinkableIds(guardians) : new Set();
     if (ended.length) guardianBlock.append(h('details', { className: 'ended-relations' }, h('summary', { text: `Relacions anteriors (${ended.length})` }),
-      h('ul', { className: 'guardian-list' }, ended.map(g => guardianRow(participant, g, { canGuardian: false, canContact: false, canAccredit: false })))));
+      h('ul', { className: 'guardian-list' }, ended.map(g => guardianRow(participant, g, { canGuardian: false, canContact: false, canAccredit: false, canRelink: relinkable.has(g.relationshipId) })))));
     nodes.push(guardianBlock);
     // Participant's own contacts
     const ownBlock = h('section', { className: 'family-block' },
@@ -57,11 +58,12 @@ export function createFamiliaTab({ call, caps, onChanged }) {
     container.replaceChildren(...nodes);
   }
 
-  function guardianRow(participant, g, { canGuardian, canContact, canAccredit }) {
+  function guardianRow(participant, g, { canGuardian, canContact, canAccredit, canRelink = false }) {
     const rep = representationLine(g);
     const head = h('div', { className: 'guardian-head' },
       h('span', { className: 'guardian-name', text: g.displayName }),
       h('span', { className: 'guardian-rel', text: relationshipLabel(g.relationship) }),
+      g.ended ? h('span', { className: 'guardian-rel', text: relationshipPeriod(g) }) : null,
       rep ? h('span', { className: `guardian-rep${g.representationBasis === 'ACREDITAT' ? ' rep-accredited' : ''}`, text: rep }) : null);
     if (!g.ended && (canGuardian || (canAccredit && g.legalRepresentative && g.representationBasis === 'COMUNICAT'))) {
       const items = [];
@@ -78,7 +80,8 @@ export function createFamiliaTab({ call, caps, onChanged }) {
       ? h('ul', { className: 'contact-list', attrs: { role: 'list' } }, g.contacts.map(ct => contactRow(participant, ct, { canContact })))
       : h('p', { className: 'info-empty small', text: 'Sense contactes.' });
     const add = !g.ended && canContact ? h('button', { className: 'link-button', text: 'Afegeix un contacte', attrs: { type: 'button' }, on: { click: () => addContact(participant, { ownerType: 'guardian', guardianId: g.id }) } }) : null;
-    return h('li', { className: 'guardian-item' }, head, contacts, add);
+    const relink = canRelink ? h('button', { className: 'link-button', text: 'Torna a vincular', attrs: { type: 'button' }, on: { click: () => relinkGuardian(participant, g) } }) : null;
+    return h('li', { className: 'guardian-item' }, head, contacts, add, relink);
   }
 
   function contactRow(participant, ct, { canContact }) {
@@ -111,6 +114,14 @@ export function createFamiliaTab({ call, caps, onChanged }) {
       { name: 'legalRepresentative', label: 'Representació legal', type: 'checkbox', checkboxLabel: 'És representant legal (comunicat per la família)' }] });
     if (!values) return;
     await run(() => call(`/api/participants/${participant.id}/guardians`, { method: 'POST', body: JSON.stringify({ name: values.name, relationship: values.relationship, legalRepresentative: values.legalRepresentative }) }), 'Tutor afegit');
+  }
+  // A new episode with a former guardian: relationship and representation start again (never inherited).
+  async function relinkGuardian(participant, g) {
+    const values = await formDialog({ title: `Torna a vincular «${g.displayName}»`, confirm: 'Vincula', fields: [
+      { name: 'relationship', label: 'Vincle', type: 'select', options: RELATIONSHIP_OPTIONS, value: g.relationship },
+      { name: 'legalRepresentative', label: 'Representació legal', type: 'checkbox', checkboxLabel: 'És representant legal (comunicat per la família)' }] });
+    if (!values) return;
+    await run(() => call(`/api/participants/${participant.id}/guardians`, { method: 'POST', body: JSON.stringify({ guardianId: g.id, relationship: values.relationship, legalRepresentative: values.legalRepresentative }) }), 'Relació represa');
   }
   async function addContact(participant, owner) {
     const values = await formDialog({ title: 'Afegeix un contacte', confirm: 'Afegeix', fields: [

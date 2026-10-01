@@ -74,6 +74,8 @@ const REQUIRED_OBJECTS=[
   'index:contact_point_guardian_primary','trigger:participant_contact_mirror_insert',
   'trigger:consent_record_no_update','trigger:consent_record_no_delete','view:participant_consent_current',
   'trigger:participant_representation_event_no_update','trigger:participant_representation_event_no_delete',
+  'index:participant_guardian_current_unique','trigger:participant_guardian_episode_order',
+  'trigger:participant_guardian_history_immutable','trigger:participant_guardian_no_delete',
   'index:auth_identity_invitation_open_unique','trigger:auth_identity_invitation_recipient_active',
   'trigger:delegated_permission_confirmation_by_authoriser','trigger:delegated_permission_no_self_insert',
   'trigger:delegated_permission_ratification_governance'

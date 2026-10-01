@@ -128,6 +128,14 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(incident.status,201);
     assert.equal((await worker.request('/api/incidents/'+incident.data.id+'/holds',{method:'POST',cookie:group,
       body:{eventId:protectedEvent.id}})).status,201);
+    // Two episodes of the same guardian relationship (3.5E): ended, then linked again.
+    const guardianLink=await worker.request('/api/participants/'+id(502)+'/guardians',{method:'POST',cookie:group,
+      body:{name:'Tutora Copia (ficticia)',relationship:'PARENT',legalRepresentative:true}});
+    assert.equal(guardianLink.status,201);
+    const episodeGuardian=guardianLink.data.guardianId;
+    assert.equal((await worker.request('/api/participants/'+id(502)+'/guardians/'+episodeGuardian,{method:'DELETE',cookie:group})).status,200);
+    assert.equal((await worker.request('/api/participants/'+id(502)+'/guardians',{method:'POST',cookie:group,
+      body:{guardianId:episodeGuardian,relationship:'PARENT'}})).status,201);
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -136,13 +144,14 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,16);
+    assert.equal(manifest.schema_version,17);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
       '0008_annual_fee_hardening.sql','0009_annual_fee_final_integrity.sql','0010_scoped_fee_status.sql',
       '0011_participant_domain.sql','0012_authorization_catalog_and_identity_provisioning.sql',
-      '0013_privilege_governance.sql','0014_activity_version.sql','0015_participant_management.sql','0016_guardians_contacts_review.sql']);
+      '0013_privilege_governance.sql','0014_activity_version.sql','0015_participant_management.sql','0016_guardians_contacts_review.sql',
+      '0017_guardian_relationship_episodes.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);
@@ -237,10 +246,28 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.equal(restoredFeeSchema.status,0);
     assert.deepEqual(JSON.parse(restoredFeeSchema.stdout)[0].results.map(row=>[row.parts,row.family_revisions]),[[0,0]]);
+    assert.equal(manifest.table_counts.participant_guardian,2);
+    for (const object of ['index:participant_guardian_current_unique','trigger:participant_guardian_history_immutable',
+      'trigger:participant_guardian_no_delete','trigger:participant_guardian_episode_order'])
+      assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
+    const restoredEpisodes=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT id,ended_at IS NOT NULL AS ended,created_by,ended_by FROM participant_guardian WHERE guardian_id='"+episodeGuardian+"' ORDER BY started_at",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredEpisodes.status,0);
+    const episodes=JSON.parse(restoredEpisodes.stdout)[0].results;
+    assert.deepEqual(episodes.map(row=>[row.ended,row.created_by,row.ended_by]),[[1,id(101),id(101)],[0,id(101),null]]);
+    assert.notEqual(episodes[0].id,episodes[1].id);
+    // The restored database still refuses to erase relationship history.
+    const eraseHistory=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"DELETE FROM participant_guardian WHERE id='"+episodes[0].id+"'",'--yes'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.notEqual(eraseHistory.status,0);
     worker=await startWorker(isolated,restored);
     assert.equal((await worker.request('/api/me',{cookie:group})).status,200); // hashed session persisted
     const troopRestored=await worker.login('seed-102');
     const list=await worker.request('/api/participants',{cookie:troopRestored});
+    const restoredFamily=await worker.request('/api/participants/'+id(502)+'/familia',{cookie:troopRestored});
+    assert.deepEqual(restoredFamily.data.guardians.filter(row=>row.id===episodeGuardian).map(row=>row.ended),[false,true]);
     assert.deepEqual(list.data.participants.map(row=>row.id),[id(502),id(503)]);
     assert.equal((await worker.request('/api/participants/'+id(504),{cookie:troopRestored})).status,404);
     const tech=await worker.login('seed-107');

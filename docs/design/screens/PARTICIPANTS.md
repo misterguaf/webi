@@ -1,7 +1,7 @@
 # Gestió — Participants
 
 Status: APPROVED FOR IMPLEMENTATION — all product decisions resolved (§22)
-Version: 0.4
+Version: 0.5
 Project: Grup Scout Parpalló — Gestió
 Phase: 3.5E
 Baseline: `phase-3.5d-complete` (`a99d851`)
@@ -15,6 +15,17 @@ Depends on:
 - ACTIVITIES.md (routing, list, detail, drawer and concurrency conventions of 3.5D)
 - ../../AUTHORIZATION\_MODEL.md, ../../PHASE\_3\_5\_AUDIT\_REMEDIATION.md (permission catalogue,
   delegations, participant domain of migration 0011)
+
+Changes in 0.5 (technical closure, 2026-10-01 — no product decision changed):
+
+- **`CRM_MANAGER`:** retirement is enforced in the service only (approved by
+  Atlas). No database trigger; historical migrations untouched; existing
+  assignments stay inert and cannot be assigned again (§4.3).
+- **Guardian relationship episodes:** a participant and a guardian may have
+  several relationships over time — at most one current, ended ones kept as
+  immutable history; an ended relationship can be followed by a new one
+  (§9.4, migration 0017).
+- **Delegation duration:** implemented as decided (§5.2).
 
 Changes in 0.4 (final decisions, 2026-10-01 — spec approved for implementation):
 
@@ -190,12 +201,15 @@ Nothing historical is edited or deleted.
 1. **New append-only migration** (with B1):
    - the new participant permissions go to `SECRETARY`, **not** to
      `CRM_MANAGER`;
-   - a trigger refuses new `CRM_MANAGER` assignments (`role_retired`). The role
-     code and its existing rows stay, because the code is part of a historical
-     constraint and of the audit trail;
+   - **no trigger** (approved 2026-10-01): a trigger would also refuse the
+     synthetic seed's historical assignment, so retirement is enforced in the
+     service. The role code and its existing rows stay, because the code is
+     part of a historical constraint and of the audit trail;
    - `crm.contact.read` stays reserved and unused.
-2. **Service:** `CRM_MANAGER` leaves the list of assignable roles (a clear
-   `role_retired` error instead of a database abort).
+2. **Service:** `CRM_MANAGER` leaves the list of assignable roles; any attempt
+   to assign it is refused with `role_retired` (409). Existing assignments stay
+   inert: the role grants no participant permission and cannot be granted
+   again.
 3. **Existing holders:** a `CRM_MANAGER` assignment keeps granting nothing
    operational (as today). Moving a person to Secretaria is an explicit,
    audited act — assign `SECRETARY`, then revoke `CRM_MANAGER` — never an
@@ -231,23 +245,18 @@ Always kept: authorisation, specific permissions, defined scope, expiry,
 ratification where applicable, traceability, early revocation.
 **The ratification system is not modified.**
 
-## 5.2 Duration — IMPLEMENTATION REQUIREMENT (not implemented now)
+## 5.2 Duration — IMPLEMENTED
 
 Decision: **default duration 90 days; maximum duration 365 days; always an
 expiry.** A delegation may be shorter or longer than 90 days when a duration is
 given (a week, six months, up to one year). **Indefinite delegations are not
 allowed.**
 
-Today (inspected):
+Before 3.5E, `delegation-service.js` required `expiresAt` and rejected
+anything beyond 90 days, and `security-service.js` applied the same 90-day
+maximum to the `SECTION_DELEGATE` role. Implemented in 3.5E:
 
-- `delegation-service.js` requires `expiresAt` and rejects anything beyond
-  90 days: the 90 days are a hard maximum, and there is no default;
-- `security-service.js` applies the same 90-day maximum to the expiry of the
-  `SECTION_DELEGATE` role, which a delegation needs.
-
-Required change:
-
-| Concept | Today | Required |
+| Concept | Before 3.5E | Implemented |
 |---|---|---|
 | Default duration | none (`expiresAt` mandatory) | 90 days when no expiry is given |
 | Maximum duration | 90 days, hard-coded twice | **365 days**, a separate named constant |
@@ -460,6 +469,28 @@ sections. Rules enforced by the server:
 6. No search of guardians by name or contact for section-scoped users. No
    endpoint lists a guardian's participants.
 
+## 9.4 Relationship episodes
+
+A participant and a guardian may be related more than once over time (for
+example, a relationship ended by mistake or a family situation that changes
+back). Each relationship is an **episode**:
+
+- at most **one current** episode per participant and guardian;
+- ending a relationship closes the current episode (who and when are kept);
+  it is never deleted or reopened;
+- a **new episode** may start afterwards with the same guardian. It starts
+  from scratch: relationship type chosen again, legal representation
+  `comunicat` again if set (never inherited from an earlier episode), with its
+  own review; a review of an earlier episode never marks a new one as
+  reviewed;
+- `Relacions anteriors` lists ended episodes with their period
+  (`Des de 03/2024 fins a 09/2025`); `Torna a vincular` starts a new episode
+  from the latest ended one, for users with guardian management over that
+  participant;
+- linking again is possible only for **that same participant**: a former
+  relationship never gives access to the guardian's other participants, and
+  the shared-guardian rules above apply to the new episode unchanged.
+
 ---
 
 # 10. Legal representation and administrative review
@@ -652,7 +683,7 @@ synthetic mode), outside this phase.
 |---|---|
 | Membership | `Actiu`, `De baixa` |
 | Completeness | `Fitxa completa`, `Informació pendent` (with the missing items) |
-| Guardian relationship | current, ended (`Relacions anteriors`) |
+| Guardian relationship | current, ended (`Relacions anteriors`); several episodes per pair over time, one current at most (§9.4) |
 | Legal representation | none, `comunicat`, `acreditat`; plus `pendent de revisió` / `revisat per Secretaria` |
 | Contact point | current, ended; primary |
 | Review task | `Per revisar`, `Vista`, `Incidència`, `Resolta`, `Escalada` |
@@ -749,12 +780,12 @@ basic fee projection exist.
 | Id | Requirement | Impact on authorisation or data |
 |---|---|---|
 | **B1** | Permissions of §3.2 in catalogue, schema and role matrix; grants for holders; delegable list and `SECTION_DELEGATE` matrix extended | append-only migration; `SECRETARY` gains group-wide management; role-matrix tests |
-| **B2** | Retirement of `CRM_MANAGER` (§4.3) | trigger + service + label + tests; no historical change |
+| **B2** | Retirement of `CRM_MANAGER` (§4.3) | service + label + tests; no trigger, no historical change |
 | **B3** | Capabilities projection extended (§3.4) | — |
 | **B4** | `participant.version`, `created_at`, `updated_at`; write service: create (also provisional), edit, deactivate, reactivate, change section (both-sections rule) | additive migration; audited |
 | **B5** | List and detail read model: inactive participants, birth date in detail, **completeness derived server-side** with the permission-dependent missing items, `completitud` filter | no new status |
 | **B6** | Guardian and contact read model per participant with the shared-guardian rules; contact values only through an audited consultation endpoint | new audit use of the existing sensitive-read action; audit resource types extended; context as a reason code, since audit metadata accepts no free fields |
-| **B7** | Guardian and contact write service, including the "all linked participants in scope" check | `participant_guardian` has a primary key (participant, guardian) and no author, provenance or basis: a relationship cannot be reopened today |
+| **B7** | Guardian and contact write service, including the "all linked participants in scope" check | `participant_guardian` had a primary key (participant, guardian) and no author, provenance or basis. Resolved: author/provenance/basis in 0016; relationship episodes with a surrogate id in 0017 (§9.4) |
 | **B8** | Append-only history of relationships and legal representation (`comunicat` / `acreditat`, who, when, provenance, reference); accreditation limited to `representation.accredit` | new table; the current boolean keeps no history |
 | **B9** | Review tasks and change requests: table, service, queue, state machine of §10.3, apply/reject | nothing exists; security incidents are not reused |
 | **B10** | Duplicate search for participants and guardians with scope rules | distinct from registration matching |
@@ -774,7 +805,7 @@ search, any change to ratification.
 
 | # | Contradiction | Consequence |
 |---|---|---|
-| **T1** | `CRM_MANAGER` is fixed in a `CHECK` constraint of a historical migration | It cannot be removed; it is retired by trigger and service (§4.3) |
+| **T1** | `CRM_MANAGER` is fixed in a `CHECK` constraint of a historical migration | It cannot be removed; it is retired by the service (§4.3) |
 | **T2** | Tests and the seed depend on `CRM_MANAGER` and on user 106 as a user without access | Test changes listed in §4.3; user 106 stays as the retired-role fixture |
 | **T3** | The 90-day limit is a hard maximum coded twice, and the expiry is mandatory, so no "default" exists; the delegate role expires at most after 90 days too | B14 raises the cap to 365 in both places and adds the 90-day default, so a long delegation keeps its role |
 | **T4** | "Other people expressly authorised" vs a delegation that needs a role containing the permission: without a group-wide role only `SECTION_DELEGATE` (one section) fits | Delegated access is section by section |
@@ -783,7 +814,7 @@ search, any change to ratification.
 | **T7** | "Contacts consulted are audited with their context" vs audit metadata that accepts only `count` and `source` | Context is recorded as a reason code and resource identifiers; no free text |
 | **T8** | Basic fee status "when authorised": Secretaria has no fee permission | Secretaria sees no fee line unless later granted |
 | **T9** | A provisional record has no birth date, and automatic registration matching needs it | Registrations for such participants go to human review (existing behaviour, not a new exclusion) |
-| **T10** | The relationship table cannot reopen an ended relationship and keeps no author or provenance | B7–B8 |
+| **T10** | The relationship table could not hold a new relationship after an ended one and kept no author or provenance | Resolved: migration 0016 (author, provenance, basis) and 0017 (episodes, §9.4) |
 | **T11** | "Notify Secretaria" vs no staff notification mechanism | In-app attention items only |
 | **T12** | Initial incorporation of current members vs a synthetic-only environment | The flow is delivered with synthetic data; real entry is a production gate |
 

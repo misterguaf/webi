@@ -80,12 +80,12 @@ test('guardians are N:M; contact points have one owner and one current primary p
   try {
     f.sql.exec(`INSERT INTO guardian(id,display_name,created_at,updated_at) VALUES
       ('${id(7101)}','Tutora A (fictícia)',1,1),('${id(7102)}','Tutor B (fictici)',1,1);
-      INSERT INTO participant_guardian(participant_id,guardian_id,relationship,legal_representative,started_at) VALUES
-      ('${id(502)}','${id(7101)}','PARENT',1,1),('${id(503)}','${id(7101)}','PARENT',1,1),('${id(502)}','${id(7102)}','LEGAL_GUARDIAN',1,1)`);
+      INSERT INTO participant_guardian(id,participant_id,guardian_id,relationship,legal_representative,started_at) VALUES
+      ('${id(7111)}','${id(502)}','${id(7101)}','PARENT',1,1),('${id(7112)}','${id(503)}','${id(7101)}','PARENT',1,1),('${id(7113)}','${id(502)}','${id(7102)}','LEGAL_GUARDIAN',1,1)`);
     assert.equal(f.sql.prepare('SELECT count(*) AS n FROM participant_guardian WHERE guardian_id=?').get(id(7101)).n, 2);
     assert.equal(f.sql.prepare('SELECT count(*) AS n FROM participant_guardian WHERE participant_id=?').get(id(502)).n, 2);
-    assert.throws(() => f.sql.exec(`INSERT INTO participant_guardian(participant_id,guardian_id,relationship,started_at)
-      VALUES('${id(502)}','${id(7101)}','OTHER',2)`), /UNIQUE|PRIMARY/);
+    assert.throws(() => f.sql.exec(`INSERT INTO participant_guardian(id,participant_id,guardian_id,relationship,started_at)
+      VALUES('${id(7114)}','${id(502)}','${id(7101)}','OTHER',2)`), /UNIQUE|PRIMARY/, 'one current relationship per pair');
     const contact = (owner, extra = '') => `INSERT INTO contact_point(id,${owner},kind,value,purpose,is_primary,created_at)${extra}`;
     f.sql.exec(`${contact('guardian_id')} VALUES('${id(7201)}','${id(7101)}','EMAIL','tutora@example.test','GENERAL',1,1)`);
     f.sql.exec(`${contact('guardian_id')} VALUES('${id(7202)}','${id(7101)}','PHONE','+34 600 000 000','GENERAL',1,1)`);

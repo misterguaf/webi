@@ -112,11 +112,12 @@ activitat drawer/sheet, activity detail with Inscripcions / Informació (no Paga
 v1.0), hash routing, concurrency, states and known implementation gaps.
 
 `screens/PARTICIPANTS.md`
-Participants v0.4 (3.5E, approved for implementation): participant list and record, section
+Participants v0.5 (3.5E, implemented — pending review): participant list and record, section
 history, provisional records with age-based completeness (minors need a guardian and a
 contact; adults need a contact), manual progressive incorporation, guardians and contacts
 with audited consultation and shared-guardian protection, legal-representation history and
-administrative review by Secretaria, Inici follow-up items, basic fee status, and delegation
+administrative review by Secretaria, guardian relationship episodes (a former relationship can
+start again), Inici follow-up items, basic fee status, and delegation
 duration (default 90 days, maximum 365). Secretaria absorbs the retired CRM manager role.
 Consent catalogue and texts stay in the legal phase.
 

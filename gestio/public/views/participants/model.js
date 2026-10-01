@@ -45,6 +45,19 @@ export function representationLine(guardian) {
   else if (guardian.representationPending) parts.push('pendent de revisió');
   return parts.join(' · ');
 }
+// A relationship may have several episodes. "Des de 03/2024 fins a 09/2025" for an ended one.
+const monthYear = ms => { const d = new Date(ms); return `${String(d.getUTCMonth() + 1).padStart(2, '0')}/${d.getUTCFullYear()}`; };
+export function relationshipPeriod(guardian) {
+  if (guardian.startedAt == null) return null;
+  return guardian.endedAt == null ? `Des de ${monthYear(guardian.startedAt)}` : `Des de ${monthYear(guardian.startedAt)} fins a ${monthYear(guardian.endedAt)}`;
+}
+/** Ended episodes that can start a new relationship: the latest per guardian, only if none is current. */
+export function relinkableIds(guardians) {
+  const current = new Set(guardians.filter(g => !g.ended).map(g => g.id));
+  const latest = new Map();
+  for (const g of guardians) if (g.ended && !current.has(g.id) && (!latest.has(g.id) || g.startedAt > latest.get(g.id).startedAt)) latest.set(g.id, g);
+  return new Set([...latest.values()].map(g => g.relationshipId));
+}
 
 // ---------------------------------------------------------------- reviews (queue)
 export const REVIEW_KIND_LABELS = Object.freeze({

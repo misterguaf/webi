@@ -46,23 +46,25 @@ async function openReview(db, context, requestId, { kind, participantId = null, 
 export async function familia(db, context, requestId, participantId) {
   requireUuid(participantId);
   await requireOn(db, context, requestId, participantId, 'participants.contact.read');
-  const guardians = (await db.prepare(`SELECT g.id,g.display_name,pg.relationship,pg.legal_representative,pg.representation_basis,
-    pg.started_at,pg.ended_at FROM participant_guardian pg JOIN guardian g ON g.id=pg.guardian_id
-    WHERE pg.participant_id=? ORDER BY pg.ended_at IS NOT NULL,g.display_name`).bind(participantId).all()).results;
+  // One row per relationship episode: a guardian may appear as a current and an ended relationship.
+  const guardians = (await db.prepare(`SELECT pg.id AS relationship_id,g.id,g.display_name,pg.relationship,pg.legal_representative,
+    pg.representation_basis,pg.started_at,pg.ended_at FROM participant_guardian pg JOIN guardian g ON g.id=pg.guardian_id
+    WHERE pg.participant_id=? ORDER BY pg.ended_at IS NOT NULL,g.display_name,pg.started_at DESC`).bind(participantId).all()).results;
   const contactKinds = async (column, ownerId) => (await db.prepare(
     `SELECT id,kind,purpose,is_primary FROM contact_point WHERE ${column}=? AND ended_at IS NULL ORDER BY kind,is_primary DESC`).bind(ownerId).all()).results
     .map(row => ({ id: row.id, kind: row.kind, purpose: row.purpose, isPrimary: !!row.is_primary }));
-  const reviewed = async guardianId => !!await db.prepare(`SELECT 1 FROM participant_review
-    WHERE kind='REPRESENTATION_CHANGE' AND participant_id=? AND guardian_id=? AND status IN ('ACKNOWLEDGED','RESOLVED')
-    ORDER BY created_at DESC LIMIT 1`).bind(participantId, guardianId).first();
-  const pending = async guardianId => !!await db.prepare(`SELECT 1 FROM participant_review
-    WHERE kind='REPRESENTATION_CHANGE' AND participant_id=? AND guardian_id=? AND status IN ('OPEN','INCIDENCE','ESCALATED') LIMIT 1`)
-    .bind(participantId, guardianId).first();
+  // Review state belongs to one episode: a review from an earlier relationship never marks a new one.
+  const reviewState = async (g, statuses) => !!await db.prepare(`SELECT 1 FROM participant_review
+    WHERE kind='REPRESENTATION_CHANGE' AND participant_id=? AND guardian_id=? AND status IN (${statuses})
+    AND created_at>=? AND (? IS NULL OR created_at<=?) LIMIT 1`).bind(participantId, g.id, g.started_at, g.ended_at, g.ended_at).first();
+  const reviewed = g => reviewState(g, "'ACKNOWLEDGED','RESOLVED'");
+  const pending = g => reviewState(g, "'OPEN','INCIDENCE','ESCALATED'");
   const out = [];
-  for (const g of guardians) out.push({ id: g.id, displayName: g.display_name, relationship: g.relationship,
+  for (const g of guardians) out.push({ id: g.id, relationshipId: g.relationship_id, displayName: g.display_name, relationship: g.relationship,
     legalRepresentative: !!g.legal_representative, representationBasis: g.representation_basis, ended: g.ended_at != null,
-    representationReviewed: g.legal_representative ? await reviewed(g.id) : false,
-    representationPending: g.legal_representative ? await pending(g.id) : false,
+    startedAt: g.started_at, endedAt: g.ended_at,
+    representationReviewed: g.legal_representative ? await reviewed(g) : false,
+    representationPending: g.legal_representative && g.ended_at == null ? await pending(g) : false,
     contacts: await contactKinds('guardian_id', g.id) });
   return { guardians: out, participantContacts: await contactKinds('participant_id', participantId) };
 }
@@ -117,34 +119,47 @@ export async function addGuardian(db, context, requestId, participantId, input, 
   let guardianId = input.guardianId ?? null;
   if (guardianId) {
     requireUuid(guardianId);
-    // Only link a guardian already visible to the user (shares an in-scope active participant).
-    if (!await guardianAnchorParticipant(db, context, guardianId)) throw new AppError(404, 'not_found');
-    if (await db.prepare('SELECT 1 FROM participant_guardian WHERE participant_id=? AND guardian_id=?').bind(participantId, guardianId).first())
+    // Only link a guardian already visible to the user (shares an in-scope active participant) or one
+    // this same participant had before (a new episode of an ended relationship). Nothing else is reachable.
+    const formerlyLinked = await db.prepare('SELECT 1 FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NOT NULL LIMIT 1')
+      .bind(participantId, guardianId).first();
+    if (!formerlyLinked && !await guardianAnchorParticipant(db, context, guardianId)) throw new AppError(404, 'not_found');
+    if (await db.prepare('SELECT 1 FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first())
       throw new AppError(409, 'already_linked');
+    // Episodes never overlap: a relationship ended later than now (clock skew) cannot be followed yet.
+    if (await db.prepare('SELECT 1 FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at>?').bind(participantId, guardianId, now).first())
+      throw new AppError(409, 'invalid_transition');
   } else {
     guardianId = crypto.randomUUID();
     statements.push(db.prepare("INSERT INTO guardian(id,display_name,status,created_at,updated_at) VALUES(?,?,'ACTIVE',?,?)").bind(guardianId, name, now, now));
   }
-  statements.push(db.prepare(`INSERT INTO participant_guardian(participant_id,guardian_id,relationship,legal_representative,started_at,
-    representation_basis,recorded_by,provenance,updated_at) VALUES(?,?,?,?,?,?,?,?,?)`)
-    .bind(participantId, guardianId, input.relationship, rep ? 1 : 0, now, rep ? 'COMUNICAT' : null, context.userId, input.provenance ?? null, now));
-  statements.push(statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_CREATED', resourceType: 'participant_guardian', resourceId: guardianId, occurredAt: now }));
+  // A new episode always starts from scratch: representation is COMUNICAT again, never inherited.
+  const relationshipId = crypto.randomUUID();
+  statements.push(db.prepare(`INSERT INTO participant_guardian(id,participant_id,guardian_id,relationship,legal_representative,started_at,
+    representation_basis,recorded_by,provenance,updated_at,created_by) VALUES(?,?,?,?,?,?,?,?,?,?,?)`)
+    .bind(relationshipId, participantId, guardianId, input.relationship, rep ? 1 : 0, now, rep ? 'COMUNICAT' : null, context.userId, input.provenance ?? null, now, context.userId));
+  statements.push(statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_CREATED', resourceType: 'participant_guardian', resourceId: relationshipId, occurredAt: now }));
   if (rep) {
     statements.push(...representationEvent(db, context, { participantId, guardianId, action: 'SET_REPRESENTATIVE', basis: 'COMUNICAT', provenance: input.provenance ?? null, note: input.provenanceNote ?? null }, now));
     statements.push(...await openReview(db, context, requestId, { kind: 'REPRESENTATION_CHANGE', participantId, guardianId, detail: 'Representant legal comunicat' }, now));
   }
-  await db.batch(statements);
+  try { await db.batch(statements); }
+  catch (error) {
+    // Concurrent link of the same pair: the current-episode unique index decides.
+    if (String(error?.message ?? '').includes('UNIQUE')) throw new AppError(409, 'already_linked');
+    throw error;
+  }
   void decision;
-  return { guardianId };
+  return { guardianId, relationshipId };
 }
 export async function endGuardianRelationship(db, context, requestId, participantId, guardianId, now = Date.now()) {
   requireUuid(participantId); requireUuid(guardianId);
   await requireOn(db, context, requestId, participantId, 'participants.guardian.manage');
-  const link = await db.prepare('SELECT legal_representative FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first();
+  const link = await db.prepare('SELECT id,legal_representative,started_at FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first();
   if (!link) throw new AppError(404, 'not_found');
   const statements = [
-    db.prepare('UPDATE participant_guardian SET ended_at=?,updated_at=? WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(now, now, participantId, guardianId),
-    statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_UPDATED', resourceType: 'participant_guardian', resourceId: guardianId, occurredAt: now })];
+    db.prepare('UPDATE participant_guardian SET ended_at=?,ended_by=?,updated_at=? WHERE id=? AND ended_at IS NULL').bind(Math.max(now, link.started_at), context.userId, now, link.id),
+    statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_UPDATED', resourceType: 'participant_guardian', resourceId: link.id, occurredAt: now })];
   if (link.legal_representative) {
     statements.push(...representationEvent(db, context, { participantId, guardianId, action: 'RELATIONSHIP_ENDED', basis: null, provenance: null, note: null }, now));
     statements.push(...await openReview(db, context, requestId, { kind: 'REPRESENTATION_CHANGE', participantId, guardianId, detail: 'Fi de la relació amb un representant legal' }, now));
@@ -159,14 +174,14 @@ export async function setRepresentation(db, context, requestId, participantId, g
     throw new AppError(400, 'invalid_guardian');
   if (input.provenance != null && !PROVENANCE.has(input.provenance)) throw new AppError(400, 'invalid_guardian');
   await requireOn(db, context, requestId, participantId, 'participants.guardian.manage');
-  const link = await db.prepare('SELECT legal_representative FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first();
+  const link = await db.prepare('SELECT id,legal_representative FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first();
   if (!link) throw new AppError(404, 'not_found');
   const next = input.legalRepresentative;
   if (!!link.legal_representative === next) throw new AppError(409, 'invalid_transition');
   await db.batch([
-    db.prepare('UPDATE participant_guardian SET legal_representative=?,representation_basis=?,recorded_by=?,updated_at=? WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL')
-      .bind(next ? 1 : 0, next ? 'COMUNICAT' : null, context.userId, now, participantId, guardianId),
-    statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_UPDATED', resourceType: 'participant_guardian', resourceId: guardianId, occurredAt: now }),
+    db.prepare('UPDATE participant_guardian SET legal_representative=?,representation_basis=?,recorded_by=?,updated_at=? WHERE id=? AND ended_at IS NULL')
+      .bind(next ? 1 : 0, next ? 'COMUNICAT' : null, context.userId, now, link.id),
+    statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_UPDATED', resourceType: 'participant_guardian', resourceId: link.id, occurredAt: now }),
     ...representationEvent(db, context, { participantId, guardianId, action: next ? 'SET_REPRESENTATIVE' : 'CLEAR_REPRESENTATIVE', basis: next ? 'COMUNICAT' : null, provenance: input.provenance ?? null, note: input.provenanceNote ?? null }, now),
     ...await openReview(db, context, requestId, { kind: 'REPRESENTATION_CHANGE', participantId, guardianId, detail: next ? 'Representant legal comunicat' : 'Fi de representant legal' }, now)
   ]);
@@ -180,12 +195,12 @@ export async function accreditRepresentation(db, context, requestId, participant
   await requireOn(db, context, requestId, participantId, 'participants.contact.read');
   const note = input?.provenanceNote ?? null;
   if (note != null && (typeof note !== 'string' || note.length > 200)) throw new AppError(400, 'invalid_guardian');
-  const link = await db.prepare('SELECT legal_representative,representation_basis FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first();
+  const link = await db.prepare('SELECT id,legal_representative,representation_basis FROM participant_guardian WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind(participantId, guardianId).first();
   if (!link) throw new AppError(404, 'not_found');
   if (!link.legal_representative || link.representation_basis === 'ACREDITAT') throw new AppError(409, 'invalid_transition');
   await db.batch([
-    db.prepare('UPDATE participant_guardian SET representation_basis=?,updated_at=? WHERE participant_id=? AND guardian_id=? AND ended_at IS NULL').bind('ACREDITAT', now, participantId, guardianId),
-    statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_UPDATED', resourceType: 'participant_guardian', resourceId: guardianId, occurredAt: now }),
+    db.prepare('UPDATE participant_guardian SET representation_basis=?,updated_at=? WHERE id=? AND ended_at IS NULL').bind('ACREDITAT', now, link.id),
+    statement(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'DATA_UPDATED', resourceType: 'participant_guardian', resourceId: link.id, occurredAt: now }),
     ...representationEvent(db, context, { participantId, guardianId, action: 'ACCREDIT', basis: 'ACREDITAT', provenance: 'DOCUMENTACIO_FISICA', note }, now)
   ]);
   return { basis: 'ACREDITAT' };

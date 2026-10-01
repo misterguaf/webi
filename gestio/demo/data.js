@@ -219,7 +219,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const G=n=>id(15000+n);
   const guardian=(n,name)=>{ guardianRows.push([G(n),name,'ACTIVE',createdAt,createdAt]); return G(n); };
   const link=(participantNumber,n,{rel='PARENT',rep=false,basis=null}={})=>linkRows.push(
-    [id(participantNumber),G(n),rel,rep?1:0,createdAt,rep?basis:null,coordinator,'DOCUMENTACIO_FISICA',createdAt]);
+    [id(19000+linkRows.length+1),id(participantNumber),G(n),rel,rep?1:0,createdAt,rep?basis:null,coordinator,'DOCUMENTACIO_FISICA',createdAt,coordinator]);
   const gcontact=(cn,n,kind,value,primary=true)=>guardianContactRows.push([id(16000+cn),null,G(n),kind,value,'GENERAL',primary?1:0,null,createdAt,null]);
   guardian(1,'Mare Demo (ficticia)'); guardian(2,'Pare Demo (fictici)'); guardian(3,'Àvia Demo (ficticia)'); guardian(4,'Tutor legal Demo (fictici)');
   // Shared guardians across Tropa (1006) and Escolta (1007); the mother is a communicated representative.
@@ -258,7 +258,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     ...verifyUpdates.map(row=>row+'\n'),
     insert('annual_fee_issue',['id','round_id','payment_id','obligation_id','code','status','created_by','created_at','resolved_by','resolved_at'],issueRows),
     insert('guardian',['id','display_name','status','created_at','updated_at'],guardianRows),
-    insert('participant_guardian',['participant_id','guardian_id','relationship','legal_representative','started_at','representation_basis','recorded_by','provenance','updated_at'],linkRows),
+    insert('participant_guardian',['id','participant_id','guardian_id','relationship','legal_representative','started_at','representation_basis','recorded_by','provenance','updated_at','created_by'],linkRows),
     insert('contact_point',['id','participant_id','guardian_id','kind','value','purpose','is_primary','verified_at','created_at','ended_at'],guardianContactRows),
     insert('participant_representation_event',['id','participant_id','guardian_id','action','basis','provenance','note','recorded_by','recorded_at'],repEventRows),
     insert('participant_review',['id','kind','status','participant_id','guardian_id','duplicate_of','detail','payload_json','created_by','created_at'],reviewRows),
