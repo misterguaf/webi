@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildDemoData, DEMO_MARKER_ID } from './data.js';
+import { buildDemoData, buildTreasuryDemo, DEMO_MARKER_ID } from './data.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(root, '..');
@@ -81,12 +81,25 @@ function verify(expected) {
   if (execute('SELECT COUNT(*) AS n FROM annual_fee_family_correction_gate')[0].n) throw new Error('Open family correction gate');
   if (!markerExists()) throw new Error('Demo marker missing');
 }
+// 3.5G.1: the treasury demo is applied once, also to a local D1 that already holds the earlier demo.
+function ensureTreasuryDemo() {
+  if (count('finance_round') > 0) return false;
+  const temporary = mkdtempSync(resolve(tmpdir(), 'gestio-treasury-demo-'));
+  try {
+    const sql = resolve(temporary, 'treasury.sql');
+    writeFileSync(sql, buildTreasuryDemo());
+    run(localD1Args(['execute', '--file', sql, '--yes']), { capture: true });
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+  if (execute('PRAGMA foreign_key_check').length) throw new Error('Treasury demo has foreign-key violations');
+  return true;
+}
 function seed() {
   run(localD1Args(['migrations', 'apply']), { capture: true });
   const demo = buildDemoData();
   if (markerExists()) {
     verify(demo.expected);
-    console.log('Demo dataset already present; left existing local changes untouched.');
+    const added = ensureTreasuryDemo();
+    console.log(added ? 'Demo dataset already present; treasury demo added.' : 'Demo dataset already present; left existing local changes untouched.');
     return;
   }
   let base = baseCounts();
@@ -108,6 +121,7 @@ function seed() {
     for (const key of demo.imageKeys) run(localR2Args(key, png, 'image/png'), { capture: true });
     run(localD1Args(['execute', '--file', sql, '--yes']), { capture: true });
     verify(demo.expected);
+    ensureTreasuryDemo();
     console.log(`Demo ready: ${demo.expected.participants} participants, ${demo.expected.activities} activities, ${demo.expected.obligations} annual fee obligations.`);
   } finally { rmSync(temporary, { recursive: true, force: true }); }
 }

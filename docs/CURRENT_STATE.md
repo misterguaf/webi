@@ -6,6 +6,15 @@ Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
 Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D y 3.5E en `phase/3.5-design`, checkpoints `phase-3.5d-complete` y `phase-3.5e-complete` (sin merge a `main`).
 Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
 
+## Actualización FASE 3.5G.1 — fundación financiera (2026-10-01, pendiente de revisión)
+
+Detalle: [PHASE_3_5G1_REPORT](PHASE_3_5G1_REPORT.md). Especificación: [TREASURY.md](design/TREASURY.md). Rama `phase/3.5g-treasury` (sin merge, sin tag de G.1).
+
+- **Migraciones 0023–0027:** rondas, posiciones, saldos iniciales y reservas, cierre oficial y ajustes posteriores; lotes de importación y movimientos inmutables; contrapartes y presupuesto; gastos, líneas, justificantes (metadatos), imputaciones tipadas; permisos.
+- **API `/api/finance/*`** suficiente para probar el dominio; sin pantallas de Tresoreria todavía (3.5G.2).
+- **Invariantes en D1:** una ronda abierta, periodos sin solape, movimientos inmutables, importación idempotente, imputaciones nunca por encima del movimiento, transferencias internas coherentes, gasto propuesto ≠ reconocido, líneas = total, presupuesto inicial congelado.
+- **Demo sintética** de Tresoreria y recuperación ampliada.
+
 ## Actualización FASE 3.5G.1A — seguridad previa a Tresoreria (2026-10-01, pendiente de revisión)
 
 Detalle: [PHASE_3_5G1A_REPORT](PHASE_3_5G1A_REPORT.md). Especificación: [TREASURY.md](design/TREASURY.md) (`phase-3.5g0-complete`). Rama `phase/3.5g-treasury` (sin merge, sin tag de 1A).

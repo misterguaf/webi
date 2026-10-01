@@ -1207,6 +1207,24 @@ metrics.
 | **3.5G.4** Reports and Excel | Budget vs actual; result and reserves; closing with official close snapshot and post-close adjustments; report model; template mapping; xlsx writer; exports | 1–3 | Output fidelity; xlsx dependency | Four outputs generated and checked against the historical structure |
 | **3.5G.5** Integral validation | Full synthetic year with the 2025/26 patterns; R2 backup and drills; privacy review; legal gate list | all | Real data forbidden | Synthetic year reconciles; checklist approved |
 
+# 34.1 Implementation notes (3.5G.1 foundation)
+
+Fixed by the implementation, without changing any decision above:
+
+- Budget codes are unique per round **and nature**: the income and expense trees keep their own numbering,
+  as the Excel does (`2. CAMPAMENTS` exists on both sides).
+- Allocations of a movement are versioned sets: a reclassification writes a new set after a
+  compare-and-set on `finance_movement.allocation_version`; earlier sets stay as history. Expense lines are
+  versioned the same way (`lines_version`).
+- A line without children is a leaf; a leaf added after approval starts at 0 and is funded by revisions.
+- Round states are `DRAFT → OPEN ⇄ CLOSING → CLOSED`. Closing to `CLOSED` needs the official close snapshot
+  (workflow in 3.5G.4).
+- Listings show a minimised movement label (direction, date, reference); the original bank description is
+  stored apart and revealed only with `finance.bank_description.reveal` (LEGAL DECISION REQUIRED for any
+  richer projection or purge).
+- Group-wide finance permissions are delegated group-wide only.
+- D1 rejects compound SELECTs with more than five terms: migrations and seeds use joins or `VALUES`.
+
 # 35. Deferred debt
 
 | Item | Decision |

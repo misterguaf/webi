@@ -2,6 +2,8 @@
 
 Estado: diseño operativo **provisional**, drill **local/sintético** probado. Nada de esto autoriza datos reales ni aprovisionamiento remoto.
 
+FASE 3.5G.1: el dump D1 incluye las 23 tablas financieras, sus vistas y triggers. La verificación tras restaurar comprueba: ninguna imputación supera su movimiento ni hay conjuntos futuros, transferencias internas coherentes, gastos reconocidos con líneas que suman el total, liquidaciones no superiores al gasto, árbol presupuestario válido, revisiones de saldo inicial contiguas, rondas cerradas con foto oficial y como mucho una ronda abierta; y nombres de contrapartes y proveedores marcados como ficticios. El drill restaura una ronda con importación, transferencia, gasto con tarjeta liquidado y presupuesto aprobado con revisión. Los objetos R2 de justificantes de gasto no se generan todavía (3.5G.2); su copia y verificación siguen pendientes (TREASURY.md §28).
+
 FASE 3B: las copias D1 locales incluyen configuración de ronda, grupos explícitos, obligaciones, transferencias, allocations, planes de dos partes, incidencias y outbox de cuota; el test 3B restaura estos datos con FK. Los binarios de justificantes de cuota y actividad permanecen **fuera** de D1 y requieren respaldo/restauración independientes por clave/hash. La reapertura no debe confirmar pagos sin cotejo bancario; un backup antiguo puede resucitar asignaciones o datos suprimidos, por lo que el ledger externo pendiente sigue siendo bloqueante.
 
 ## Objetivos propuestos

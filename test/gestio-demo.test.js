@@ -171,12 +171,17 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
     assert.deepEqual(query('SELECT status,count(*) n FROM annual_fee_obligation_status GROUP BY status ORDER BY status')
       .map(row => [row.status, row.n]), [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 11]]);
     assert.deepEqual(query('PRAGMA foreign_key_check'), []);
+    // 3.5G.1 treasury demo: the cash cycle counts nothing, cash and card expenses once, the proposal not at all.
+    assert.deepEqual(query('SELECT income_cents,expense_gross_cents,proposed_expense_cents FROM finance_round_economics'),
+      [{ income_cents: 10000, expense_gross_cents: 46000, proposed_expense_cents: 2500 }]);
     query("INSERT INTO participant(id,display_name,current_section_id,status,birth_date) VALUES('00000000-0000-4000-8000-000000099999','Extra Demo','00000000-0000-4000-8000-000000000001','ACTIVE','2017-01-01')");
     run('node', [cli, 'seed'], temp);
     assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 41);
     assert.equal(query('SELECT COUNT(*) n FROM audit_event WHERE action=\'DEMO_DATASET_SEEDED\'')[0].n, 1);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);
+    assert.equal(query('SELECT COUNT(*) n FROM finance_movement')[0].n, 7, 'repeat seed adds no treasury data twice');
     assert.match(run('node', [cli, 'reset'], temp), /Demo ready:/);
+    assert.equal(query('SELECT COUNT(*) n FROM finance_round')[0].n, 1);
     assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 40);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);
     const html = readFileSync(resolve(repo, 'gestio/public/index.html'), 'utf8');
