@@ -41,7 +41,7 @@ test('demo commands are pinned to the local development D1/R2 and reject remote 
 
 test('synthetic fixture fits the migrated SQLite constraints and exercises fee states', () => {
   const demo = buildDemoData();
-  assert.equal(demo.evidenceKeys.length, 36);
+  assert.equal(demo.evidenceKeys.length, 38, '3.5F: two further payment attempts on one registration');
   assert.equal(demo.imageKeys.length, 1, '3.5F: one PNG receipt');
   assert.deepEqual([...demo.png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
   assert.match(demo.png.subarray(0, 1024).toString('latin1'), /synthetic/);
@@ -134,6 +134,9 @@ test('demo activity scenarios are relative to the seed time and cover D1–D12',
         WHERE b.paid_cents>0 AND b.paid_cents<b.due_cents AND e.review_status='VERIFIED'`).n >= 1, 'partial payment');
       assert.ok(one(`SELECT count(*) n FROM activity_payment_balance b JOIN payment_evidence e ON e.registration_id=b.registration_id
         WHERE b.paid_cents>0 AND b.paid_cents<b.due_cents AND e.review_status='ISSUE'`).n >= 1, 'incidence keeping a verified instalment');
+      assert.ok(one(`SELECT count(*) n FROM (SELECT e.registration_id FROM payment_evidence e JOIN activity_payment_balance b ON b.registration_id=e.registration_id
+        WHERE b.paid_cents>0 AND b.paid_cents<b.due_cents GROUP BY e.registration_id
+        HAVING count(*)>=3 AND sum(e.review_status='ISSUE')>=1 AND sum(e.review_status='VERIFIED')>=2)`).n >= 1, 'several attempts: partial with an open incidence');
       assert.equal(one(`SELECT count(*) n FROM payment_evidence e JOIN activity_payment_balance b ON b.registration_id=e.registration_id
         WHERE e.review_status='VERIFIED' AND b.paid_cents=0`).n, 0, 'every verified proof has its verified amount');
       assert.equal(one(`SELECT count(*) n FROM activity_registration r JOIN activity_payment_balance b ON b.registration_id=r.id

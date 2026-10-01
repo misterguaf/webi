@@ -2,7 +2,7 @@
 // preview inside Gestió (image or PDF, same-origin), named download as fallback, verification with
 // confirmation. Nothing is preloaded: each preview or download is one explicit, audited request.
 import { confirmDialog, h, toast, trapTab } from '../../ui.js';
-import { evidenceKind, formatEuros, parseEurosToCents, paymentActions, paymentLine, validateVerifiedAmount } from './model.js';
+import { attemptLine, evidenceKind, formatEuros, parseEurosToCents, paymentActions, paymentLine, validateVerifiedAmount } from './model.js';
 
 const formatMoney = cents => new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const url = (id, mode) => `/api/payments/${id}/evidence?mode=${mode}`;
@@ -77,10 +77,13 @@ export function openEvidencePreview(payment) {
  * Evidence actions block for one payment row. `onChanged` refreshes the caller after a decision.
  * @param {{call: Function, payment: any, onChanged: () => void, showActivity?: boolean}} options
  */
-export function evidenceBlock({ call, payment, onChanged }) {
+export function evidenceBlock({ call, payment, onChanged, attemptOnly = false }) {
   const available = payment.evidence?.available !== false;
-  const nodes = [h('span', { className: 'evidence-amount', text: formatMoney(payment.amountCents) }),
-    h('span', { className: 'evidence-state', text: paymentLine(payment) })];
+  // In the activity tab the obligation line is already on the row: each block shows only its attempt.
+  const nodes = attemptOnly ? [h('span', { className: 'evidence-flag', text: attemptLine(payment) })]
+    : [h('span', { className: 'evidence-amount', text: formatMoney(payment.amountCents) }),
+      h('span', { className: 'evidence-state', text: paymentLine(payment) }),
+      h('span', { className: 'evidence-flag', text: attemptLine(payment) })];
   if (payment.registrationState === 'WITHDRAWN') nodes.push(h('span', { className: 'evidence-flag', text: 'Inscripció retirada' }));
   if (available) {
     nodes.push(h('button', { className: 'link-button', text: 'Veure justificant', attrs: { type: 'button' }, on: { click: () => openEvidencePreview(payment) } }),

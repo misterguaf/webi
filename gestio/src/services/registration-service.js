@@ -129,7 +129,13 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
     :await db.prepare(`SELECT id FROM activity_registration WHERE activity_id=? AND match_key=? AND COALESCE(submitted_section_id,'')=?
       AND submitted_birth_date=? AND participant_id IS NULL AND status='NEEDS_PARTICIPANT_REVIEW'`)
       .bind(activity.id,key,sectionId??'',input.birthDate).first();
-  if (duplicate) return {ok:true};
+  if (duplicate) {
+    // A further payment attempt (Atlas review): the same person sends a new proof for a registration that
+    // is still waiting for matching or payment. It is stored as a new attempt of that registration; the
+    // same file twice is one attempt. Nothing about the registration is revealed (neutral answer).
+    if (evidence) await attachAttempt(db,storage,duplicate.id,evidence,requestId,now);
+    return {ok:true};
+  }
   const id=crypto.randomUUID(),evidenceId=crypto.randomUUID(),objectKey=evidence?evidenceKey():null;
   const status=matched.status==='CLEAR'?(amount===0?'CONFIRMED':'AWAITING_PAYMENT_REVIEW'):'NEEDS_PARTICIPANT_REVIEW';
   // Server-detected discrepancy towards another section: global review, nothing disclosed or stored.
@@ -176,6 +182,22 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
     throw error;
   }
   return {ok:true}; // identical external shape for clear, ambiguous, escalated and no match
+}
+
+async function attachAttempt(db,storage,registrationId,evidence,requestId,now) {
+  const target=await db.prepare(`SELECT id FROM activity_registration WHERE id=? AND status IN ('NEEDS_PARTICIPANT_REVIEW','AWAITING_PAYMENT_REVIEW')`)
+    .bind(registrationId).first();
+  if (!target) return;
+  if (await db.prepare('SELECT 1 FROM payment_evidence WHERE registration_id=? AND sha256=?').bind(registrationId,evidence.sha256).first()) return;
+  const evidenceId=crypto.randomUUID(),objectKey=evidenceKey();
+  await storeEvidence(storage,objectKey,evidence);
+  try {
+    await db.batch([
+      db.prepare(`INSERT INTO payment_evidence(id,registration_id,object_key,sha256,size_bytes,detected_mime,review_status,created_at)
+        VALUES(?,?,?,?,?,?,'PENDING_REVIEW',?)`).bind(evidenceId,registrationId,objectKey,evidence.sha256,evidence.bytes.length,evidence.mime,now),
+      statement(db,{requestId,action:'PAYMENT_EVIDENCE_RECEIVED',resourceType:'payment_evidence',resourceId:evidenceId,reasonCode:'ADDITIONAL_ATTEMPT',occurredAt:now})
+    ]);
+  } catch (error) { await storage.delete(objectKey).catch(()=>{}); throw error; }
 }
 
 // ---------------------------------------------------------------- authorisation helpers (§8.4)
@@ -251,8 +273,8 @@ export async function listRegistrations(db,context,requestId,activityId,params) 
     CASE WHEN r.submitted_section_id IS NOT r.registration_section_id THEN r.submitted_section_id END AS declared_section_id,
     r.participant_id,p.display_name AS participant_name,p.current_section_id AS participant_section_id,
     r.status,r.review_level,r.escalation_reason,r.transport_code,r.expected_amount_cents,r.created_at,r.reviewed_at,r.withdrawn_at,r.withdrawal_source,r.version,
-    e.review_status AS evidence_status,b.paid_cents FROM activity_registration r
-    LEFT JOIN payment_evidence e ON e.registration_id=r.id LEFT JOIN participant p ON p.id=r.participant_id
+    b.paid_cents,(SELECT count(*) FROM payment_evidence x WHERE x.registration_id=r.id AND x.review_status='ISSUE') AS open_issues
+    FROM activity_registration r LEFT JOIN participant p ON p.id=r.participant_id
     JOIN activity_payment_balance b ON b.registration_id=r.id
     WHERE r.activity_id=?${sectionFilter(decision,'r.registration_section_id')}${estat?` AND ${LIST_FILTERS[estat]}`:''}
     ${page.after?'AND (r.created_at<? OR (r.created_at=? AND r.id<?))':''} ORDER BY r.created_at DESC,r.id DESC LIMIT ?`)
@@ -261,8 +283,8 @@ export async function listRegistrations(db,context,requestId,activityId,params) 
   const profile=await profileScope(db,context);
   // The escalation reason is shown only to global reviewers; section reviewers see "en revisió global".
   const global=decision.sections===null;
-  return {registrations:result.items.map(({participant_id:_p,participant_name:_n,participant_section_id:_s,escalation_reason:reason,evidence_status,...row})=>
-    ({...row,payment_status:row.expected_amount_cents>0?paymentState(row.expected_amount_cents,row.paid_cents,evidence_status):'NOT_REQUIRED',...(global && row.review_level==='GLOBAL'?{escalation_reason:reason}:{}),
+  return {registrations:result.items.map(({participant_id:_p,participant_name:_n,participant_section_id:_s,escalation_reason:reason,...row})=>
+    ({...row,payment_status:paymentState(row.expected_amount_cents,row.paid_cents,row.open_issues),...(global && row.review_level==='GLOBAL'?{escalation_reason:reason}:{}),
       ...linked(profile,{participant_id:_p,participant_name:_n,participant_section_id:_s})})),nextCursor:result.nextCursor};
 }
 // Confirmed list (§17): CONFIRMED only, operational fields, grouped client-side by section.
@@ -517,31 +539,38 @@ export async function queueSummary(db,context,requestId) {
   if (verify.allow) {
     // pending = proofs nobody has verified yet; partial = waiting for further instalments (not in the
     // badge); issues = open incidences on obligations not yet fully paid.
-    const row=await db.prepare(`SELECT sum(b.paid_cents=0 AND e.review_status='PENDING_REVIEW') AS pending,
-      sum(b.paid_cents>0 AND b.paid_cents<b.due_cents AND e.review_status!='ISSUE') AS partial,
-      sum(b.paid_cents<b.due_cents AND e.review_status='ISSUE') AS issues
-      FROM payment_evidence e JOIN activity_registration r ON r.id=e.registration_id JOIN activity_payment_balance b ON b.registration_id=r.id
-      WHERE r.status IN ('AWAITING_PAYMENT_REVIEW','WITHDRAWN')${sectionFilter(verify,'r.registration_section_id')}`)
+    // pending = attempts nobody has reviewed yet; issues = open incidences (per attempt); partial =
+    // obligations partly paid, waiting for further instalments (not in the badge).
+    const scope=sectionFilter(verify,'r.registration_section_id');
+    const attempts=await db.prepare(`SELECT sum(e.review_status='PENDING_REVIEW') AS pending,sum(e.review_status='ISSUE') AS issues
+      FROM payment_evidence e JOIN activity_registration r ON r.id=e.registration_id
+      WHERE r.status IN ('AWAITING_PAYMENT_REVIEW','WITHDRAWN')${scope}`).bind(...(verify.sections??[])).first();
+    const partial=await db.prepare(`SELECT count(*) AS n FROM activity_registration r JOIN activity_payment_balance b ON b.registration_id=r.id
+      WHERE r.status IN ('AWAITING_PAYMENT_REVIEW','WITHDRAWN') AND b.paid_cents>0 AND b.paid_cents<b.due_cents${scope}`)
       .bind(...(verify.sections??[])).first();
-    payments={pending:row?.pending??0,partial:row?.partial??0,issues:row?.issues??0};
+    payments={pending:attempts?.pending??0,partial:partial?.n??0,issues:attempts?.issues??0};
   }
   return {registrations,payments,badge:(registrations?.actionable??0)+(payments?.pending??0)+(payments?.issues??0)};
 }
 
 // ---------------------------------------------------------------- payment projection (§14) until 3.5G
 // Purpose-limited: what a verifier needs to decide, nothing that reads or manages Activitats.
-// Payment state (§9.2, instalments): derived from the verified allocations and the open incidence.
-// PAID once the obligation is covered; an incidence never hides or removes verified amounts.
-export function paymentState(dueCents,paidCents,evidenceStatus) {
+// Payment state of the obligation (§9.2): derived only from verified allocations. Incidences belong to
+// attempts and are reported next to it (openIssues): PARTIAL with open incidences is a valid state.
+// ISSUE is shown only while nothing has been verified and an incidence is open.
+export function paymentState(dueCents,paidCents,openIssues=0) {
   if (dueCents<=0) return 'NOT_REQUIRED';
   if (paidCents>=dueCents) return 'PAID';
-  if (evidenceStatus==='ISSUE') return 'ISSUE';
-  return paidCents>0?'PARTIAL':'PENDING';
+  if (paidCents>0) return 'PARTIAL';
+  return openIssues>0?'ISSUE':'PENDING';
 }
-const PAYMENT_VIEWS={pendents:"b.paid_cents<b.due_cents AND e.review_status!='ISSUE'",
-  incidencies:"b.paid_cents<b.due_cents AND e.review_status='ISSUE'",totes:'1=1'};
+const PAYMENT_VIEWS={pendents:"(e.review_status='PENDING_REVIEW' OR (e.review_status='VERIFIED' AND b.paid_cents<b.due_cents))",
+  incidencies:"e.review_status='ISSUE'",totes:'1=1'};
 const PAYMENT_SELECT=`SELECT e.id,e.review_status,e.detected_mime,e.size_bytes,e.created_at AS received_at,e.reviewed_at,e.object_purged_at,
   r.id AS registration_id,r.status AS registration_status,r.version AS registration_version,b.paid_cents,
+  (SELECT count(*) FROM payment_evidence x WHERE x.registration_id=r.id AND x.review_status='ISSUE') AS open_issues,
+  (SELECT count(*) FROM payment_evidence x WHERE x.registration_id=r.id) AS attempts,
+  (SELECT COALESCE(SUM(v.amount_cents),0) FROM activity_payment_allocation v WHERE v.evidence_id=e.id) AS evidence_verified_cents,
   r.submitted_name,r.expected_amount_cents,r.transport_code,
   r.registration_section_id,r.participant_id,p.display_name AS participant_name,p.current_section_id AS participant_section_id,
   r.created_at,a.id AS activity_id,a.name AS activity_name,a.starts_at AS activity_starts_at,a.audience,
@@ -556,7 +585,8 @@ function paymentRow(profile,row) {
     paidCents:row.paid_cents,remainingCents:Math.max(0,row.expected_amount_cents-row.paid_cents),
     ...(row.has_transport?{transport:row.transport_code}:{}),...(row.audience==='GENERAL'?{section:row.section_code}:{}),
     registrationState:row.registration_status,registrationVersion:row.registration_version,
-    paymentState:paymentState(row.expected_amount_cents,row.paid_cents,row.review_status),evidenceStatus:row.review_status,
+    paymentState:paymentState(row.expected_amount_cents,row.paid_cents,row.open_issues),openIssues:row.open_issues,attempts:row.attempts,
+    evidenceStatus:row.review_status,evidenceVerifiedCents:row.evidence_verified_cents,
     evidence:{mime:row.detected_mime,sizeBytes:row.size_bytes,receivedAt:row.received_at,available:row.object_purged_at==null},
     reviewedAt:row.reviewed_at};
 }
@@ -591,8 +621,9 @@ async function resolvePayment(db,context,requestId,id) {
 export async function paymentDetail(db,context,requestId,id) {
   const row=await resolvePayment(db,context,requestId,id);
   // Verified instalments: amount and date only (who verified stays in the audit trail).
-  const allocations=(await db.prepare(`SELECT amount_cents,created_at FROM activity_payment_allocation WHERE registration_id=?
-    ORDER BY created_at,id`).bind(row.registration_id).all()).results.map(a=>({amountCents:a.amount_cents,verifiedAt:a.created_at}));
+  const allocations=(await db.prepare(`SELECT amount_cents,created_at,evidence_id FROM activity_payment_allocation WHERE registration_id=?
+    ORDER BY created_at,id`).bind(row.registration_id).all()).results.map(a=>({amountCents:a.amount_cents,verifiedAt:a.created_at,
+      evidenceId:a.evidence_id,thisAttempt:a.evidence_id===id}));
   return {payment:{...paymentRow(await profileScope(db,context),row),allocations}};
 }
 const EXTENSIONS={'application/pdf':'pdf','image/png':'png','image/jpeg':'jpg','image/webp':'webp'};
@@ -616,8 +647,12 @@ export async function reviewPayment(db,context,requestId,id,input,now=Date.now()
   if (!input || typeof input!=='object' || Object.keys(input).some(key=>!['decision','amountCents','expectedVersion'].includes(key)) ||
       !['VERIFIED','ISSUE'].includes(input.decision) || (input.decision==='ISSUE' && input.amountCents!=null)) throw new AppError(400,'invalid_review');
   const remaining=row.expected_amount_cents-row.paid_cents;
-  if (!['AWAITING_PAYMENT_REVIEW','WITHDRAWN'].includes(row.registration_status) || remaining<=0 ||
-      (input.decision==='ISSUE' && row.review_status==='ISSUE')) throw new AppError(409,'invalid_transition');
+  // Per attempt: verify while something remains; flag an attempt that is not already flagged (a verified
+  // attempt only while something remains). Verifying one attempt never closes another attempt's incidence.
+  if (!['AWAITING_PAYMENT_REVIEW','WITHDRAWN'].includes(row.registration_status) ||
+      (input.decision==='VERIFIED' && remaining<=0) ||
+      (input.decision==='ISSUE' && (row.review_status==='ISSUE' || (row.review_status==='VERIFIED' && remaining<=0))))
+    throw new AppError(409,'invalid_transition');
   if (!Number.isSafeInteger(input.expectedVersion) || input.expectedVersion<1) throw new AppError(400,'invalid_version');
   if (input.expectedVersion!==row.registration_version) throw new AppError(409,'stale_payment');
   if (input.decision==='VERIFIED' && (!Number.isSafeInteger(input.amountCents) || input.amountCents<1 || input.amountCents>remaining))
@@ -656,7 +691,8 @@ export async function reviewPayment(db,context,requestId,id,input,now=Date.now()
     throw error;
   }
   const paid=row.paid_cents+(verified?input.amountCents:0);
-  return {id,status:input.decision,paymentState:paymentState(row.expected_amount_cents,paid,verified?'VERIFIED':'ISSUE'),
+  const openIssues=row.open_issues-(verified && row.review_status==='ISSUE'?1:0)+(verified?0:1);
+  return {id,status:input.decision,paymentState:paymentState(row.expected_amount_cents,paid,openIssues),openIssues,
     paidCents:paid,remainingCents:row.expected_amount_cents-paid};
 }
 

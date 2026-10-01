@@ -35,7 +35,10 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
       fetchAllPages(call, `/api/activities/${activity.id}/registrations`, 'registrations'),
       verify ? fetchAllPages(call, `/api/payments?vista=totes&activityId=${encodeURIComponent(activity.id)}`, 'payments') : Promise.resolve({ payments: [] })]);
     if (rows.status === 'rejected') throw rows.reason;
-    const evidence = payments.status === 'fulfilled' ? new Map(payments.value.payments.map(payment => [payment.registrationId, payment])) : null;
+    // A registration may have several payment attempts (proofs); keep them all, oldest first.
+    const evidence = payments.status === 'fulfilled' ? new Map() : null;
+    if (evidence) for (const payment of [...payments.value.payments].sort((a, b) => a.evidence.receivedAt - b.evidence.receivedAt))
+      evidence.set(payment.registrationId, [...(evidence.get(payment.registrationId) ?? []), payment]);
     return { activityId: activity.id, version: activity.version, rows: rows.value.registrations, evidence, evidenceError: payments.status === 'rejected' && verify };
   }
 
@@ -92,7 +95,8 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
 
   function registrationRow(row, activity, container, query) {
     const capabilities = caps(), allSections = sections();
-    const evidence = cache.evidence?.get(row.id) ?? null;
+    const attempts = cache.evidence?.get(row.id) ?? [];
+    const evidence = attempts[0] ?? null;
     const redraw = () => draw(container, activity, query);
     const state = h('span', { className: `badge reg-${row.status.toLowerCase().replaceAll('_', '-')}`, text: registrationStateLabel(row.status) });
     const payment = activity.price_cents > 0 && row.payment_status && row.payment_status !== 'NOT_REQUIRED' && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status)
@@ -144,8 +148,10 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     }
     if (row.status === 'NEEDS_PARTICIPANT_REVIEW' && expanded.has(row.id) && isActionable(capabilities, row))
       item.append(reviewPanel(row, activity, () => { expanded.delete(row.id); redraw(); document.querySelector(`[data-id="${row.id}"] .reg-toggle`)?.focus(); }));
-    if (evidence && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status) && evidence.remainingCents > 0)
-      item.append(evidenceBlock({ call, payment: evidence, onChanged: refresh }));
+    // One block per attempt that still needs attention (pending, flagged, or more can be verified on it).
+    if (['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status))
+      for (const attempt of attempts)
+        if (attempt.evidenceStatus !== 'VERIFIED' || attempt.remainingCents > 0) item.append(evidenceBlock({ call, payment: attempt, onChanged: refresh, attemptOnly: true }));
     return item;
   }
 

@@ -153,6 +153,14 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const seedPayment=(await worker.request('/api/payments/'+id(831),{cookie:group})).data.payment;
     assert.equal((await worker.request('/api/payments/'+id(831)+'/review',{method:'POST',cookie:group,
       body:{decision:'VERIFIED',amountCents:500,expectedVersion:seedPayment.registrationVersion}})).data.paymentState,'PARTIAL');
+    // A second payment attempt (another proof) for the same registration, verified for the rest.
+    run(isolated,['d1','execute','parpallo-gestio-local','--local','--config','wrangler.toml','--command',
+      "INSERT INTO payment_evidence(id,registration_id,object_key,sha256,size_bytes,detected_mime,review_status,created_at) VALUES('"+id(870)+"','"+id(822)+
+      "','synthetic/recovery-attempt-b','"+'1'.repeat(64)+"',20,'application/pdf','PENDING_REVIEW',2)",'--yes']);
+    const secondAttempt=(await worker.request('/api/payments/'+id(870),{cookie:group})).data.payment;
+    assert.equal(secondAttempt.attempts,2);
+    assert.equal((await worker.request('/api/payments/'+id(870)+'/review',{method:'POST',cookie:group,
+      body:{decision:'VERIFIED',amountCents:700,expectedVersion:secondAttempt.registrationVersion}})).data.paymentState,'PAID');
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -161,7 +169,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,19);
+    assert.equal(manifest.schema_version,20);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -169,7 +177,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0011_participant_domain.sql','0012_authorization_catalog_and_identity_provisioning.sql',
       '0013_privilege_governance.sql','0014_activity_version.sql','0015_participant_management.sql','0016_guardians_contacts_review.sql',
       '0017_guardian_relationship_episodes.sql','0018_registrations_v1.sql',
-      '0019_activity_payment_allocations.sql']);
+      '0019_activity_payment_allocations.sql','0020_payment_attempts.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);
@@ -266,7 +274,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.deepEqual(JSON.parse(restoredFeeSchema.stdout)[0].results.map(row=>[row.parts,row.family_revisions]),[[0,0]]);
     assert.equal(manifest.table_counts.participant_guardian,2);
     assert.equal(manifest.table_counts.activity_registration_section_change,1);
-    assert.equal(manifest.table_counts.activity_payment_allocation,1);
+    assert.equal(manifest.table_counts.activity_payment_allocation,2);
     assert.ok(manifest.schema_objects.includes('view:activity_payment_balance'));
     for (const object of ['trigger:registration_section_correction_guard','trigger:registration_withdrawal_immutable',
       'trigger:activity_registration_section_change_no_delete','trigger:activity_terms_locked'])
@@ -274,11 +282,13 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const restoredRegistrations=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"SELECT (SELECT status||':'||withdrawal_source FROM activity_registration WHERE id='"+id(821)+"') AS withdrawn,"+
       "(SELECT submitted_section_id||'>'||registration_section_id FROM activity_registration WHERE id='"+id(860)+"') AS corrected,"+
-      "(SELECT paid_cents||'/'||due_cents FROM activity_payment_balance WHERE registration_id='"+id(822)+"') AS paid",'--json'],
+      "(SELECT paid_cents||'/'||due_cents FROM activity_payment_balance WHERE registration_id='"+id(822)+"') AS paid,"+
+      "(SELECT group_concat(e.id||':'||(SELECT sum(a.amount_cents) FROM activity_payment_allocation a WHERE a.evidence_id=e.id),',') FROM "+
+      "(SELECT id FROM payment_evidence WHERE registration_id='"+id(822)+"' ORDER BY created_at DESC) e) AS attempts",'--json'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.equal(restoredRegistrations.status,0);
     assert.deepEqual(JSON.parse(restoredRegistrations.stdout)[0].results[0],
-      {withdrawn:'WITHDRAWN:FAMILY_COMMUNICATION',corrected:id(2)+'>'+id(4),paid:'500/1200'});
+      {withdrawn:'WITHDRAWN:FAMILY_COMMUNICATION',corrected:id(2)+'>'+id(4),paid:'1200/1200',attempts:id(831)+':500,'+id(870)+':700'});
     for (const object of ['index:participant_guardian_current_unique','trigger:participant_guardian_history_immutable',
       'trigger:participant_guardian_no_delete','trigger:participant_guardian_episode_order'])
       assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);

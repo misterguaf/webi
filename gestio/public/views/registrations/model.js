@@ -113,13 +113,20 @@ export const scopeNote = activity => activity.scope === 'PARTIAL'
 export const splitPrevious = activities => ({ current: activities.filter(a => !a.previous), previous: activities.filter(a => a.previous) });
 /** Filter for the activity tab opened from the queue. */
 export const tabFilterFor = view => view === 'pendents' ? 'per-revisar' : 'totes';
-/** Payment actions a verifier may see (§14.2); the server and the database enforce the same rules. */
+/** Actions on one payment attempt (§14.2); the server and the database enforce the same rules. */
 export function paymentActions(payment) {
   const actions = [];
-  const open = payment.remainingCents > 0 && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(payment.registrationState);
-  if (open) actions.push('verify');
-  if (open && payment.paymentState !== 'ISSUE' && payment.registrationState !== 'WITHDRAWN') actions.push('issue');
+  const active = ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(payment.registrationState);
+  if (active && payment.remainingCents > 0) actions.push('verify');
+  if (active && payment.registrationState !== 'WITHDRAWN' && payment.evidenceStatus !== 'ISSUE' &&
+    (payment.evidenceStatus === 'PENDING_REVIEW' || payment.remainingCents > 0)) actions.push('issue');
   return actions;
+}
+export const EVIDENCE_STATUS_LABELS = Object.freeze({ PENDING_REVIEW: 'pendent de revisió', VERIFIED: 'verificat', ISSUE: 'amb incidència' });
+/** "Justificant verificat (30,00 €)" — the state of this attempt, not of the whole obligation. */
+export function attemptLine(payment) {
+  const label = EVIDENCE_STATUS_LABELS[payment.evidenceStatus] ?? 'estat desconegut';
+  return `Justificant ${label}${payment.evidenceVerifiedCents > 0 ? ` (${formatEuros(payment.evidenceVerifiedCents)})` : ''}`;
 }
 export const formatEuros = cents => new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 /** "Pagament parcial · 50,00 € / 80,00 € · 30,00 € pendents" — never hides what was already paid. */
@@ -129,6 +136,8 @@ export function paymentLine(payment) {
   const parts = [label];
   if (payment.paidCents > 0) parts.push(`${formatEuros(payment.paidCents)} / ${formatEuros(payment.amountCents)}`);
   parts.push(`${formatEuros(payment.remainingCents)} ${payment.paidCents > 0 ? 'pendents' : 'per pagar'}`);
+  if (payment.openIssues > 0 && payment.paymentState !== 'ISSUE')
+    parts.push(`${payment.openIssues} ${payment.openIssues === 1 ? 'incidència oberta' : 'incidències obertes'}`);
   return parts.join(' · ');
 }
 /** Euros typed by a person ("20", "20,5", "20,50", "1.234,50") → cents, or null. */

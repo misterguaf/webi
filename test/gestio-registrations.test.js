@@ -257,8 +257,8 @@ test('payment projection: purpose-limited fields, server-side activity filter, i
     assert.equal((await call(104, '/api/activities')).status, 403, 'Tresoreria does not read Activitats');
     const list = (await call(104, `/api/payments?activityId=${PAID_ESCOLTA}`)).data.payments;
     assert.equal(list.length, 1);
-    assert.deepEqual(Object.keys(list[0]).sort(), ['activity', 'amountCents', 'evidence', 'evidenceStatus', 'id', 'paidCents', 'paymentState', 'registrationId', 'registrationState',
-      'registrationVersion', 'remainingCents', 'reviewedAt', 'submittedName', 'transport'].sort(),
+    assert.deepEqual(Object.keys(list[0]).sort(), ['activity', 'amountCents', 'attempts', 'evidence', 'evidenceStatus', 'evidenceVerifiedCents', 'id', 'openIssues', 'paidCents', 'paymentState',
+      'registrationId', 'registrationState', 'registrationVersion', 'remainingCents', 'reviewedAt', 'submittedName', 'transport'].sort(),
       'no participant without profile access; transport because the activity has options; no section (not GENERAL); no contact');
     assert.deepEqual(Object.keys(list[0].activity).sort(), ['id', 'name', 'startsAt']);
     assert.deepEqual((await call(104, `/api/payments?activityId=${FREE_TROPA}`)).data.payments, []);

@@ -125,7 +125,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     const adjustment=activity.transport?.find(([code])=>code===transport)?.[1]??0;
     regs.push({number,activityNumber,person,status,matchStatus,name,sectionNumber:opts.section||person?.section||2,
       birth:opts.birth||null,amount:opts.amount??activity.price+adjustment,transport,
-      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),mime:opts.mime||'application/pdf',paid:opts.paid??null,
+      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),mime:opts.mime||'application/pdf',paid:opts.paid??null,attempts:opts.attempts??[],
       escalation:opts.escalation||null,withdrawn:opts.withdrawn||null,correctedTo:opts.correctedTo||null,reviewed:!!opts.reviewed,
       created:opts.created||Math.min(T-2*DAY,activity.deadline-DAY)-number*60000});
   };
@@ -163,7 +163,10 @@ export function buildDemoData({ now = Date.now() } = {}) {
   addReg(11006,1015,'CONFIRMED');
   // D10: group transport vs family transport (0 €).
   addReg(11007,1012,'CONFIRMED','CLEAR',{transport:'GROUP'});
-  addReg(11007,1016,'AWAITING_PAYMENT_REVIEW','CLEAR',{transport:'FAMILY',evidence:'PENDING_REVIEW'});
+  // 3.5F payment attempts: proof A verified 10 €, proof B with an open incidence, proof C verified 3 € →
+  // 13 € / 23 € partial with one incidence still open on B.
+  addReg(11007,1016,'AWAITING_PAYMENT_REVIEW','CLEAR',{transport:'FAMILY',evidence:'VERIFIED',paid:1000,
+    attempts:[{status:'ISSUE'},{status:'VERIFIED',paid:300}]});
   rejected(11007,'Demo Sol·licitud Clan rebutjada',4);
   // D11
   addReg(11011,1006,'CONFIRMED'); addReg(11011,1011,'CONFIRMED','CLEAR',{section:3});
@@ -196,9 +199,17 @@ export function buildDemoData({ now = Date.now() } = {}) {
     return [id(13000+r.number-12000),id(r.number),key,image?pngDigest:digest,image?png.length:pdf.length,r.mime,r.evidence,r.created,
       r.evidence==='PENDING_REVIEW'?null:r.created,r.evidence==='PENDING_REVIEW'?null:coordinator];
   });
-  // Verified amounts (3.5F instalments): full for verified evidence, partial where the scenario says so.
-  const allocationRowsActivity=regs.filter(r=>r.evidence && (r.evidence==='VERIFIED' || r.paid)).map((r,index)=>[id(19700+index+1),id(r.number),
-    id(13000+r.number-12000),r.paid??r.amount,'VERIFICATION',treasury,r.created+HOUR]);
+  // Further payment attempts (proofs) of the same registration.
+  const extraAttempts=regs.flatMap(r=>r.attempts.map(attempt=>({r,...attempt}))).map((x,index)=>({...x,evidenceId:id(13500+index+1),
+    key:`synthetic/demo-activity-${x.r.number}-attempt-${index+1}.pdf`,created:x.r.created+(index+1)*DAY}));
+  for (const x of extraAttempts) { evidenceKeys.add(x.key); activityEvidenceRows.push([x.evidenceId,id(x.r.number),x.key,digest,pdf.length,'application/pdf',
+    x.status,x.created,x.status==='PENDING_REVIEW'?null:x.created,x.status==='PENDING_REVIEW'?null:treasury]); }
+  // Verified amounts (3.5F instalments): full for verified evidence, partial where the scenario says so,
+  // each linked to the proof it comes from.
+  const allocationRowsActivity=[...regs.filter(r=>r.evidence && (r.evidence==='VERIFIED' || r.paid)).map(r=>({registration:id(r.number),
+    evidence:id(13000+r.number-12000),amount:r.paid??r.amount,at:r.created+HOUR})),
+    ...extraAttempts.filter(x=>x.paid).map(x=>({registration:id(x.r.number),evidence:x.evidenceId,amount:x.paid,at:x.created+HOUR}))]
+    .map((a,index)=>[id(19700+index+1),a.registration,a.evidence,a.amount,'VERIFICATION',treasury,a.at]);
   const familyGroupRows=[];const familyMemberRows=[];const familyForPerson=new Map();
   for(const family of families.filter(f=>f.members.length>=2)){
     const groupId=id(2000+family.number);

@@ -27,6 +27,11 @@ Technical closure of 3.5F (Borja/Atlas, 2026-10-01; no product rule reopened):
   rule, audited denial). Once resolved, the usual access applies (§11, §12.2).
 - Optimised synthetic photos keep their synthetic provenance through a fresh
   JPEG comment, without keeping any original metadata (§15.5).
+- Several payment attempts per registration (Atlas review, migration 0020):
+  0..N proofs per registration, each with its own review and incidence; each
+  verified amount keeps its link to the proof that supports it (or none, for a
+  future bank-checked payment in 3.5G); verifying one attempt never closes
+  another attempt's incidence; PARTIAL can coexist with open incidences.
 - Payments in instalments (previously approved requirement, missing in 0.2):
   obligation ≠ evidence ≠ allocation; each verified amount is an append-only
   allocation (migration 0019); the payment state PENDING / PARTIAL / PAID /
@@ -367,9 +372,11 @@ Instalments (3.5F closure, migration 0019), following the annual-fee
 principle **obligation ≠ payment ≠ allocation**:
 
 - obligation = `activity_registration.expected_amount_cents`;
-- evidence = the family's proof (`payment_evidence`, one per registration);
+- attempt = the family's proof of one payment (`payment_evidence`, **0..N per
+  registration** since migration 0020), with its own review state
+  `PENDING_REVIEW` / `VERIFIED` / `ISSUE` (the incidence belongs to the attempt);
 - allocation = each verified amount (`activity_payment_allocation`:
-  registration, evidence, amount, who, when), **append-only** — instalments
+  registration, attempt when there is one, amount, who, when), **append-only** — instalments
   accumulate and are never overwritten; the database refuses more than the
   obligation. `activity_payment_balance` derives the paid amount. Evidence
   verified before 0019 became one full allocation (`LEGACY_FULL_VERIFICATION`).
@@ -380,17 +387,26 @@ principle **obligation ≠ payment ≠ allocation**:
 | `PENDING` | `Pendent de pagament` | nothing verified yet |
 | `PARTIAL` | `Pagament parcial` | 0 < paid < due |
 | `PAID` | `Pagat` | paid = due |
-| `ISSUE` | `Incidència` | open incidence and paid < due (verified amounts kept) |
+| `ISSUE` | `Incidència` | nothing verified yet and at least one attempt flagged |
+
+Open incidences are reported next to the state (`openIssues`): `PARTIAL` with
+one or more open incidences is valid (e.g. 30 € verified on A, B flagged, 10 €
+verified on C ⇒ 40/80 `PARTIAL` + B open). Verifying C never closes B; B is
+resolved on B, by verifying its amount.
 
 - Verifying the remaining amount moves the registration to `CONFIRMED`
   **only** from `AWAITING_PAYMENT_REVIEW`; a partial amount leaves it waiting.
-- An incidence can be opened while something remains (also after a partial
-  payment) and never removes verified amounts; a later verification closes it.
-  The family's incidence notice is sent once per registration (outbox).
+- An incidence is opened on one attempt (a pending proof at any time — also a
+  surplus proof —, a verified one while something remains) and never removes
+  verified amounts; verifying that attempt closes it. The family's incidence
+  notice is sent once per registration (outbox).
+- A further proof sent from the portal for a registration still waiting for
+  matching or payment is stored as a new attempt of that registration (the same
+  file twice is one attempt); the portal answer stays neutral.
 - On a `WITHDRAWN` registration amounts can still be verified (what was
   received is recorded); the registration stays `WITHDRAWN`. Refunds: 3.5G.
-- Evidence review states describe the proof: `PENDING_REVIEW`, `VERIFIED`
-  (≥ 1 amount, no open incidence), `ISSUE` (open incidence).
+- Attempt review states: `PENDING_REVIEW`, `VERIFIED` (≥ 1 amount verified from
+  it), `ISSUE` (open incidence of that attempt).
 - 3.5G can link allocations to bank movements by allocation id.
 
 ## 9.3 Evidence object state
@@ -589,7 +605,9 @@ registration section). Row:
 | `transport` | only when the activity has transport options |
 | `section` | registration section code, only for GENERAL activities |
 | `registrationState` | including `WITHDRAWN` |
-| `paymentState`, `evidenceStatus` | §9.2 (derived) |
+| `id` | the attempt (proof); one row per attempt |
+| `paymentState`, `openIssues`, `attempts` | obligation level, §9.2 (derived) |
+| `evidenceStatus`, `evidenceVerifiedCents` | this attempt |
 | `paidCents`, `remainingCents` | derived from allocations |
 | `registrationVersion` | for the review's optimistic concurrency |
 | `allocations` (detail only) | `{ amountCents, verifiedAt }` per instalment; who verified stays in the audit |

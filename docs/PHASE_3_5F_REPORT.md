@@ -155,6 +155,20 @@ pagos de retiradas, proyección, vista previa/descarga/MIME y auditoría, conser
 - Límites: no se registra más del importe debido (sobrepagos y devoluciones son 3.5G); el aviso de incidencia a la
   familia se envía una sola vez por inscripción.
 
+## Varios intentos de pago por inscripción (revisión Atlas, migración 0020)
+
+- `payment_evidence` deja de ser única por inscripción: 0..N intentos (justificantes), cada uno con su revisión y su
+  incidencia. Se reconstruye con su nombre (copiando todas las filas) junto con `activity_payment_allocation`, que la
+  referencia; se recrean la vista de saldo y los triggers.
+- Cada importe verificado conserva su intento (`evidence_id`), o ninguno para un futuro pago comprobado en el banco
+  (3.5G); el saldo sigue derivándose solo de asignaciones; sin sobrepago; append-only.
+- Incidencias por intento: verificar un intento no cierra la incidencia de otro; `PARTIAL` convive con incidencias
+  abiertas (`openIssues`); la incidencia se resuelve verificando el importe de su intento.
+- Un nuevo justificante enviado desde el portal para una inscripción aún pendiente se guarda como intento nuevo (el
+  mismo fichero dos veces es un solo intento), con respuesta neutra.
+- Pruebas A–E (dos justificantes ⇒ PAID; 30 + incidencia + 10 ⇒ 40/80 PARTIAL con B abierta; resolver B; backup/restore
+  con dos intentos y dos asignaciones; alcance, IDOR, concurrencia entre intentos y auditoría) y migración 0020.
+
 ## Revisión humana necesaria
 
 Ver checklist de REGISTRATIONS.md §27: cola global, pestaña, revisión manual, contacto, justificante, rechazo,
