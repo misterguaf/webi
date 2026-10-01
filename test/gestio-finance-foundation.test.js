@@ -432,3 +432,98 @@ test('synthetic treasury demo applies with the real triggers and reproduces the 
   assert.equal(sql.prepare("SELECT max(depth) AS d FROM (WITH RECURSIVE t(id,depth) AS (SELECT id,1 FROM finance_budget_line WHERE parent_id IS NULL UNION ALL SELECT l.id,t.depth+1 FROM finance_budget_line l JOIN t ON l.parent_id=t.id) SELECT depth FROM t)").get().d, 3);
   sql.close();
 });
+
+test('delegation scope follows each permission: section-scoped finance stays per section, foundation stays group-only, neither widens the other', async () => {
+  const s = await setup();
+  try {
+    const delegate = 141;
+    s.f.sql.exec(`INSERT INTO app_user(id,display_name,status,created_at,updated_at) VALUES('${id(delegate)}','Suport mixt (fictici)','ACTIVE',1,1)`);
+    await s.f.login(delegate);
+    const grant = async (permissionCode, sectionId) => {
+      const created = await s.call(107, '/api/delegations', 'POST', { userId: id(delegate), permissionCode, sectionId, authorizedBy: id(101),
+        authorizationReference: `DEMO-SCOPE-${permissionCode.replaceAll('.', '-').toUpperCase().slice(0, 30)}`, expiresAt: Date.now() + 86400000 });
+      if (created.status !== 201) return created;
+      await s.call(101, `/api/delegations/${created.data.id}/confirm`, 'POST', {});
+      assert.equal((await s.call(101, `/api/delegations/${created.data.id}/ratify`, 'POST', { ratificationReference: 'DEMO-SCOPE-RATIFIED' })).status, 200);
+      return created;
+    };
+    const { authorize } = await import('../gestio/src/policy.js');
+    const can = async (permission, details) => (await authorize(s.f.db, s.f.context[delegate], { permission, ...details })).allow;
+    // A. An existing section-scoped financial capability is still delegated per section (G.1A unchanged).
+    assert.equal((await grant('finance.payment.verify', id(2))).status, 201);
+    assert.equal(await can('finance.payment.verify', { sectionId: id(2) }), true);
+    assert.equal(await can('finance.payment.verify', { sectionId: id(3) }), false);
+    assert.equal(await can('finance.payment.verify', { mode: 'all-sections' }), false);
+    // B. A foundation capability is group-only: a section scope is refused, the group scope works.
+    assert.equal((await grant('finance.movement.read', id(2))).status, 400);
+    assert.equal((await grant('finance.movement.read', null)).status, 201);
+    assert.equal(await can('finance.movement.read', {}), true);
+    // C. Neither widens the other: the group-wide foundation grant does not make verification group-wide,
+    // and verification in Tropa gives no foundation capability.
+    assert.equal(await can('finance.payment.verify', { sectionId: id(3) }), false);
+    assert.equal(await can('finance.payment.verify', { mode: 'all-sections' }), false);
+    for (const permission of ['finance.movement.classify', 'finance.treasury.read', 'finance.expense.read', 'finance.budget.read'])
+      assert.equal(await can(permission, {}), false, permission);
+    assert.equal(await can('finance.fee.payment.review', { sectionId: id(2) }), false);
+  } finally { s.f.close(); }
+});
+
+test('economic figures never count twice: card purchase and its settlement, the cash cycle, proposals', async () => {
+  const s = await setup();
+  try {
+    const { kitchen, transport } = await catalogue(s);
+    const expense = async (paymentMethod, totalCents, lineId) => (await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round,
+      expenseDate: '2027-07-20', totalCents, paymentMethod, lines: [{ budgetLineId: lineId, amountCents: totalCents }], recognise: true })).data.id;
+    const settle = async (movementId, expenseId, amountCents) => assert.equal((await s.call(104, `/api/finance/movements/${movementId}/allocations`, 'POST',
+      { expectedVersion: 0, allocations: [{ kind: 'EXPENSE_SETTLEMENT', amountCents, expenseId }] })).status, 200);
+    const transfer = async (from, to) => assert.equal((await s.call(104, '/api/finance/internal-transfers', 'POST',
+      { fromMovementId: from, toMovementId: to, fromExpectedVersion: 0, toExpectedVersion: 0 })).status, 201);
+    const figures = async () => { const e = await s.economics(); return { income: e.incomeCents, expense: e.expenseNetCents, proposed: e.proposedExpenseCents }; };
+
+    // Card: the purchase is the expense (60 €), once.
+    const cardExpense = await expense('CARD', 6000, kitchen);
+    const purchase = await s.manual(s.card, -6000, '2027-07-20', 'Compra amb targeta');
+    await settle(purchase, cardExpense, 6000);
+    assert.deepEqual(await figures(), { income: 0, expense: 6000, proposed: 0 });
+    // The bank charge that settles the card is not a second expense: unclassified it counts nothing, and it can
+    // never settle the card expense again (a card expense is settled from the card).
+    const cardPayment = await s.manual(s.bank, -6000, '2027-08-05', 'Liquidació de la targeta');
+    assert.deepEqual(await figures(), { income: 0, expense: 6000, proposed: 0 });
+    assert.equal((await s.call(104, `/api/finance/movements/${cardPayment}/allocations`, 'POST', { expectedVersion: 0,
+      allocations: [{ kind: 'EXPENSE_SETTLEMENT', amountCents: 6000, expenseId: cardExpense }] })).data.error, 'invalid_expense_allocation');
+    assert.equal((await s.call(104, `/api/finance/movements/${cardPayment}/allocations`, 'POST', { expectedVersion: 0,
+      allocations: [{ kind: 'CARD_SETTLEMENT', amountCents: 6000 }] })).data.error, 'allocation_kind_not_enabled', 'card statements arrive in 3.5G.2');
+    // Once card statements exist, a CARD_SETTLEMENT allocation is outside the economic figures by construction:
+    // simulate it here by lifting the 3.5G.1 kind gate in this test database only.
+    s.f.sql.exec(`INSERT INTO finance_card_statement(id,position_id,period_start,period_end,created_by,created_at)
+      VALUES('${id(9881)}','${s.card}','2027-07-01','2027-07-31','${id(104)}',1);
+      DROP TRIGGER finance_allocation_kind_enabled;
+      UPDATE finance_movement SET allocation_version=1 WHERE id='${cardPayment}';
+      INSERT INTO finance_allocation(id,movement_id,set_version,kind,amount_cents,card_statement_id,created_by,created_at)
+      VALUES('${id(9882)}','${cardPayment}',1,'CARD_SETTLEMENT',6000,'${id(9881)}','${id(104)}',1)`);
+    assert.deepEqual(await figures(), { income: 0, expense: 6000, proposed: 0 }, 'card expense 60 €, not 120 €');
+
+    // Cash: withdrawal and cash entry are a transfer (0), the cash payment is the expense (430 €), the surplus back is a transfer (still 430 €).
+    const withdrawal = await s.manual(s.bank, -50000, '2027-07-10', 'Retirada'), cashIn = await s.manual(s.cash, 50000, '2027-07-10', 'Entrada a caixa');
+    await transfer(withdrawal, cashIn);
+    assert.deepEqual(await figures(), { income: 0, expense: 6000, proposed: 0 });
+    const cashExpense = await expense('CASH', 43000, transport);
+    const cashPayment = await s.manual(s.cash, -43000, '2027-07-12', 'Pagament en efectiu');
+    await settle(cashPayment, cashExpense, 43000);
+    assert.deepEqual(await figures(), { income: 0, expense: 49000, proposed: 0 });
+    const surplus = await s.manual(s.cash, -7000, '2027-07-25', 'Sobrant'), bankIn = await s.manual(s.bank, 7000, '2027-07-25', 'Reingrés');
+    await transfer(surplus, bankIn);
+    assert.deepEqual(await figures(), { income: 0, expense: 49000, proposed: 0 }, 'cash expense 430 €; transfers count nothing');
+    const cash = (await s.call(104, '/api/finance/positions')).data.positions.find(row => row.id === s.cash).balance;
+    assert.equal(cash.balanceCents, 0, 'cash back to zero once the surplus is re-deposited');
+
+    // A proposal never counts; recognising it counts once; settling it never counts it again.
+    const proposed = (await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2027-07-26', totalCents: 2000,
+      paymentMethod: 'BANK', lines: [{ budgetLineId: kitchen, amountCents: 2000 }] })).data.id;
+    assert.deepEqual(await figures(), { income: 0, expense: 49000, proposed: 2000 });
+    assert.equal((await s.call(104, `/api/finance/expenses/${proposed}/recognise`, 'POST', { expectedVersion: 1 })).status, 200);
+    assert.deepEqual(await figures(), { income: 0, expense: 51000, proposed: 0 });
+    await settle(await s.manual(s.bank, -2000, '2027-07-27', 'Transferència al proveïdor'), proposed, 2000);
+    assert.deepEqual(await figures(), { income: 0, expense: 51000, proposed: 0 });
+  } finally { s.f.close(); }
+});
