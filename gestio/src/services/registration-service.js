@@ -202,9 +202,12 @@ async function resolveRegistration(db,context,requestId,id,permission) {
   }
   return {row,decision,global:decision.sections===null};
 }
-// Escalated registrations are visible to the section but actionable only by global reviewers.
+// A registration is "in global review" while it is pending and escalated. It stays visible to the
+// section, but only global reviewers act on it (REGISTRATIONS.md §12.2). Once resolved, the level is
+// kept as history and no longer restricts the section.
+const inGlobalReview=row=>row.review_level==='GLOBAL' && row.status==='NEEDS_PARTICIPANT_REVIEW';
 async function requireActionable(db,context,requestId,resolved) {
-  if (resolved.row.review_level==='GLOBAL' && !resolved.global) {
+  if (inGlobalReview(resolved.row) && !resolved.global) {
     await deny(db,context,requestId,'GLOBAL_REVIEW_REQUIRED','activity_registration',resolved.row.id);
     throw new AppError(403,'global_review_required');
   }
@@ -335,7 +338,8 @@ export async function reviewMatch(db,context,requestId,id,input,now=Date.now()) 
       (input.decision==='REJECT' && input.participantId!=null)) throw new AppError(400,'invalid_review');
   if (row.status!=='NEEDS_PARTICIPANT_REVIEW') throw new AppError(409,'invalid_transition');
   await requireActionable(db,context,requestId,resolved);
-  if (input.expectedVersion!==undefined) requireVersion(input,row);
+  // 3.5F closure: the version is mandatory, as for every other registration write.
+  requireVersion(input,row);
   const expected=row.version;
   let participant=null;
   if (input.decision==='MATCH') {
@@ -446,6 +450,15 @@ export async function withdrawRegistration(db,context,requestId,id,input,now=Dat
 // ---------------------------------------------------------------- submitter contact on demand (§11)
 export async function registrationContact(db,context,requestId,id) {
   const {row}=await resolveRegistration(db,context,requestId,id,'activities.registration.contact.read');
+  // Decision Borja/Atlas (3.5F closure): while a registration is in global review, only global
+  // reviewers may reveal the submitter's contact, even if a section reviewer holds the contact permission.
+  if (inGlobalReview(row)) {
+    const review=await authorize(db,context,{permission:'activities.registration.review',mode:'list'});
+    if (!review.allow || review.sections!==null) {
+      await deny(db,context,requestId,'GLOBAL_REVIEW_REQUIRED','activity_registration',id);
+      throw new AppError(403,'global_review_required');
+    }
+  }
   await append(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'SENSITIVE_DATA_READ',
     resourceType:'activity_registration',resourceId:id,result:'SUCCESS',reasonCode:'REGISTRATION_CONTACT_CONSULTED'});
   return {submittedByName:row.submitted_by_name||null,phone:row.contact_phone??null,email:row.receipt_email};

@@ -85,3 +85,14 @@ test('payment actions: incidence only from pending (never on a withdrawn registr
   assert.deepEqual(model.paymentActions({ paymentState: 'PENDING_REVIEW', registrationState: 'WITHDRAWN' }), ['verify']);
   assert.deepEqual(model.paymentActions({ paymentState: 'VERIFIED', registrationState: 'CONFIRMED' }), []);
 });
+
+test('rows in global review: no contact and no actions for section reviewers; resolved rows are ordinary again', () => {
+  const tropa = caps({ review: scope('TROPA'), readContacts: scope('TROPA') });
+  const group = caps({ review: { all: true, sections: [] }, readContacts: { all: true, sections: [] } });
+  const escalated = row({ review_level: 'GLOBAL' });
+  assert.equal(model.canRevealContact(tropa, escalated), false);
+  assert.equal(model.canRevealContact(group, escalated), true);
+  assert.equal(model.inGlobalReview(row({ review_level: 'GLOBAL', status: 'CONFIRMED' })), false);
+  assert.equal(model.canRevealContact(tropa, row({ review_level: 'GLOBAL', status: 'CONFIRMED' })), true);
+  assert.deepEqual(model.rowActions({ audience: 'GENERAL' }, tropa, row({ review_level: 'GLOBAL', status: 'CONFIRMED' }), S), ['withdraw']);
+});

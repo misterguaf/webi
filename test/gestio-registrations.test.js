@@ -77,7 +77,7 @@ test('authorisation order: no capability → 403; missing and out of scope → t
     await intake(f, { participantName: 'Persona Sense Fitxa (ficticia)', publicCode: 'DEMO-FREE-TROPA' });
     const pending = latest(f, 'Persona Sense Fitxa (ficticia)');
     for (const participantId of [id(504), id(99997)])
-      assert.equal((await call(102, `/api/registrations/${pending.id}/review`, { method: 'POST', body: { decision: 'MATCH', participantId } })).status, 404);
+      assert.equal((await call(102, `/api/registrations/${pending.id}/review`, { method: 'POST', body: { decision: 'MATCH', participantId, expectedVersion: pending.version } })).status, 404);
     assert.equal(row(f, AWAITING_ESCOLTA).status, 'AWAITING_PAYMENT_REVIEW');
     assert.ok(f.sql.prepare("SELECT count(*) AS n FROM audit_event WHERE action='AUTHZ_DENY' AND reason_code IN ('OUT_OF_SCOPE','NOT_FOUND')").get().n > 0);
   } finally { f.close(); }
@@ -137,7 +137,7 @@ test('escalation: a match in another section goes to global review without discl
     const candidates = (await call(101, `/api/registrations/${reg.id}/candidates`)).data;
     const escolta = candidates.candidates.find(c => c.id === id(504));
     assert.equal(escolta.section_matches, false);
-    assert.equal((await call(101, `/api/registrations/${reg.id}/review`, { method: 'POST', body: { decision: 'MATCH', participantId: id(504) } })).data.error, 'section_mismatch');
+    assert.equal((await call(101, `/api/registrations/${reg.id}/review`, { method: 'POST', body: { decision: 'MATCH', participantId: id(504), expectedVersion: reg.version } })).data.error, 'section_mismatch');
     // Correct the section (GENERAL admits Escolta), then link.
     const corrected = await call(101, `/api/registrations/${reg.id}/section`, { method: 'POST', body: { sectionId: ESCOLTA, expectedVersion: reg.version } });
     assert.equal(corrected.status, 200);
@@ -358,5 +358,55 @@ test('capabilities: registrations block for the queue, without probing or wideni
     const none = await me(106);
     assert.deepEqual([none.review, none.verifyPayments], [null, null], 'no Inscripcions navigation for the retired role');
     assert.equal(f.sql.prepare("SELECT count(*) AS n FROM audit_event WHERE action='AUTHZ_DENY'").get().n, 0, '/api/me never provokes denials');
+  } finally { f.close(); }
+});
+
+test('review needs expectedVersion: missing → 400, stale → 409, current → applied; authorisation still first', async () => {
+  const { f, call } = await setup();
+  try {
+    await intake(f, { participantName: 'Persona Versió (ficticia)', publicCode: 'DEMO-FREE-TROPA' });
+    const reg = latest(f, 'Persona Versió (ficticia)');
+    const review = (user, body) => call(user, `/api/registrations/${reg.id}/review`, { method: 'POST', body });
+    // Out of scope or without capability: the same answers as before, whatever the body (no oracle).
+    for (const body of [{ decision: 'REJECT' }, { decision: 'REJECT', expectedVersion: 99 }]) {
+      assert.equal((await review(103, body)).status, 404);
+      assert.equal((await review(104, body)).status, 403);
+    }
+    assert.equal((await call(102, `/api/registrations/${id(99996)}/review`, { method: 'POST', body: { decision: 'REJECT' } })).status, 404);
+    // In scope: the version is mandatory and must be current.
+    const missing = await review(102, { decision: 'REJECT' });
+    assert.deepEqual([missing.status, missing.data.error], [400, 'invalid_version']);
+    const stale = await review(102, { decision: 'REJECT', expectedVersion: reg.version + 1 });
+    assert.deepEqual([stale.status, stale.data.error], [409, 'stale_registration']);
+    assert.equal(row(f, reg.id).status, 'NEEDS_PARTICIPANT_REVIEW', 'nothing written');
+    const ok = await review(102, { decision: 'REJECT', expectedVersion: reg.version });
+    assert.deepEqual([ok.status, ok.data.status], [200, 'REJECTED']);
+    assert.equal(row(f, reg.id).version, reg.version + 1);
+    // A second reviewer with the old version: conflict, not a second write.
+    assert.equal((await review(102, { decision: 'REJECT', expectedVersion: reg.version })).status, 409);
+  } finally { f.close(); }
+});
+
+test('in global review: section reviewers cannot reveal the contact; global reviewers can, audited', async () => {
+  const { f, call } = await setup();
+  try {
+    await intake(f, { participantName: 'Participante Escolta A (ficticio)', birthDate: '2009-04-26', sectionCode: 'TROPA', receiptEmail: 'escalat@example.test' });
+    const reg = latest(f, 'Participante Escolta A (ficticio)');
+    assert.equal(reg.review_level, 'GLOBAL');
+    const blocked = await call(102, `/api/registrations/${reg.id}/contact`);
+    assert.deepEqual([blocked.status, blocked.data.error], [403, 'global_review_required'], 'Tropa holds contact.read but the case is in global review');
+    assert.ok(!JSON.stringify(blocked.data).includes('escalat@example.test'));
+    assert.equal(f.sql.prepare("SELECT count(*) AS n FROM audit_event WHERE action='SENSITIVE_DATA_READ' AND resource_id=?").get(reg.id).n, 0);
+    assert.ok(f.sql.prepare("SELECT 1 FROM audit_event WHERE action='AUTHZ_DENY' AND resource_id=? AND reason_code='GLOBAL_REVIEW_REQUIRED'").get(reg.id));
+    const allowed = await call(101, `/api/registrations/${reg.id}/contact`);
+    assert.equal(allowed.data.contact.email, 'escalat@example.test');
+    assert.equal(f.sql.prepare("SELECT count(*) AS n FROM audit_event WHERE action='SENSITIVE_DATA_READ' AND resource_id=?").get(reg.id).n, 1);
+    // Secretaria as global reviewer (0018 matrix + grants) may reveal it too.
+    for (const [n, code] of [[9911, 'activities.registration.review'], [9912, 'activities.registration.contact.read']])
+      f.sql.exec(`INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification) VALUES('${id(n)}','${id(105)}','${code}',1,NULL,'Fixture sintético')`);
+    assert.equal((await call(105, `/api/registrations/${reg.id}/contact`)).status, 200);
+    // Once resolved, the case is no longer in global review: the section regains its usual access.
+    await call(101, `/api/registrations/${reg.id}/review`, { method: 'POST', body: { decision: 'REJECT', expectedVersion: reg.version } });
+    assert.equal((await call(102, `/api/registrations/${reg.id}/contact`)).status, 200);
   } finally { f.close(); }
 });

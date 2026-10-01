@@ -116,18 +116,28 @@ pagos de retiradas, proyección, vista previa/descarga/MIME y auditoría, conser
 
 ## Gaps conocidos
 
-- `POST /api/registrations/:id/review` acepta todavía omitir `expectedVersion` (compatibilidad con el flujo 3A); la UI
-  siempre lo envía. Corrección, escalado y retirada lo exigen.
 - Sin `GET /api/registrations/:id` (no hace falta: la cola abre la pestaña de la actividad).
 - Matching en memoria (≤ 1000 participantes activos), sin cambios.
 - Borrado por conservación preparado, no programado (pendiente del plazo jurídico).
 - Optimización de fotos solo en inscripciones de actividad; la quota anual sigue igual hasta 3.5G.
-- En modo `SYNTHETIC_ONLY`, una foto grande reprocesada pierde el marcador sintético y el servidor la rechaza; los
-  ficheros sintéticos de prueba son pequeños y no se reprocesan.
 - La vista previa de PDF depende del navegador (en algunos móviles solo la primera página); descarga siempre disponible.
 - Bases locales anteriores: las retiradas antiguas registradas como rechazos siguen como `REJECTED` (no se pueden
   distinguir); una D1 local sembrada antes de 3.5F necesita `npm run gestio:migrate` y no tiene los permisos de
   contacto del seed hasta resembrar.
+
+## Cierre técnico (ajustes de Borja/Atlas)
+
+1. `expectedVersion` obligatorio también en `POST /api/registrations/:id/review`: sin versión → 400
+   `invalid_version`, obsoleta → 409 `stale_registration`, correcta → aplicada; siempre después de capacidad y alcance
+   (fuera de alcance sigue siendo el mismo 404, sin capacidad 403, sin oráculos).
+2. Inscripción en revisión global (pendiente y escalada): el revisor de sección no puede revelar el contacto aunque
+   tenga `activities.registration.contact.read` (403 `global_review_required`, auditado, regla en servidor y en la UI);
+   Coordinació general y Secretaria, como revisoras globales, sí, con la auditoría existente. Al resolverse vuelve el
+   acceso habitual.
+3. Procedencia sintética: si el original se declara sintético en su primer KiB, el JPEG optimizado recibe un segmento
+   de comentario nuevo que lo vuelve a declarar; no se conserva ningún metadato original. Prueba de extremo a extremo
+   (foto sintética grande → optimización → alta aceptada en modo synthetic-only) y comprobación negativa (una foto
+   real sigue rechazada); verificado también con el códec real del navegador (12,8 MB → 0,88 MB, 2000×1500, sin EXIF).
 
 ## Revisión humana necesaria
 

@@ -35,10 +35,13 @@ export function visibleFilters(rows, { paid }) {
 // ---------------------------------------------------------------- capabilities (advisory)
 const coversSection = (scope, sectionId) => !!scope && (scope.all || scope.sections.some(section => section.id === sectionId));
 export const isGlobalReviewer = caps => !!caps?.registrations?.review?.all;
-export const canRevealContact = (caps, row) => coversSection(caps?.registrations?.readContacts, row.registration_section_id);
-/** A row the user can act on: escalated rows only for global reviewers. */
+/** Pending and escalated: visible to the section, actionable (and contact) only for global reviewers. */
+export const inGlobalReview = row => row.review_level === 'GLOBAL' && row.status === 'NEEDS_PARTICIPANT_REVIEW';
+export const canRevealContact = (caps, row) => coversSection(caps?.registrations?.readContacts, row.registration_section_id) &&
+  (!inGlobalReview(row) || isGlobalReviewer(caps));
+/** A row the user can act on: rows in global review only for global reviewers. */
 export const isActionable = (caps, row) => coversSection(caps?.registrations?.review, row.registration_section_id) &&
-  (row.review_level !== 'GLOBAL' || isGlobalReviewer(caps));
+  (!inGlobalReview(row) || isGlobalReviewer(caps));
 const PENDING = new Set(['NEEDS_PARTICIPANT_REVIEW']);
 const WITHDRAWABLE = new Set(['NEEDS_PARTICIPANT_REVIEW', 'AWAITING_PAYMENT_REVIEW', 'CONFIRMED']);
 /** Sections the registration may be corrected to (§12.3): within the audience, and the user's authority. */
@@ -54,7 +57,7 @@ export function rowActions(activity, caps, row, sections) {
   const actions = [];
   if (!isActionable(caps, row)) return actions;
   if (correctionTargets(activity, caps, row, sections).length) actions.push('correct-section');
-  if (PENDING.has(row.status) && row.review_level !== 'GLOBAL') actions.push('escalate');
+  if (PENDING.has(row.status) && !inGlobalReview(row)) actions.push('escalate');
   if (WITHDRAWABLE.has(row.status)) actions.push('withdraw');
   return actions;
 }

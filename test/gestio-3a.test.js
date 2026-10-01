@@ -290,12 +290,12 @@ test('FASE 3A: activity, family intake, matching, payment, delegation, outbox an
     assert.equal(candidates.data.declared.birthDate,'2013-05-18');
     assert.equal((await request(worker.base,`/api/registrations/${wrongBirthRow.id}/candidates`,{cookie:delegate})).data.declared.birthDate,'2010-01-01');
     assert.equal((await request(worker.base,`/api/registrations/${ambiguousRow.id}/review`,{method:'POST',cookie:delegate,
-      body:{decision:'MATCH',participantId:id(901)}})).data.status,'CONFIRMED');
+      body:{decision:'MATCH',participantId:id(901),expectedVersion:ambiguousRow.version}})).data.status,'CONFIRMED');
     assert.equal(rows(gestio,state,`SELECT submitted_birth_date FROM activity_registration WHERE id='${ambiguousRow.id}'`)[0].submitted_birth_date,null);
     assert.equal((await request(worker.base,`/api/registrations/${unknownRow.id}/review`,{method:'POST',cookie:delegate,
-      body:{decision:'REJECT'}})).data.status,'REJECTED');
+      body:{decision:'REJECT',expectedVersion:unknownRow.version}})).data.status,'REJECTED');
     assert.equal((await request(worker.base,`/api/registrations/${wrongBirthRow.id}/review`,{method:'POST',cookie:delegate,
-      body:{decision:'REJECT'}})).data.status,'REJECTED');
+      body:{decision:'REJECT',expectedVersion:wrongBirthRow.version}})).data.status,'REJECTED');
     assert.equal(rows(gestio,state,`SELECT submitted_birth_date FROM activity_registration WHERE id='${wrongBirthRow.id}'`)[0].submitted_birth_date,null);
     const clanRow=rows(gestio,state,`SELECT id FROM activity_registration WHERE submitted_name='Persona Clan Desconocida (ficticio)'`)[0];
     assert.equal((await request(worker.base,`/api/registrations/${clanRow.id}/review`,{method:'POST',cookie:delegate,

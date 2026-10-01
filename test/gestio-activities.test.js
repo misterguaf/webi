@@ -372,7 +372,7 @@ test('mixed activity: registrations, candidates, reviews and transitions stay st
       assert.equal(review.status, 404, `${JSON.stringify(body)}: out of scope is indistinguishable from missing (3.5F)`);
     }
     // Linking an own-section registration to a participant of the other section is refused too.
-    const cross = await f.request(102, `/api/registrations/${id(9301)}/review`, { method: 'POST', body: { decision: 'MATCH', participantId: id(504) } });
+    const cross = await f.request(102, `/api/registrations/${id(9301)}/review`, { method: 'POST', body: { decision: 'MATCH', participantId: id(504), expectedVersion: 1 } });
     assert.equal(cross.status, 404, 'a participant outside the reviewer scope is indistinguishable from a missing one');
     assert.equal(f.sql.prepare('SELECT status FROM activity_registration WHERE id=?').get(id(9302)).status, 'NEEDS_PARTICIPANT_REVIEW');
     assert.equal(f.sql.prepare('SELECT participant_id FROM activity_registration WHERE id=?').get(id(9301)).participant_id, null);

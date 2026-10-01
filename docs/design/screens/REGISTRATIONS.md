@@ -16,6 +16,18 @@ Depends on:
 - PARTICIPANTS.md (scope by current section, audited contact consultation)
 - ../../AUTHORIZATION\_MODEL.md, ../../PHASE\_3A\_REPORT.md
 
+Technical closure of 3.5F (Borja/Atlas, 2026-10-01; no product rule reopened):
+
+- `expectedVersion` is mandatory on `POST /api/registrations/:id/review` too
+  (§12.4); missing → 400 `invalid_version`, stale → 409, always after the
+  authorisation order of §8.4.
+- While a registration is in global review (pending and escalated), a section
+  reviewer cannot reveal the submitter's contact even with
+  `activities.registration.contact.read`; only global reviewers can (server
+  rule, audited denial). Once resolved, the usual access applies (§11, §12.2).
+- Optimised synthetic photos keep their synthetic provenance through a fresh
+  JPEG comment, without keeping any original metadata (§15.5).
+
 Changes in 0.2 (decisions of Borja/Atlas on D1–D12, 2026-10-01):
 
 - The `Inscripcions` page becomes a **global work queue**; the activity tab
@@ -391,7 +403,7 @@ items. Server-side filtering (`?estat=`), paginated.
 | Action | States | Capability |
 |---|---|---|
 | `Revisa` (disclosure) | Pendent de vincular, level SECTION or global reviewer | review |
-| `Mostra el contacte` | all | registration.contact.read |
+| `Mostra el contacte` | all; in global review only for global reviewers | registration.contact.read |
 | `Corregeix la secció` | Pendent de vincular | §12.3 |
 | `Envia a revisió global` | Pendent de vincular, level SECTION | review (section) |
 | `Registra la retirada` | Pendent de vincular, Pendent de pagament, Confirmada | review |
@@ -414,6 +426,8 @@ Evidence for the activity comes from `GET /api/payments?activityId=…`
 - `Mostra el contacte` → `GET /api/registrations/:id/contact`:
   - permission `activities.registration.contact.read` over the registration
     section; order §8.4;
+  - while the registration is in global review, only global reviewers
+    (403 `global_review_required` for section reviewers, audited);
   - returns `{ submittedByName, phone, email }` only;
   - audit `SENSITIVE_DATA_READ`, resource `activity_registration`, reason
     `REGISTRATION_CONTACT_CONSULTED`; no values in the audit or logs;
@@ -447,7 +461,7 @@ shown to the section reviewer. The portal response stays neutral.
 short internal note is **not** offered (no free text).
 
 What the section reviewer sees: the row with `En revisió global`, no review
-panel, no candidates, no reason. Global reviewers see it in the queue and in
+panel, no candidates, no reason and no contact reveal. Global reviewers see it in the queue and in
 the tab with the full review panel (candidates in every audience section) and
 the reason label (`Possible secció diferent` / `Enviada per la secció`).
 
@@ -483,7 +497,7 @@ As 3.5D, with:
 - a candidate whose current section ≠ registration section is shown to global
   reviewers with `Secció diferent` and cannot be linked until the section is
   corrected (two explicit steps, both audited);
-- `Vincula` sends `{ decision: MATCH, participantId, expectedVersion }`;
+- `Vincula` sends `{ decision: MATCH, participantId, expectedVersion }` (`expectedVersion` mandatory for match and reject);
 - `Rebutja` sends `{ decision: REJECT, expectedVersion }` after confirmation
   `Rebutjar la inscripció? La família rebrà un avís que no s'ha pogut acceptar.`
 
@@ -631,7 +645,12 @@ Workers have no image codec; optimisation happens in the family's browser:
   legibility);
 - if the result is not smaller than the original, upload the original;
 - if decoding fails, upload the original (server limits still apply);
-- server validation is unchanged; nothing is re-compressed server-side.
+- server validation is unchanged; nothing is re-compressed server-side;
+- synthetic provenance: in `SYNTHETIC_ONLY` environments, test files declare
+  themselves in their first KiB. When the original declared it, the optimised
+  JPEG gets one fresh comment segment (`FF FE`) right after the start marker
+  stating it again; no original metadata (EXIF, location, device) is kept, and
+  real photos never get a comment. The synthetic-only fence is unchanged.
 
 *L*, *q* and the threshold are a **non-blocking technical tuning** to settle
 during implementation with sample receipts (starting point: *L* 2000 px,
