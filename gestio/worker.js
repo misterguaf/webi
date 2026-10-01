@@ -17,6 +17,7 @@ import { scopedFeeStatus } from './src/services/annual-fee-status.js';
 import * as capabilityService from './src/services/capability-service.js';
 import * as identityService from './src/services/identity-service.js';
 import { AppError } from './src/services/common.js';
+import { financeRoute } from './src/domains/finance/routes.js';
 import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
 
 // Named entrypoint for the portal service binding only; never routed from the public handler below.
@@ -32,9 +33,9 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
 });
 const devEnabled = (env,url) => devIdentityEnabled(env,url);
 
-async function readJson(request) {
+async function readJson(request,maxBytes=2048) {
   if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new AppError(400,'invalid_request');
-  if (Number(request.headers.get('Content-Length')||0)>2048) throw new AppError(413,'body_too_large');
+  if (Number(request.headers.get('Content-Length')||0)>maxBytes) throw new AppError(413,'body_too_large');
   const reader=request.body?.getReader();
   if (!reader) throw new AppError(400,'invalid_request');
   let size=0;const chunks=[];
@@ -42,7 +43,7 @@ async function readJson(request) {
     const {value,done}=await reader.read();
     if (done) break;
     size+=value.byteLength;
-    if (size>2048) { await reader.cancel();throw new AppError(413,'body_too_large'); }
+    if (size>maxBytes) { await reader.cancel();throw new AppError(413,'body_too_large'); }
     chunks.push(value);
   }
   const bytes=new Uint8Array(size);let offset=0;
@@ -252,6 +253,11 @@ async function api(request,env,url,requestId) {
   if (path==='/api/fees/issues' && method==='POST') return json({...await fees.openFeeIssue(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/fees\/issues\/([^/]+)\/resolve$/);
   if (match && method==='POST') return json({...await fees.resolveFeeIssue(db,context,requestId,match[1]),requestId});
+  // 3.5G.1 financial foundation (TREASURY.md): rounds, positions, movements, allocations, expenses, budget.
+  if (path.startsWith('/api/finance/')) {
+    const response=await financeRoute({db,context,requestId,method,path,url,request,json,readJson});
+    if (response) return response;
+  }
 
   if (path==='/api/users' && method==='GET') return json({...await identityService.listUsers(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/users' && method==='POST') return json({...await identityService.createUser(db,context,session,requestId,await readJson(request)),requestId},201);
