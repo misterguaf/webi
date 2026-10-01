@@ -131,6 +131,17 @@ rejection, neutral family notices, a purpose-limited payment projection for veri
 portal, retention-ready evidence, linked participant with profile access, and the confirmed
 list per activity.
 
+### Domain specifications
+
+`TREASURY.md`
+Tresoreria v0.2 (3.5G, approved in concept; C1–C5 resolved): domain and functional specification of the
+treasury module. Unlike the screen specifications above, it **does** define financial rules,
+data invariants and authorisation for 3.5G (rounds, positions, movements, allocations,
+expenses, reimbursements, card, cash, budget, budget vs actual, result and reserves, Quotes,
+sibling policy, N-part plans, 3.5F integration, evidence, corrections, permissions, audit,
+privacy, backup, Excel exports, roadmap 3.5G.1A–3.5G.5). Visual design still follows the
+foundation documents.
+
 Future specifications may include:
 
 - FEES
