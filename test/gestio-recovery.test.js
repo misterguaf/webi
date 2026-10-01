@@ -169,7 +169,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,21);
+    assert.equal(manifest.schema_version,22);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -178,7 +178,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0013_privilege_governance.sql','0014_activity_version.sql','0015_participant_management.sql','0016_guardians_contacts_review.sql',
       '0017_guardian_relationship_episodes.sql','0018_registrations_v1.sql',
       '0019_activity_payment_allocations.sql','0020_payment_attempts.sql',
-      '0021_issue_notices_per_attempt.sql']);
+      '0021_issue_notices_per_attempt.sql','0022_financial_delegation.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);

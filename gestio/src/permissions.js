@@ -15,7 +15,7 @@
 // are SCOPED, and their group-wide operations (rounds, family groups) use mode 'all-sections'.
 
 /** @typedef {'GLOBAL'|'SCOPED'} PermissionKind */
-/** @typedef {{kind: PermissionKind, scopedHolders?: 'ALLOWED'|'DENIED', delegable?: boolean, reserved?: boolean, note?: string}} PermissionDefinition */
+/** @typedef {{kind: PermissionKind, scopedHolders?: 'ALLOWED'|'DENIED', delegable?: boolean, financialDelegation?: boolean, reserved?: boolean, note?: string}} PermissionDefinition */
 
 /** @type {Readonly<Record<string, Readonly<PermissionDefinition>>>} */
 export const PERMISSIONS = Object.freeze({
@@ -37,12 +37,14 @@ export const PERMISSIONS = Object.freeze({
   'activities.registration.review': { kind: 'SCOPED', delegable: true },
   'activities.registration.contact.read': { kind: 'SCOPED', delegable: true,
     note: 'Submitter name, phone and e-mail of a registration, on demand and audited (3.5F). Not participants.contact.read.' },
-  'finance.payment.verify': { kind: 'SCOPED', delegable: true },
+  'finance.payment.verify': { kind: 'SCOPED', delegable: true, financialDelegation: true },
 
   'finance.fee.read': { kind: 'SCOPED' },
   'finance.fee.status.read': { kind: 'SCOPED', note: 'Basic PAID/PARTIAL/PENDING/ISSUE only, by current section.' },
   'finance.fee.manage': { kind: 'SCOPED' },
-  'finance.fee.payment.review': { kind: 'SCOPED', delegable: true },
+  'finance.fee.payment.review': { kind: 'SCOPED', delegable: true, financialDelegation: true },
+  'finance.fee.contact.read': { kind: 'SCOPED', delegable: true, financialDelegation: true,
+    note: 'Submitter name, phone and e-mail of a fee payment, on demand and audited (3.5G.1A). Never in listings.' },
   'finance.fee.installment.authorize': { kind: 'SCOPED', note: 'Also requires a current TREASURY or GROUP_COORDINATOR role.' },
   'finance.fee.config.manage': { kind: 'GLOBAL' },
 
@@ -66,6 +68,12 @@ export const PERMISSIONS = Object.freeze({
 export function permissionDefinition(code) {
   return Object.hasOwn(PERMISSIONS, code) ? PERMISSIONS[code] : null;
 }
+
+// Financial delegation (TREASURY.md §25.3, 3.5G.1A): for these permissions a ratified, expiring,
+// capability-limited delegation is itself the authority; no role ceiling is needed or consulted for
+// the delegation, and no role (in particular SECTION_DELEGATE) grants them by being held.
+export const FINANCIAL_DELEGATIONS = Object.freeze(Object.entries(PERMISSIONS)
+  .filter(([, definition]) => definition.financialDelegation).map(([code]) => code));
 
 // Evaluation modes accepted for SCOPED permissions.
 export const MODES = Object.freeze(['list', 'all-sections']);

@@ -112,7 +112,6 @@ INSERT OR IGNORE INTO role_permission(role_code,permission_code) VALUES
   ('SECTION_COORDINATOR','activities.general.manage'),('SECTION_COORDINATOR','activities.registration.review'),
   ('SECTION_COORDINATOR','auth.permission.authorize'),
   ('SECTION_DELEGATE','activities.read'),('SECTION_DELEGATE','activities.registration.review'),
-  ('SECTION_DELEGATE','finance.payment.verify'),
   ('TREASURY','finance.payment.verify'),('TECH_ADMIN','auth.permission.provision');
 INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification) VALUES
 ('00000000-0000-4000-8000-000000000701','00000000-0000-4000-8000-000000000101','activities.read',1700000000000,NULL,'Fixture sintético'),
@@ -176,8 +175,8 @@ INSERT OR IGNORE INTO role_permission(role_code,permission_code) VALUES
 ('GROUP_COORDINATOR','finance.fee.config.manage'),
 ('TREASURY','finance.fee.read'),('TREASURY','finance.fee.manage'),
 ('TREASURY','finance.fee.payment.review'),('TREASURY','finance.fee.installment.authorize'),
-('TREASURY','finance.fee.config.manage'),
-('SECTION_DELEGATE','finance.fee.payment.review');
+('TREASURY','finance.fee.config.manage');
+-- 3.5G.1A: SECTION_DELEGATE carries no financial permission; financial delegations need no role ceiling.
 INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification) VALUES
 ('00000000-0000-4000-8000-000000000720','00000000-0000-4000-8000-000000000101','finance.fee.read',1700000000000,NULL,'Fixture sintético'),
 ('00000000-0000-4000-8000-000000000721','00000000-0000-4000-8000-000000000101','finance.fee.manage',1700000000000,NULL,'Fixture sintético'),
@@ -221,3 +220,14 @@ SELECT id,user_id,'activities.registration.contact.read',1700000000000,NULL,'Fix
    UNION ALL SELECT '00000000-0000-4000-8000-000000000452','00000000-0000-4000-8000-000000000102'
    UNION ALL SELECT '00000000-0000-4000-8000-000000000453','00000000-0000-4000-8000-000000000103')
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='activities.registration.contact.read');
+
+-- FASE 3.5G.1A: fee submitter contact on demand (finance.fee.contact.read) for the synthetic
+-- general coordinator and treasurer. Conditional so older migration sets loading this seed still work.
+INSERT OR IGNORE INTO role_permission(role_code,permission_code)
+SELECT role_code,'finance.fee.contact.read' FROM (SELECT 'GROUP_COORDINATOR' AS role_code UNION ALL SELECT 'TREASURY')
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.contact.read');
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT id,user_id,'finance.fee.contact.read',1700000000000,NULL,'Fixture sintético' FROM
+  (SELECT '00000000-0000-4000-8000-000000000461' AS id,'00000000-0000-4000-8000-000000000101' AS user_id
+   UNION ALL SELECT '00000000-0000-4000-8000-000000000462','00000000-0000-4000-8000-000000000104')
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.fee.contact.read');

@@ -1,40 +1,38 @@
-export async function effectiveSections(db, userId, permission, now) {
-  const rows=await db.prepare(`SELECT ur.section_id FROM user_role ur
-    JOIN role_permission rp ON rp.role_code=ur.role_code AND rp.permission_code=?
+import { FINANCIAL_DELEGATIONS } from '../../permissions.js';
+
+// Effective scopes of a permission for a user (null = group-wide). Three sources:
+//  1. role ceiling + explicit individual grant (a role alone never authorises);
+//  2. ratified delegation of a non-financial permission, inside the ceiling of a current role;
+//  3. ratified, expiring delegation of a financial permission (TREASURY.md §25.3, 3.5G.1A): the
+//     delegation itself is the authority, limited to that capability and its section, with no role
+//     ceiling. An undated (legacy) financial delegation is never effective.
+const FINANCIAL=FINANCIAL_DELEGATIONS.map(code=>`'${code}'`).join(',');
+const ROLE_GRANT=`SELECT rp.permission_code AS permission,ur.section_id FROM user_role ur
+    JOIN role_permission rp ON rp.role_code=ur.role_code
     JOIN user_permission_grant up ON up.user_id=ur.user_id AND up.permission_code=rp.permission_code
-    WHERE ur.user_id=? AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)
-    AND up.revoked_at IS NULL AND up.valid_from<=? AND (up.expires_at IS NULL OR up.expires_at>?)
-    UNION ALL
-    SELECT dp.section_id FROM delegated_permission dp
+    WHERE ur.user_id=?1 AND ur.revoked_at IS NULL AND ur.valid_from<=?2 AND (ur.expires_at IS NULL OR ur.expires_at>?2)
+    AND up.revoked_at IS NULL AND up.valid_from<=?2 AND (up.expires_at IS NULL OR up.expires_at>?2)`;
+const CEILING_DELEGATION=`SELECT dp.permission_code AS permission,dp.section_id FROM delegated_permission dp
     JOIN user_role ur ON ur.user_id=dp.user_id
     JOIN role_permission rp ON rp.role_code=ur.role_code AND rp.permission_code=dp.permission_code
-    WHERE dp.user_id=? AND dp.permission_code=? AND dp.revoked_at IS NULL
-    AND dp.ratification_status='RATIFIED'
-    AND dp.granted_at<=? AND (dp.expires_at IS NULL OR dp.expires_at>?)
-    AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)
+    WHERE dp.user_id=?1 AND dp.permission_code NOT IN (${FINANCIAL}) AND dp.revoked_at IS NULL
+    AND dp.ratification_status='RATIFIED' AND dp.granted_at<=?2 AND (dp.expires_at IS NULL OR dp.expires_at>?2)
+    AND ur.revoked_at IS NULL AND ur.valid_from<=?2 AND (ur.expires_at IS NULL OR ur.expires_at>?2)
     AND ((dp.section_id IS NULL AND ur.section_id IS NULL) OR
-      (dp.section_id IS NOT NULL AND (ur.section_id IS NULL OR ur.section_id=dp.section_id)))`)
-    .bind(permission,userId,now,now,now,now,userId,permission,now,now,now,now).all();
+      (dp.section_id IS NOT NULL AND (ur.section_id IS NULL OR ur.section_id=dp.section_id)))`;
+const FINANCIAL_DELEGATION=`SELECT dp.permission_code AS permission,dp.section_id FROM delegated_permission dp
+    WHERE dp.user_id=?1 AND dp.permission_code IN (${FINANCIAL}) AND dp.revoked_at IS NULL
+    AND dp.ratification_status='RATIFIED' AND dp.granted_at<=?2 AND dp.expires_at IS NOT NULL AND dp.expires_at>?2`;
+const EFFECTIVE=`${ROLE_GRANT} UNION ALL ${CEILING_DELEGATION} UNION ALL ${FINANCIAL_DELEGATION}`;
+
+export async function effectiveSections(db, userId, permission, now) {
+  const rows=await db.prepare(`SELECT section_id FROM (${EFFECTIVE}) WHERE permission=?3`).bind(userId,now,permission).all();
   return rows.results.map(row=>row.section_id);
 }
 // Same effective-grant rules as effectiveSections, for every permission at once. Used only by
 // the capabilities projection; operation checks still call authorize() per request.
 export async function effectiveGrants(db, userId, now) {
-  const rows=await db.prepare(`SELECT rp.permission_code AS permission,ur.section_id FROM user_role ur
-    JOIN role_permission rp ON rp.role_code=ur.role_code
-    JOIN user_permission_grant up ON up.user_id=ur.user_id AND up.permission_code=rp.permission_code
-    WHERE ur.user_id=? AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)
-    AND up.revoked_at IS NULL AND up.valid_from<=? AND (up.expires_at IS NULL OR up.expires_at>?)
-    UNION ALL
-    SELECT dp.permission_code AS permission,dp.section_id FROM delegated_permission dp
-    JOIN user_role ur ON ur.user_id=dp.user_id
-    JOIN role_permission rp ON rp.role_code=ur.role_code AND rp.permission_code=dp.permission_code
-    WHERE dp.user_id=? AND dp.revoked_at IS NULL AND dp.ratification_status='RATIFIED'
-    AND dp.granted_at<=? AND (dp.expires_at IS NULL OR dp.expires_at>?)
-    AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)
-    AND ((dp.section_id IS NULL AND ur.section_id IS NULL) OR
-      (dp.section_id IS NOT NULL AND (ur.section_id IS NULL OR ur.section_id=dp.section_id)))`)
-    .bind(userId,now,now,now,now,userId,now,now,now,now).all();
+  const rows=await db.prepare(EFFECTIVE).bind(userId,now).all();
   /** @type {Map<string, Array<string|null>>} */
   const grants=new Map();
   for (const row of rows.results) {
