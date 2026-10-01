@@ -1,6 +1,6 @@
 import {fetchAllPages} from './api.js';
 import {attentionPhrase,basicFeeSummary,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
-  paymentAttention,registrationCountLabel,sectionLabel,summaryAttention,upcomingActivities} from './dashboard-model.js';
+  queueAttention,registrationCountLabel,sectionLabel,summaryAttention,upcomingActivities} from './dashboard-model.js';
 
 const $=id=>document.getElementById(id);
 const make=(tag,className,text)=>{const node=document.createElement(tag);if(className)node.className=className;if(text!=null)node.textContent=text;return node;};
@@ -11,17 +11,17 @@ const dateRange=activity=>{
 };
 const isUnavailable=error=>error?.status===403 || error?.status===404;
 
-export function setupDashboard({call,navigateTo,openActivity,openRegistrations,openPayments,openFeeIssues,createActivity,openIncompleteParticipants,openParticipantReviews}) {
+export function setupDashboard({call,navigateTo,openActivity,openRegistrations,openPayments,openRegistrationQueue=()=>openPayments('pendents'),openFeeIssues,createActivity,openIncompleteParticipants,openParticipantReviews}) {
   let generation=0;
   let identity=null;
-  let attention={registrations:[],payments:null,fees:null,participants:[]};
+  let attention={registrations:[],payments:[],fees:null,participants:[]};
   let errors=new Set();
   const reload=()=>{if(identity)void load(identity)};
   function sectionError(container,message){
     container.replaceChildren(make('p','dashboard-inline-error',message),button('Torna-ho a intentar',reload,'dashboard-retry'));
   }
   function renderAttention(){
-    const items=[...attention.registrations,attention.payments,attention.fees,...attention.participants].filter(Boolean);
+    const items=[...attention.registrations,...attention.payments,attention.fees,...attention.participants].filter(Boolean);
     const count=errors.size?null:items.reduce((sum,item)=>sum+item.count,0);
     $('dashboardPhrase').textContent=attentionPhrase(count);
     $('dashboardAttention').replaceChildren();
@@ -30,7 +30,9 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       const list=make('div','dashboard-attention-list');
       for(const item of items){
         const action=item.kind==='registrations'?()=>openRegistrations(item.activityId,true,item.activityName):
-          item.kind==='payments'?()=>openPayments(true):
+          item.kind==='payments'?()=>openPayments('pendents'):
+          item.kind==='payment-issues'?()=>openPayments('incidencies'):
+          item.kind==='registrations-global'?()=>openRegistrationQueue():
           item.kind==='incomplete'?()=>openIncompleteParticipants():
           item.kind==='reviews'||item.kind==='escalated'?()=>openParticipantReviews():()=>openFeeIssues();
         list.append(button(item.text+'  →',action,'dashboard-attention-item'));
@@ -143,9 +145,9 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
         text:`${data.escalated} ${data.escalated===1?'cas escalat':'casos escalats'}`});
     }catch(error){if(token===generation && !isUnavailable(error))errors.add('reviews');}
   }
-  async function loadPayments(token){
-    try{const payments=(await fetchAllPages(call,'/api/payments','payments')).payments;
-      if(token===generation)attention.payments=paymentAttention(payments);
+  async function loadQueueSummary(token,caps){
+    try{const summary=await call('/api/registrations/queue/summary');
+      if(token===generation)attention.payments=queueAttention(summary,{globalReviewer:!!caps.activities.reviewRegistrations?.all});
     }catch(error){if(token===generation && !isUnavailable(error))errors.add('payments');}
   }
   async function loadFees(token,caps){
@@ -178,7 +180,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
   }
   async function load(me){
     identity=me;const token=++generation;
-    attention={registrations:[],payments:null,fees:null,participants:[]};errors=new Set();
+    attention={registrations:[],payments:[],fees:null,participants:[]};errors=new Set();
     const caps=me.capabilities;
     const activityAccess=!!(caps.activities.read || caps.activities.manage || caps.activities.manageGeneral);
     $('dashboard').hidden=false;
@@ -195,7 +197,7 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     $('dashboardAttention').replaceChildren(make('div','dashboard-skeleton dashboard-skeleton-attention'));
     $('dashboardActivities').replaceChildren(make('div','dashboard-skeleton dashboard-skeleton-activity'));
     await Promise.allSettled([activityAccess?loadActivities(token):null,
-      caps.activities.verifyPayments?loadPayments(token):null,loadFees(token,caps),
+      caps.activities.verifyPayments||caps.activities.reviewRegistrations?.all?loadQueueSummary(token,caps):null,loadFees(token,caps),
       loadParticipantFollowUp(token,caps),loadParticipantReviews(token,caps)]);
     if(token===generation)renderAttention();
   }

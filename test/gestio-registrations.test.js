@@ -344,3 +344,19 @@ test('linked participant only with profile access; confirmed list without contac
     assert.equal((await call(102, `/api/activities/${FREE_TROPA}/registrations?estat=x`)).status, 400);
   } finally { f.close(); }
 });
+
+test('capabilities: registrations block for the queue, without probing or widening', async () => {
+  const { f, call } = await setup();
+  try {
+    const me = async user => (await call(user, '/api/me')).data.capabilities.registrations;
+    const treasury = await me(104);
+    assert.deepEqual([treasury.review, treasury.reviewGlobal, treasury.readContacts, treasury.verifyPayments], [null, false, null, { all: true, sections: [] }]);
+    const tropa = await me(102);
+    assert.deepEqual([tropa.review.all, tropa.review.sections.map(s => s.code), tropa.readContacts.sections.map(s => s.code), tropa.verifyPayments],
+      [false, ['TROPA'], ['TROPA'], null]);
+    assert.equal((await me(101)).reviewGlobal, true);
+    const none = await me(106);
+    assert.deepEqual([none.review, none.verifyPayments], [null, null], 'no Inscripcions navigation for the retired role');
+    assert.equal(f.sql.prepare("SELECT count(*) AS n FROM audit_event WHERE action='AUTHZ_DENY'").get().n, 0, '/api/me never provokes denials');
+  } finally { f.close(); }
+});

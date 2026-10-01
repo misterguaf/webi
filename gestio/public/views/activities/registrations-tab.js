@@ -270,7 +270,7 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     if (partial) nodes.push(h('p', { className: 'scope-note', text: `Veus les inscripcions de ${partial}.` }));
     if (!rows.length) nodes.push(h('p', { className: 'empty-title', text: 'Encara no hi ha inscripcions confirmades.' }));
     for (const group of groupConfirmed(rows, sections()))
-      nodes.push(h('section', { className: 'confirmed-group' }, h('h4', { className: 'confirmed-section', text: `${group.label} · ${group.rows.length}` }),
+      nodes.push(h('div', { className: 'confirmed-group' }, h('h4', { className: 'confirmed-section', text: `${group.label} · ${group.rows.length}` }),
         h('ul', { className: 'confirmed-list', attrs: { role: 'list' } }, group.rows.map(row => h('li', { className: 'confirmed-row' },
           row.participant ? h('a', { text: row.name, attrs: { href: `#/participants/${row.participant.id}` } }) : h('span', { text: row.name }),
           row.transport_code ? h('span', { className: 'confirmed-meta', text: row.transport_code === 'GROUP' ? 'Transport del grup' : 'Transport de la família' }) : null)))));

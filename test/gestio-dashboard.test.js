@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {test} from 'node:test';
-import {attentionPhrase,basicFeeSummary,financialSummary,greeting,paymentAttention,registrationCountLabel,sectionLabel,summaryAttention,
+import {attentionPhrase,basicFeeSummary,financialSummary,greeting,queueAttention,registrationCountLabel,sectionLabel,summaryAttention,
   upcomingActivities} from '../gestio/public/dashboard-model.js';
 import {setupDashboard} from '../gestio/public/dashboard.js';
 
@@ -40,7 +40,7 @@ function harness(responses){
     if(result===undefined)throw forbidden();return result;
   },navigateTo:id=>navigation.push(id),openActivity:id=>opened.push(['activity',id]),
   openRegistrations:(id,filtered,name)=>opened.push(['registrations',id,filtered,name]),
-  openPayments:()=>opened.push(['payments']),openFeeIssues:()=>opened.push(['fees']),
+  openPayments:view=>opened.push(['payments',view]),openRegistrationQueue:()=>opened.push(['queue']),openFeeIssues:()=>opened.push(['fees']),
   createActivity:()=>opened.push(['create']),
   openIncompleteParticipants:()=>opened.push(['incomplete']),openParticipantReviews:()=>opened.push(['reviews'])});
   return {app,node:id=>nodes.get(id),opened,navigation,calls,restore:()=>{globalThis.document=original}};
@@ -65,7 +65,11 @@ test('dashboard model uses real states, human copy and useful upcoming activitie
   assert.equal(summaryAttention(rows[2]),null,'no summary, no attention');
   assert.equal(registrationCountLabel(summary(12,0,{scope:'PARTIAL',sections:['TROPA']})),'12 inscripcions de Tropa');
   assert.equal(registrationCountLabel(null),null);
-  assert.equal(paymentAttention([{review_status:'VERIFIED'}]),null);
+  assert.deepEqual(queueAttention({payments:{pending:0,issues:0},registrations:null}),[]);
+  assert.deepEqual(queueAttention({payments:{pending:2,issues:1},registrations:{pending:0,escalated:3,actionable:0}}).map(i=>[i.kind,i.text]),
+    [['payments','2 pagaments per revisar'],['payment-issues','1 incidència de pagament']],'escalations are not an item for section reviewers');
+  assert.deepEqual(queueAttention({payments:null,registrations:{pending:0,escalated:1}},{globalReviewer:true}).map(i=>i.text),['1 inscripció en revisió global']);
+  assert.deepEqual(summaryAttention({...rows[2],registrations:summary(2,2,{escalated:1,actionable:1})}).count,1,'only actionable registrations');
   assert.doesNotMatch(summaryAttention({...rows[2],registrations:summary(1,1)}).text,/PENDING_REVIEW|TROPA|[0-9a-f]{8}-/);
 });
 
@@ -119,7 +123,7 @@ test('dashboard shows creation from capabilities, independent fee metric and loc
   const general={...activity('general','Jornada Demo'),audience:'GENERAL',sections:''};
   const metrics={collectedPercent:82,statusCounts:{PAID:32,PARTIAL:5},issueCount:3};
   const h=harness({'/api/activities':{activities:[general]},
-    '/api/activities/general':{activity:general},'/api/payments':failure(),
+    '/api/activities/general':{activity:general},'/api/registrations/queue/summary':failure(),
     '/api/fees/rounds':{rounds:[{id:'round',code:'demo'}]},
     '/api/fees/rounds/round/metrics':{metrics},'/api/fees/rounds/round/issues':{issues:[]}});
   try{
@@ -137,7 +141,7 @@ test('dashboard shows creation from capabilities, independent fee metric and loc
 
 test('dashboard reaches Tot al dia for a genuinely empty successful review state',async()=>{
   const me=as(caps({activities:{read:TROPA,reviewRegistrations:TROPA,verifyPayments:TROPA}}));
-  const h=harness({'/api/activities':{activities:[]},'/api/payments':{payments:[]}});
+  const h=harness({'/api/activities':{activities:[]},'/api/registrations/queue/summary':{registrations:{pending:0,escalated:0,actionable:0},payments:{pending:0,issues:0},badge:0}});
   try{
     await h.app.load(me);
     assert.equal(h.node('dashboardAttentionTitle').textContent,'Tot al dia');
@@ -212,5 +216,20 @@ test('dashboard follow-up requests nothing without the manage or review capabili
     await h.app.load(as(caps({activities:{read:{all:true,sections:[]}}})));
     assert.ok(!h.calls.includes('/api/participants/follow-up'));
     assert.ok(!h.calls.includes('/api/participant-reviews/summary'));
+  }finally{h.restore()}
+});
+
+test('payments and incidences open the Inscripcions queue; escalations only for global reviewers (3.5F)',async()=>{
+  const me=as(caps({activities:{read:ALL,reviewRegistrations:ALL,verifyPayments:ALL}}));
+  const h=harness({'/api/activities':{activities:[]},
+    '/api/registrations/queue/summary':{registrations:{pending:0,escalated:2,actionable:2},payments:{pending:1,issues:1},badge:4}});
+  try{
+    await h.app.load(me);
+    const items=h.node('dashboardAttention').children[0].children;
+    assert.deepEqual(items.map(item=>item.textContent.replace(/\s+→$/,'')),
+      ['1 pagament per revisar','1 incidència de pagament','2 inscripcions en revisió global']);
+    for(const item of items)await item.click();
+    assert.deepEqual(h.opened,[['payments','pendents'],['payments','incidencies'],['queue']]);
+    assert.ok(!h.calls.includes('/api/payments'),'counts come from the summary, not from downloading payments');
   }finally{h.restore()}
 });

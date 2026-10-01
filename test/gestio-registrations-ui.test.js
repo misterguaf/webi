@@ -61,3 +61,27 @@ test('confirmed list grouped by section with transport totals', () => {
   assert.deepEqual(model.groupConfirmed(rows, S).map(g => [g.label, g.rows.map(r => r.name)]), [['Tropa', ['Ana', 'Bru']], ['Escolta', ['Zoe']]]);
   assert.deepEqual(model.transportTotals(rows), { group: 2, family: 1 });
 });
+
+test('queue: views, count lines, partial note, previous activities and the tab filter it opens', () => {
+  assert.equal(model.parseQueueView({ vista: 'incidencies' }), 'incidencies');
+  assert.equal(model.parseQueueView({ vista: 'x' }), 'pendents');
+  const a = { counts: { actionable: 2, escalated: 1, confirmed: 3, rejected: 0, withdrawn: 1, total: 7 }, scope: 'PARTIAL', sections: ['TROPA'] };
+  assert.equal(model.queueCountLine(a, 'pendents', false), '2 pendents de vincular · 1 en revisió global');
+  assert.equal(model.queueCountLine(a, 'pendents', true), '2 pendents de vincular');
+  assert.equal(model.queueCountLine(a, 'totes', false), '3 pendents · 3 confirmades · 1 retirades');
+  assert.equal(model.scopeNote(a), 'vista parcial (Tropa)');
+  assert.equal(model.scopeNote({ scope: 'ALL' }), null);
+  assert.deepEqual(model.splitPrevious([{ id: 1, previous: true }, { id: 2, previous: false }]), { current: [{ id: 2, previous: false }], previous: [{ id: 1, previous: true }] });
+  assert.equal(model.tabFilterFor('pendents'), 'per-revisar');
+  assert.equal(model.tabFilterFor('totes'), 'totes');
+  assert.equal(model.evidenceKind('application/pdf'), 'pdf');
+  assert.equal(model.evidenceKind('image/webp'), 'image');
+  assert.equal(model.evidenceKind('application/octet-stream'), null);
+});
+
+test('payment actions: incidence only from pending (never on a withdrawn registration); verified has none', () => {
+  assert.deepEqual(model.paymentActions({ paymentState: 'PENDING_REVIEW', registrationState: 'AWAITING_PAYMENT_REVIEW' }), ['verify', 'issue']);
+  assert.deepEqual(model.paymentActions({ paymentState: 'ISSUE', registrationState: 'AWAITING_PAYMENT_REVIEW' }), ['verify']);
+  assert.deepEqual(model.paymentActions({ paymentState: 'PENDING_REVIEW', registrationState: 'WITHDRAWN' }), ['verify']);
+  assert.deepEqual(model.paymentActions({ paymentState: 'VERIFIED', registrationState: 'CONFIRMED' }), []);
+});

@@ -188,6 +188,21 @@ export function setPageHeader({hidden=false,title=null,subtitle=null}={}){
   $('pageSubtitle').hidden=!subtitle;$('pageSubtitle').textContent=subtitle||'';
 }
 const navigationListeners=new Set();
+// Navigation attention badge (SHELL §8.2): a number only when there is something to act on; 0 hides it.
+export function setNavBadge(page,count){
+  for(const button of document.querySelectorAll(`[data-route="${page}"]`)){
+    let badge=button.querySelector('.nav-badge');
+    const label=pages.find(item=>item.id===page)?.label??page;
+    if(!count){badge?.remove();button.setAttribute('aria-label',label);continue;}
+    if(!badge){badge=document.createElement('span');badge.className='nav-badge';badge.setAttribute('aria-hidden','true');button.append(badge);}
+    badge.textContent=count>99?'99+':String(count);
+    button.setAttribute('aria-label',`${label}, ${count} ${count===1?'pendent':'pendents'}`);
+  }
+}
+// Pages whose module the session cannot use are not offered in the navigation.
+export function setNavAvailable(page,available){
+  for(const button of document.querySelectorAll(`[data-route="${page}"]`))button.hidden=!available;
+}
 export function onNavigate(listener){navigationListeners.add(listener);return ()=>navigationListeners.delete(listener)}
 export function setShellSession(me){
   sessionActive=!!me;
@@ -211,7 +226,7 @@ $('brandLink').addEventListener('click',event=>{event.preventDefault();navigateT
 export function currentRouteOf(){return currentRoute}
 $('openFeeIssues').addEventListener('click',()=>{if($('feePanel').hidden)return;navigateTo('quotes');$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
 
-const emptyGroups={activitats:['activitiesView'],inscripcions:['paymentPanel'],quotes:['feePanel','feeStatusPanel'],participants:['participantsView']};
+const emptyGroups={activitats:['activitiesView'],inscripcions:['registrationsView'],quotes:['feePanel','feeStatusPanel'],participants:['participantsView']};
 function syncEmptyStates(){
   for(const [page,ids] of Object.entries(emptyGroups)){
     const empty=document.querySelector(`[data-shell-empty-for="${page}"]`);

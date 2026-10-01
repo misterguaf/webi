@@ -109,4 +109,11 @@ export const scopeNote = activity => activity.scope === 'PARTIAL'
 export const splitPrevious = activities => ({ current: activities.filter(a => !a.previous), previous: activities.filter(a => a.previous) });
 /** Filter for the activity tab opened from the queue. */
 export const tabFilterFor = view => view === 'pendents' ? 'per-revisar' : 'totes';
+/** Payment actions a verifier may see (§14.2); the evidence trigger enforces the same transitions. */
+export function paymentActions(payment) {
+  const actions = [];
+  if (['PENDING_REVIEW', 'ISSUE'].includes(payment.paymentState)) actions.push('verify');
+  if (payment.paymentState === 'PENDING_REVIEW' && payment.registrationState !== 'WITHDRAWN') actions.push('issue');
+  return actions;
+}
 export const evidenceKind = mime => mime === 'application/pdf' ? 'pdf' : mime?.startsWith('image/') ? 'image' : null;

@@ -241,3 +241,7 @@ body{background-color:var(--bg-primary);background-image:var(--canvas-atmosphere
 
 /* Icon sprite container (moved from an inline style so the CSP needs no 'unsafe-inline'). */
 .svg-sprite{position:absolute;width:0;height:0;overflow:hidden}
+/* 3.5F navigation attention badge (SHELL §8.2): a number only, never decorative. */
+.nav-badge{margin-left:auto;min-width:20px;height:20px;padding:0 6px;border-radius:999px;display:inline-grid;place-items:center;font-size:11px;font-weight:650;font-variant-numeric:tabular-nums;background:var(--iris-soft);color:var(--iris-strong)}
+.sidebar-collapsed .nav-link .nav-badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;padding:0 4px;font-size:10px}
+.more-link .nav-badge{margin-left:var(--space-2)}

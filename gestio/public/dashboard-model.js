@@ -30,8 +30,9 @@ export function upcomingActivities(activities,now=Date.now()) {
 }
 
 // 3.5D: attention from the server's scoped registration summary on each activity row (no per-activity requests).
+// 3.5F: `actionable` excludes rows escalated to global review that this reviewer cannot work.
 export function summaryAttention(activity) {
-  const count=activity.registrations?.needsReview||0;
+  const count=activity.registrations?.actionable??activity.registrations?.needsReview??0;
   return count?{kind:'registrations',count,activityId:activity.id,activityName:activity.name,
     text:`${count} ${count===1?'inscripció':'inscripcions'} per revisar · ${activity.name}`}:null;
 }
@@ -44,9 +45,17 @@ export function registrationCountLabel(summary) {
   return sections.length?`${base} de ${sections.join(' i ')}`:base;
 }
 
-export function paymentAttention(payments) {
-  const count=payments.filter(row=>['PENDING_REVIEW','ISSUE'].includes(row.review_status)).length;
-  return count?{kind:'payments',count,text:`${count} ${count===1?'pagament':'pagaments'} per revisar`}:null;
+// 3.5F: from GET /api/registrations/queue/summary (numbers only). Payments and incidences open the
+// Inscripcions queue (temporary payment surface until 3.5G); escalated registrations are a global item
+// only for global reviewers.
+export function queueAttention(summary,{globalReviewer=false}={}) {
+  const items=[];
+  const pending=summary?.payments?.pending||0,issues=summary?.payments?.issues||0,escalated=summary?.registrations?.escalated||0;
+  if(pending)items.push({kind:'payments',count:pending,text:`${pending} ${pending===1?'pagament':'pagaments'} per revisar`});
+  if(issues)items.push({kind:'payment-issues',count:issues,text:`${issues} ${issues===1?'incidència':'incidències'} de pagament`});
+  if(globalReviewer && escalated)items.push({kind:'registrations-global',count:escalated,
+    text:`${escalated} ${escalated===1?'inscripció':'inscripcions'} en revisió global`});
+  return items;
 }
 
 export function feeIssueAttention(issues) {

@@ -90,16 +90,10 @@ test('shell guards unavailable controls, session expiry and invalid payment revi
     await node('retryShellData').listeners.get('click')();
     assert.equal(globalThis.document.body.classList.contains('shell-authenticated'),false,'expired session during refresh must leave the shell signed out');
     assert.equal(node('notificationPanel').hidden,true,'refresh must not reveal administration after a 401');
-    fixture='ui';
-    const visiblePaymentActions=()=>node('paymentList').children[0].children.filter(child=>child.listeners.has('click')).map(child=>child.textContent);
-    await node('reloadPayments').listeners.get('click')();
-    assert.deepEqual(visiblePaymentActions(),['Verifica'],'ISSUE cannot be marked as ISSUE again');
-    paymentStatus='PENDING_REVIEW';
-    await node('reloadPayments').listeners.get('click')();
-    assert.deepEqual(visiblePaymentActions(),['Verifica','Incidència']);
-    paymentStatus='VERIFIED';
-    await node('reloadPayments').listeners.get('click')();
-    assert.deepEqual(visiblePaymentActions(),[],'VERIFIED has no valid review transition');
+    // 3.5F: the legacy payment list is gone; payment actions are derived by paymentActions()
+    // (test/gestio-registrations-ui.test.js) and enforced by the server.
+    assert.equal(nodes.has('paymentList'),false,'no legacy payment list is rendered');
+    void fixture; void paymentStatus;
   } finally {
     for(const [key,value] of Object.entries(original)){
       if(value===undefined)delete globalThis[key];else globalThis[key]=value;

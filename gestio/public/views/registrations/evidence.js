@@ -2,7 +2,7 @@
 // preview inside Gestió (image or PDF, same-origin), named download as fallback, verification with
 // confirmation. Nothing is preloaded: each preview or download is one explicit, audited request.
 import { confirmDialog, h, toast, trapTab } from '../../ui.js';
-import { evidenceKind, paymentStateLabel } from './model.js';
+import { evidenceKind, paymentActions, paymentStateLabel } from './model.js';
 
 const formatMoney = cents => new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
 const url = (id, mode) => `/api/payments/${id}/evidence?mode=${mode}`;
@@ -51,7 +51,8 @@ export function evidenceBlock({ call, payment, onChanged }) {
   } else nodes.push(h('span', { className: 'evidence-state', text: 'Justificant eliminat per la política de conservació' }));
   nodes.push(h('span', { className: 'review-spacer' }));
   const status = h('p', { className: 'field-error evidence-error', attrs: { hidden: true, role: 'alert' } });
-  if (['PENDING_REVIEW', 'ISSUE'].includes(payment.paymentState)) {
+  const actions = paymentActions(payment);
+  if (actions.includes('verify')) {
     const verify = h('button', { className: 'btn btn-secondary btn-small', text: 'Verifica', attrs: { type: 'button' } });
     verify.addEventListener('click', async () => {
       if (!await confirmDialog({ title: 'Verificar el pagament?', body: `Confirmes que el pagament de ${formatMoney(payment.amountCents)} s’ha rebut al banc?`,
@@ -60,7 +61,7 @@ export function evidenceBlock({ call, payment, onChanged }) {
     });
     nodes.push(verify);
   }
-  if (payment.paymentState === 'PENDING_REVIEW' && payment.registrationState !== 'WITHDRAWN') {
+  if (actions.includes('issue')) {
     const issue = h('button', { className: 'btn btn-quiet btn-small', text: 'Marca incidència', attrs: { type: 'button' } });
     issue.addEventListener('click', async () => {
       if (!await confirmDialog({ title: 'Marcar una incidència?', body: 'La família rebrà un avís que hi ha un problema amb el justificant.', confirm: 'Marca incidència', tone: 'strong' })) return;

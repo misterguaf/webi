@@ -2,7 +2,7 @@
 // Screens live in views/*; this file must not grow new screen logic.
 import { createClient } from './http.js';
 import { setupDashboard } from './dashboard.js';
-import { navigateTo, onNavigate, routes, setContextAction, setPageHeader, setShellSession } from './shell.js';
+import { navigateTo, onNavigate, routes, setContextAction, setNavAvailable, setNavBadge, setPageHeader, setShellSession } from './shell.js';
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
@@ -19,14 +19,16 @@ const { call, post } = createClient({ onUnauthorized: () => {
 const reportLoadError = error => { if (error?.status !== 401 && error?.status !== 403 && error?.status !== 404) $('shellLoadError').hidden = false; };
 let currentMe = null;
 
-const registrations = createRegistrationsView({ call, message, reportLoadError });
+const registrations = createRegistrationsView({ call, reportLoadError, routes, setPageHeader, setNavBadge });
 const activities = createActivitiesView({ call, message, reportLoadError, routes, setPageHeader, setContextAction });
 // Dashboard entry points land on the activity detail (3.5D), never on a form.
 const dashboard = setupDashboard({ call, navigateTo,
   openActivity: id => activities.openActivity(id),
   openRegistrations: id => activities.openActivity(id, { tab: 'inscripcions', query: { filtre: 'per-revisar' } }),
   createActivity: () => { navigateTo('activitats'); activities.openCreate(); },
-  openPayments: async () => { navigateTo('inscripcions'); await registrations.loadPayments(); $('paymentPanel').scrollIntoView({ block: 'start', behavior: 'instant' }); },
+  // 3.5F: payments and incidences live in the Inscripcions queue until 3.5G Tresoreria.
+  openPayments: view => routes.go({ page: 'inscripcions', query: view && view !== 'pendents' ? { vista: view } : {} }),
+  openRegistrationQueue: () => routes.go({ page: 'inscripcions' }),
   openFeeIssues: () => { navigateTo('quotes'); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); },
   openIncompleteParticipants: () => routes.go({ page: 'participants', query: { completitud: 'pendents' } }),
   openParticipantReviews: () => routes.go({ page: 'participants', path: ['revisions'] })
@@ -53,6 +55,7 @@ async function refresh() {
   let me;
   try { me = await call('/api/me'); } catch (error) { hide(); reportLoadError(error); return; }
   $('login').hidden = true; $('logout').hidden = false; currentMe = me; setShellSession(me);
+  setNavAvailable('inscripcions', !!(me.capabilities.registrations?.review || me.capabilities.registrations?.verifyPayments));
   // Modules are requested only when /api/me says they are usable (no AUTHZ_DENY noise).
   await views.loadAll(me);
 }
