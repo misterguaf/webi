@@ -716,6 +716,13 @@ export async function resolveFeeIssue(db,context,requestId,id,now=Date.now()) {
       {sectionId:obligation.current_section_id,resourceType:'annual_fee_obligation',resourceId:obligation.id});
   } else if (!row.payment_id) await globalPermission(db,context,requestId,'finance.fee.manage','annual_fee_issue',id);
   if (row.status!=='OPEN') throw new AppError(409,'invalid_transition');
+  // ALLOCATION_UNCLEAR means verified money not yet assigned: it is resolved by assigning that balance
+  // (allocation revision), never by closing the issue while euros remain unassigned. The 0008 trigger
+  // enforces the same rule in the database; this check answers before any write.
+  if (row.code==='ALLOCATION_UNCLEAR' && row.payment_id && !row.obligation_id) {
+    const balance=await db.prepare('SELECT unallocated_cents FROM annual_fee_payment_balance WHERE id=?').bind(row.payment_id).first();
+    if ((balance?.unallocated_cents??0)>0) throw new AppError(409,'unallocated_fee_balance');
+  }
   try { await db.batch([
     db.prepare(`UPDATE annual_fee_issue SET status=CASE WHEN status='OPEN' THEN 'RESOLVED' ELSE NULL END,
       resolved_by=?,resolved_at=? WHERE id=?`)
@@ -801,9 +808,13 @@ export async function listFeeIssues(db,context,requestId,roundId,params=null) {
   await globalPermission(db,context,requestId,'finance.fee.read','annual_fee_issue');
   await roundById(db,roundId);
   const page=pageRequest(params,['number','string']);
-  const rows=(await db.prepare(`SELECT id,payment_id,obligation_id,code,status,created_at,resolved_at
-    FROM annual_fee_issue WHERE round_id=? ${page.after?'AND (created_at<? OR (created_at=? AND id<?))':''}
-    ORDER BY created_at DESC,id DESC LIMIT ?`)
+  // A payment-level ALLOCATION_UNCLEAR carries the verified amount still unassigned, so the screen can
+  // send the user to the allocation instead of offering a resolution the server will refuse.
+  const rows=(await db.prepare(`SELECT i.id,i.payment_id,i.obligation_id,i.code,i.status,i.created_at,i.resolved_at,
+    CASE WHEN i.code='ALLOCATION_UNCLEAR' AND i.obligation_id IS NULL THEN
+      (SELECT b.unallocated_cents FROM annual_fee_payment_balance b WHERE b.id=i.payment_id) END AS unallocated_cents
+    FROM annual_fee_issue i WHERE i.round_id=? ${page.after?'AND (i.created_at<? OR (i.created_at=? AND i.id<?))':''}
+    ORDER BY i.created_at DESC,i.id DESC LIMIT ?`)
     .bind(roundId,...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
   const result=pageResult(rows,page.limit,row=>[row.created_at,row.id]);
   return {issues:result.items,nextCursor:result.nextCursor};

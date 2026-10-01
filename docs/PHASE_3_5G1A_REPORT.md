@@ -66,6 +66,17 @@ capacidades no concedidas, caducada, revocada, sin fecha, autorizador sin capaci
 regresión de matriz y `/api/me`; migración 0022 sobre datos previos. Ajustados: recuperación (esquema 22)
 y 3B (el detalle ya no expone la fecha declarada).
 
+## Corrección: «Resol» en ALLOCATION_UNCLEAR
+
+`ALLOCATION_UNCLEAR` (importe verificado sin asignar) solo se cierra cuando el saldo sin asignar es 0: el
+trigger de 0008 lo impone y el servidor responde 409 `unallocated_fee_balance`. La pantalla ofrecía
+«Resol» igualmente; el rechazo aparecía solo como código en la línea de estado y la incidencia seguía
+igual. Ahora el servicio comprueba el saldo antes de escribir, el listado de incidencias incluye
+`unallocated_cents` y, mientras quede saldo, la pantalla muestra el importe y «Revisa el pagament» (abre
+el pago para corregir sus asignaciones) en lugar de «Resol». Con el saldo asignado, «Resol» funciona y
+se audita. Un exceso que no cabe en ninguna obligación sigue sin poder cerrarse: es el sobrepago que
+3.5G.3 tratará aparte. Tests: `test/gestio-fee-allocation-unclear.test.js` (3).
+
 ## Deuda restante
 
 - Retención de justificantes y de datos bancarios: LEGAL DECISION REQUIRED.

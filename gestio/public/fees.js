@@ -144,8 +144,13 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
   }
   async function loadIssues() {
     try {const rows=(await fetchAllPages(call,roundPath()+'/issues','issues')).issues;
+      // ALLOCATION_UNCLEAR with verified euros still unassigned cannot be resolved (the server refuses):
+      // the action is to correct the payment's allocations; once nothing is left, it can be resolved.
+      const pending=row=>row.code==='ALLOCATION_UNCLEAR' && row.unallocated_cents>0;
       $('feeIssues').replaceChildren(...rows.map(row=>item(`${row.code} · ${row.status} · ${row.payment_id||row.obligation_id} `,
-        ...(row.status==='OPEN'?[button('Resol',()=>act(()=>send(`/api/fees/issues/${row.id}/resolve`,'POST',{})))]:[]))));
+        ...(row.status!=='OPEN'?[]:pending(row)?[`· ${euros(row.unallocated_cents)} verificats sense assignar: assigna'ls abans de resoldre. `,
+          button('Revisa el pagament',()=>showPayment(row.payment_id))]
+          :[button('Resol',()=>act(()=>send(`/api/fees/issues/${row.id}/resolve`,'POST',{})))]))));
     }catch{$('feeIssues').textContent='Incidències no disponibles amb este permís.';}
   }
   $('feeRound').addEventListener('change',()=>{selected=$('feeRound').value;load().catch(error=>message(error.message));});
