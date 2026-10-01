@@ -33,8 +33,8 @@ export function assertLocalConfig(config, nodeEnv = process.env) {
 export function localD1Args(commandArgs) {
   return ['d1', ...commandArgs, database, '--local', '--persist-to', state, '--config', resolve(root, 'wrangler.toml')];
 }
-export function localR2Args(key, file) {
-  return ['r2', 'object', 'put', `${bucket}/${key}`, '--file', file, '--content-type', 'application/pdf',
+export function localR2Args(key, file, contentType = 'application/pdf') {
+  return ['r2', 'object', 'put', `${bucket}/${key}`, '--file', file, '--content-type', contentType,
     '--local', '--persist-to', state, '--config', resolve(root, 'wrangler.toml')];
 }
 function assertStatePath() {
@@ -100,9 +100,12 @@ function seed() {
   try {
     const pdf = resolve(temporary, 'synthetic-evidence.pdf');
     const sql = resolve(temporary, 'demo.sql');
+    const png = resolve(temporary, 'synthetic-evidence.png');
     writeFileSync(pdf, demo.pdf);
+    writeFileSync(png, demo.png);
     writeFileSync(sql, demo.sql);
     for (const key of demo.evidenceKeys) run(localR2Args(key, pdf), { capture: true });
+    for (const key of demo.imageKeys) run(localR2Args(key, png, 'image/png'), { capture: true });
     run(localD1Args(['execute', '--file', sql, '--yes']), { capture: true });
     verify(demo.expected);
     console.log(`Demo ready: ${demo.expected.participants} participants, ${demo.expected.activities} activities, ${demo.expected.obligations} annual fee obligations.`);

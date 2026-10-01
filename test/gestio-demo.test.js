@@ -42,6 +42,9 @@ test('demo commands are pinned to the local development D1/R2 and reject remote 
 test('synthetic fixture fits the migrated SQLite constraints and exercises fee states', () => {
   const demo = buildDemoData();
   assert.equal(demo.evidenceKeys.length, 36);
+  assert.equal(demo.imageKeys.length, 1, '3.5F: one PNG receipt');
+  assert.deepEqual([...demo.png.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.match(demo.png.subarray(0, 1024).toString('latin1'), /synthetic/);
   assert.match(demo.pdf.toString('utf8'), /SYNTHETIC DEMO/);
   assert.doesNotMatch(demo.sql, /@[a-z0-9.-]+\.(?:com|es|org)\b/i);
   const emails=[...demo.sql.matchAll(/[a-z0-9._-]+@[a-z0-9.-]+/gi)].map(match=>match[0]);
@@ -72,7 +75,7 @@ test('synthetic fixture fits the migrated SQLite constraints and exercises fee s
   assert.deepEqual(data.shared, [[2]]);
   assert.deepEqual(data.installments, [[3]]);
   assert.deepEqual(data.residual, [[1]]);
-  assert.deepEqual(data.registrations, [[38]]);
+  assert.deepEqual(data.registrations, [[43]]);
 });
 
 // 3.5D (ACTIVITIES.md §21): D1–D12 hold whenever the demo is rebuilt, because dates are relative to seeding.
@@ -115,6 +118,20 @@ test('demo activity scenarios are relative to the seed time and cover D1–D12',
         .all(activity('DEMO-CLAN-PAID').id).map(row => [row.code, row.c]);
       assert.deepEqual(transport, [['FAMILY', 0], ['GROUP', 300]], 'D10 family transport costs 0 €');
       assert.equal(one('SELECT count(*) n FROM activity_section WHERE activity_id=?', activity('DEMO-MIXED-OPEN').id).n, 2, 'D11 mixed');
+      // 3.5F Inscripcions scenarios (REGISTRATIONS.md).
+      assert.ok(one("SELECT count(*) n FROM activity_registration WHERE status='WITHDRAWN' AND participant_id IS NULL").n >= 1, 'withdrawn pending request');
+      assert.ok(one(`SELECT count(*) n FROM activity_registration r JOIN payment_evidence e ON e.registration_id=r.id
+        WHERE r.status='WITHDRAWN' AND e.review_status='VERIFIED'`).n >= 1, 'withdrawn with a verified payment');
+      assert.ok(one(`SELECT count(*) n FROM (SELECT participant_id FROM activity_registration WHERE participant_id IS NOT NULL
+        GROUP BY activity_id,participant_id HAVING sum(status='WITHDRAWN')>=1 AND sum(status='CONFIRMED')>=1)`).n >= 1, 'new registration after a withdrawal');
+      assert.deepEqual(sql.prepare("SELECT escalation_reason r FROM activity_registration WHERE review_level='GLOBAL' ORDER BY 1").all().map(row => row.r),
+        ['POSSIBLE_OTHER_SECTION', 'REVIEWER_REQUEST'], 'automatic and manual escalation');
+      assert.equal(one('SELECT count(*) n FROM activity_registration WHERE registration_section_id IS NOT submitted_section_id').n,
+        one('SELECT count(*) n FROM activity_registration_section_change').n, 'every corrected section has its history');
+      assert.ok(one("SELECT count(*) n FROM activity_registration WHERE match_status='RESOLVED' AND reviewed_by IS NOT NULL").n >= 1, 'manual link');
+      assert.ok(one("SELECT count(*) n FROM payment_evidence WHERE detected_mime='image/png'").n >= 1, 'image evidence');
+      assert.ok(one("SELECT count(*) n FROM payment_evidence WHERE detected_mime='application/pdf'").n >= 1, 'PDF evidence');
+      assert.equal(one("SELECT count(*) n FROM activity_registration WHERE submitted_birth_date IS NOT NULL AND status!='NEEDS_PARTICIPANT_REVIEW'").n, 0);
       assert.deepEqual(sql.prepare('PRAGMA foreign_key_check').all(), []);
       assert.ok(sql.prepare('SELECT created_at FROM activity_registration').all().every(row => row.created_at < now), 'registrations precede the seed');
     } finally { sql.close(); }

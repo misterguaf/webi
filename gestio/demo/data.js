@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { deflateSync } from 'node:zlib';
 
 // Fixed, obviously fictional fixtures; existing canonical seed records are synthetic too.
 const id = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
@@ -10,6 +11,21 @@ const at = (month, day) => Date.UTC(2026, month - 1, day, 12);
 const createdAt = at(9, 1);
 const sqlValue = value => value === null ? 'NULL' : typeof value === 'number' ? String(value) : `'${String(value).replaceAll("'", "''")}'`;
 const insert = (table, columns, rows) => rows.length ? `INSERT INTO ${table}(${columns.join(',')}) VALUES\n${rows.map(row => `  (${row.map(sqlValue).join(',')})`).join(',\n')};\n` : '';
+
+// A small, valid PNG receipt (3.5F image evidence) with the synthetic marker in a tEXt chunk inside the
+// first KiB, as the SYNTHETIC_ONLY evidence fence requires. No external tools.
+export function demoPng() {
+  const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; return c >>> 0; });
+  const crc = bytes => { let c = 0xffffffff; for (const b of bytes) c = crcTable[(c ^ b) & 0xff] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
+  const chunk = (type, data) => { const body = Buffer.concat([Buffer.from(type, 'latin1'), data]); const out = Buffer.alloc(8 + data.length + 4);
+    out.writeUInt32BE(data.length, 0); body.copy(out, 4); out.writeUInt32BE(crc(body), 8 + data.length); return out; };
+  const width = 240, height = 120, raw = Buffer.alloc((width * 3 + 1) * height);
+  for (let y = 0; y < height; y++) { const row = y * (width * 3 + 1); raw[row] = 0;
+    for (let x = 0; x < width; x++) { const shade = (x >> 4) % 2 === (y >> 4) % 2 ? 236 : 214; raw.fill(shade, row + 1 + x * 3, row + 4 + x * 3); } }
+  const header = Buffer.alloc(13); header.writeUInt32BE(width, 0); header.writeUInt32BE(height, 4); header[8] = 8; header[9] = 2;
+  return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', header),
+    chunk('tEXt', Buffer.from('Comment\0synthetic demo receipt - no real value', 'latin1')), chunk('IDAT', deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
+}
 
 export function demoPdf() {
   const stream = 'BT /F1 18 Tf 54 750 Td (SYNTHETIC DEMO) Tj 0 -32 Td /F1 11 Tf (Justificant fictici per a proves locals. Sense valor real.) Tj ET\n';
@@ -37,8 +53,9 @@ export const DEMO_MARKER_ID = id(14001);
 export const DEMO_VERSION = 'gestio-demo-v2';
 
 export function buildDemoData({ now = Date.now() } = {}) {
-  const pdf = demoPdf();
-  const digest = createHash('sha256').update(pdf).digest('hex');
+  const pdf = demoPdf(), png = demoPng();
+  const digest = createHash('sha256').update(pdf).digest('hex'), pngDigest = createHash('sha256').update(png).digest('hex');
+  const imageKeys = new Set();
   const evidenceKeys = new Set(['fixture-only/no-binary']); // Repair the canonical synthetic 3A evidence link locally.
   const participants = [501, 502, 503, 504, 505].map((number, index) => ({id:id(number), number,
     name:['Participante Manada A (ficticio)','Participante Tropa A (ficticio)','Participante Tropa B (ficticio)',
@@ -108,7 +125,8 @@ export function buildDemoData({ now = Date.now() } = {}) {
     const adjustment=activity.transport?.find(([code])=>code===transport)?.[1]??0;
     regs.push({number,activityNumber,person,status,matchStatus,name,sectionNumber:opts.section||person?.section||2,
       birth:opts.birth||null,amount:opts.amount??activity.price+adjustment,transport,
-      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),
+      evidence:opts.evidence||(activity.price>0&&status==='CONFIRMED'?'VERIFIED':null),mime:opts.mime||'application/pdf',
+      escalation:opts.escalation||null,withdrawn:opts.withdrawn||null,correctedTo:opts.correctedTo||null,reviewed:!!opts.reviewed,
       created:opts.created||Math.min(T-2*DAY,activity.deadline-DAY)-number*60000});
   };
   const pending=(activity,name,sectionNumber,birth)=>addReg(activity,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name,section:sectionNumber,birth});
@@ -117,17 +135,24 @@ export function buildDemoData({ now = Date.now() } = {}) {
   addReg(11002,1001,'CONFIRMED'); addReg(11002,1002,'CONFIRMED'); addReg(11002,1003,'CONFIRMED');
   addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','AMBIGUOUS',{name:'Família Demo · coincidència dubtosa',section:2,birth:'2013-04-10'});
   // D2: 20 registrations mixing confirmed, pending review, pending payment and rejected.
-  for(const n of [1002,1006,1010,1018,1022,1026,1030,1034])addReg(11003,n,'CONFIRMED');
+  for(const n of [1002,1006,1010,1018,1022,1026,1030])addReg(11003,n,'CONFIRMED');
+  // 3.5F: confirmed and paid, then withdrawn by the family; the verified payment stays (no refund implied).
+  addReg(11003,1034,'WITHDRAWN','CLEAR',{evidence:'VERIFIED',withdrawn:'FAMILY_COMMUNICATION'});
   addReg(11003,502,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
-  addReg(11003,503,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'});
+  // 3.5F: image evidence (PNG) next to the PDF ones.
+  addReg(11003,503,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW',mime:'image/png'});
   addReg(11003,1014,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'ISSUE'});
   [['Demo Sol·licitud sense fitxa','2013-07-11'],['Demo Persona Nova Tropa','2012-02-03'],['Demo Germana Petita','2014-09-21']]
     .forEach(([name,birth])=>pending(11003,name,2,birth));
-  [['Demo Sol·licitud duplicada',2],['Demo Secció equivocada',2],['Demo Sol·licitud retirada',2]].forEach(([name,sectionNumber])=>rejected(11003,name,sectionNumber));
+  [['Demo Sol·licitud duplicada',2],['Demo Secció equivocada',2]].forEach(([name,sectionNumber])=>rejected(11003,name,sectionNumber));
+  // 3.5F: a withdrawal is not a rejection.
+  addReg(11003,null,'WITHDRAWN','NONE',{name:'Demo Sol·licitud retirada',section:2,withdrawn:'FAMILY_COMMUNICATION'});
   pending(11003,'Demo Inscripció tardana',2,'2013-01-15');
   pending(11003,'Demo Nom incomplet',2,'2012-06-30');
   pending(11003,'Demo Família nova',2,'2013-11-02');
   // D6
+  // 3.5F: withdrawn after paying, then a new request: the withdrawn registration stays as history.
+  addReg(11009,1004,'WITHDRAWN','CLEAR',{evidence:'VERIFIED',withdrawn:'FAMILY_COMMUNICATION'});
   addReg(11009,1004,'CONFIRMED'); addReg(11009,1008,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'}); rejected(11009,'Demo Sol·licitud rebutjada',4);
   // D7
   addReg(11010,1007,'CONFIRMED'); addReg(11010,1011,'CONFIRMED');
@@ -140,16 +165,33 @@ export function buildDemoData({ now = Date.now() } = {}) {
   rejected(11007,'Demo Sol·licitud Clan rebutjada',4);
   // D11
   addReg(11011,1006,'CONFIRMED'); addReg(11011,1011,'CONFIRMED','CLEAR',{section:3});
+  // D13 (3.5F, REGISTRATIONS.md): manual link, escalation to global review, manual escalation and a
+  // corrected section. Names of the escalated request match an Escolta participant declared as Tropa.
+  const free=(activityNumber,sectionNumber)=>participants.find(p=>p.section===sectionNumber && p.number>=1001 &&
+    !regs.some(r=>r.activityNumber===activityNumber && r.person?.number===p.number));
+  addReg(11011,free(11011,2).number,'CONFIRMED','RESOLVED',{reviewed:true});
+  const escolta=free(11002,3);
+  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:escolta.name,section:2,birth:escolta.birth,escalation:'POSSIBLE_OTHER_SECTION'});
+  addReg(11003,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Diu la família que és d’Escolta',section:2,birth:'2010-03-03',escalation:'REVIEWER_REQUEST'});
+  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Secció corregida',section:2,birth:'2006-05-05',correctedTo:4});
   const registrationRows=regs.map(r=>[id(r.number),id(r.activityNumber),r.person?.id??null,r.name,
     r.name.toLocaleLowerCase('ca').normalize('NFD').replace(/[̀-ͯ]/g,''),section(r.sectionNumber),
     `inscripcio-demo-${r.number}@example.test`,r.transport,r.amount,r.matchStatus,r.status,'DEMO-3A',
     'DEMO-3A-PARTICIPATION-V1',r.created,'DEMO-3A-PRIVACY-NOTICE-V1',r.created,
     `demo-registration-${r.number}`,createHash('sha256').update(`registration-${r.number}`).digest('hex'),r.created,r.created,
-    r.status==='REJECTED'?coordinator:null,r.status==='REJECTED'?r.created:null,
-    'Tutor de demostració',r.number%3?`600 00${String(r.number).slice(-2)} 0${r.number%10}`:null,r.birth]);
+    r.status==='REJECTED'||r.reviewed?coordinator:null,r.status==='REJECTED'||r.reviewed?r.created:null,
+    'Tutor de demostració',r.number%3?`600 00${String(r.number).slice(-2)} 0${r.number%10}`:null,r.status==='NEEDS_PARTICIPANT_REVIEW'?r.birth:null,
+    r.escalation?'GLOBAL':'SECTION',r.escalation,r.escalation?r.created:null,r.escalation==='REVIEWER_REQUEST'?id(102):null,
+    r.withdrawn?r.created+HOUR:null,r.withdrawn?coordinator:null,r.withdrawn]);
+  // Section corrections happen after the insert (the declared section is kept), with their history.
+  const corrections=regs.filter(r=>r.correctedTo);
+  const correctionSql=corrections.map(r=>`UPDATE activity_registration SET registration_section_id=${sqlValue(section(r.correctedTo))} WHERE id=${sqlValue(id(r.number))};\n`).join('')+
+    insert('activity_registration_section_change',['id','registration_id','from_section_id','to_section_id','reason','changed_by','changed_at'],
+      corrections.map((r,index)=>[id(19500+index+1),id(r.number),section(r.sectionNumber),section(r.correctedTo),'CORRECTION',coordinator,r.created+HOUR]));
   const activityEvidenceRows=regs.filter(r=>r.evidence).map(r=>{
-    const key=`synthetic/demo-activity-${r.number}.pdf`;evidenceKeys.add(key);
-    return [id(13000+r.number-12000),id(r.number),key,digest,pdf.length,'application/pdf',r.evidence,r.created,
+    const image=r.mime==='image/png';
+    const key=`synthetic/demo-activity-${r.number}.${image?'png':'pdf'}`;(image?imageKeys:evidenceKeys).add(key);
+    return [id(13000+r.number-12000),id(r.number),key,image?pngDigest:digest,image?png.length:pdf.length,r.mime,r.evidence,r.created,
       r.evidence==='PENDING_REVIEW'?null:r.created,r.evidence==='PENDING_REVIEW'?null:coordinator];
   });
   const familyGroupRows=[];const familyMemberRows=[];const familyForPerson=new Map();
@@ -245,8 +287,12 @@ export function buildDemoData({ now = Date.now() } = {}) {
     insert('activity',['id','public_code','name','status','audience','location','starts_at','ends_at','registration_deadline','price_cents','currency','short_description','materials','special_notice','created_by','created_at','updated_at'],activityRows),
     insert('activity_section',['activity_id','section_id'],activitySectionRows),
     insert('activity_transport_option',['activity_id','code','price_adjustment_cents'],transportRows),
-    insert('activity_registration',['id','activity_id','participant_id','submitted_name','match_key','submitted_section_id','receipt_email','transport_code','expected_amount_cents','match_status','status','consent_version','participation_terms_version','participation_authorized_at','privacy_notice_version','privacy_notice_acknowledged_at','idempotency_key','payload_sha256','created_at','updated_at','reviewed_by','reviewed_at','submitted_by_name','contact_phone','submitted_birth_date'],registrationRows),
+    insert('activity_registration',['id','activity_id','participant_id','submitted_name','match_key','submitted_section_id','receipt_email','transport_code','expected_amount_cents','match_status','status','consent_version','participation_terms_version','participation_authorized_at','privacy_notice_version','privacy_notice_acknowledged_at','idempotency_key','payload_sha256','created_at','updated_at','reviewed_by','reviewed_at','submitted_by_name','contact_phone','submitted_birth_date','review_level','escalation_reason','escalated_at','escalated_by','withdrawn_at','withdrawn_by','withdrawal_source'],registrationRows),
     insert('payment_evidence',['id','registration_id','object_key','sha256','size_bytes','detected_mime','review_status','created_at','reviewed_at','reviewed_by'],activityEvidenceRows),
+    correctionSql,
+    // 3.5F: in the demo, Secretaria (seed-105) also works as the global registration reviewer.
+    insert('user_permission_grant',['id','user_id','permission_code','valid_from','granted_by','justification'],
+      ['activities.read','activities.registration.review','activities.registration.contact.read'].map((code,index)=>[id(19601+index),id(105),code,createdAt,null,'Fixture sintético'])),
     insert('annual_fee_family_group',['id','round_id','reference','created_by','created_at'],familyGroupRows),
     insert('annual_fee_family_member',['group_id','round_id','participant_id','sibling_ordinal','assigned_by','assigned_at'],familyMemberRows),
     insert('annual_fee_obligation',['id','round_id','participant_id','family_group_id','sibling_ordinal','base_cents','discount_cents','amount_due_cents','created_by','created_at','updated_at'],obligationRows),
@@ -265,7 +311,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     `UPDATE payment_evidence SET sha256=${sqlValue(digest)}, size_bytes=${pdf.length} WHERE object_key='fixture-only/no-binary';\n`,
     insert('audit_event',['id','occurred_at','created_at','request_id','actor_user_id','action','resource_type','resource_id','result','reason_code','security_relevant'],[markerRow])
   ];
-  return {sql:chunks.join(''),evidenceKeys:[...evidenceKeys],pdf,
-    expected:{participants:40,activities:16,registrations:38,rounds:1,obligations:40,payments:19,
+  return {sql:chunks.join(''),evidenceKeys:[...evidenceKeys],imageKeys:[...imageKeys],pdf,png,
+    expected:{participants:40,activities:16,registrations:43,rounds:1,obligations:40,payments:19,
       families:{single:10,pair:3,triple:4,quadruple:3}}};
 }
