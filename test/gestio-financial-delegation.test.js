@@ -273,3 +273,50 @@ test('migration 0022 removes the section-delegate ceiling, revokes orphaned gran
     .map(row => row.role_code), ['GROUP_COORDINATOR', 'TREASURY']);
   sql.close();
 });
+
+test('no financial sub-delegation: a capability received by delegation can be used but never re-delegated', async () => {
+  const s = await setup();
+  const B = 141;
+  try {
+    s.f.sql.exec(`INSERT INTO app_user(id,display_name,status,created_at,updated_at) VALUES('${id(B)}','Segona persona de suport (fictícia)','ACTIVE',1,1)`);
+    await s.f.login(B);
+    const toB = (authorizedBy, sectionId = TROPA, provisioner = 107) => s.call(provisioner, '/api/delegations', { method: 'POST',
+      body: { userId: id(B), permissionCode: 'finance.payment.verify', sectionId, authorizedBy,
+        authorizationReference: `DEMO-SUBDEL-${String(++seq).padStart(6, '0')}`, expiresAt: later(30) } });
+    // 1. General coordination (originating authority) delegates verification in Tropa to A.
+    const toA = await delegate(s, { permissionCode: 'finance.payment.verify' });
+    assert.equal(toA.status, 201);
+    // 2. A can exercise it in Tropa (and only there).
+    assert.equal(await s.can(DELEGATE, 'finance.payment.verify', { sectionId: TROPA }), true);
+    assert.equal(await s.can(DELEGATE, 'finance.payment.verify', { sectionId: ESCOLTA }), false);
+    assert.equal((await s.call(DELEGATE, '/api/payments')).status, 200);
+    // 3. A cannot authorise the same capability to B, in Tropa or elsewhere.
+    assert.equal((await toB(id(DELEGATE))).status, 403);
+    assert.equal((await toB(id(DELEGATE), ESCOLTA)).status, 403);
+    // Nor provision it directly: using a capability is not administering delegations.
+    assert.equal((await toB(id(DELEGATE), TROPA, DELEGATE)).status, 403);
+    // Even if A also had delegation-authorising authority over Tropa (a section coordinator), holding the
+    // financial capability only by delegation is not enough: the authoriser must hold it by role + grant.
+    s.f.sql.exec(`INSERT INTO user_role(id,user_id,role_code,section_id,valid_from,justification) VALUES
+        ('${id(9831)}','${id(DELEGATE)}','SECTION_COORDINATOR','${TROPA}',1,'Fixture');
+      INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,justification) VALUES
+        ('${id(9832)}','${id(DELEGATE)}','auth.permission.authorize',1,'Fixture')`);
+    assert.equal(await s.can(DELEGATE, 'auth.permission.authorize', { sectionId: TROPA }), true);
+    assert.equal((await toB(id(DELEGATE))).status, 403, 'usage is not delegation authority');
+    assert.equal(await s.can(B, 'finance.payment.verify', { sectionId: TROPA }), false);
+    assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM delegated_permission WHERE user_id=?').get(id(B)).n, 0, 'nothing was created');
+    // The originating authority still delegates within its scope.
+    const fromCoordination = await toB(id(101));
+    assert.equal(fromCoordination.status, 201);
+    s.f.sql.exec(`DELETE FROM delegated_permission WHERE id='${fromCoordination.data.id}'`);
+    // Expiry and revocation of A's delegation end A's use, and re-delegation stays denied.
+    s.f.sql.exec(`UPDATE delegated_permission SET expires_at=${Date.now() - 1000},granted_at=${Date.now() - 5000} WHERE id='${toA.data.id}'`);
+    assert.equal(await s.can(DELEGATE, 'finance.payment.verify', { sectionId: TROPA }), false, 'expired');
+    assert.equal((await toB(id(DELEGATE))).status, 403);
+    s.f.sql.exec(`UPDATE delegated_permission SET expires_at=${later(30)} WHERE id='${toA.data.id}'`);
+    assert.equal(await s.can(DELEGATE, 'finance.payment.verify', { sectionId: TROPA }), true);
+    assert.equal((await s.call(101, `/api/delegations/${toA.data.id}/revoke`, { method: 'POST', body: {} })).status, 200);
+    assert.equal(await s.can(DELEGATE, 'finance.payment.verify', { sectionId: TROPA }), false, 'revoked');
+    assert.equal((await toB(id(DELEGATE))).status, 403);
+  } finally { s.f.close(); }
+});
