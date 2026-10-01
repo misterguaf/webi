@@ -136,6 +136,19 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal((await worker.request('/api/participants/'+id(502)+'/guardians/'+episodeGuardian,{method:'DELETE',cookie:group})).status,200);
     assert.equal((await worker.request('/api/participants/'+id(502)+'/guardians',{method:'POST',cookie:group,
       body:{guardianId:episodeGuardian,relationship:'PARENT'}})).status,201);
+    // 3.5F: a withdrawn registration and a corrected section must survive backup and restore.
+    const confirmedSeed=await worker.request('/api/activities/'+id(801)+'/registrations',{cookie:group});
+    const toWithdraw=confirmedSeed.data.registrations.find(row=>row.id===id(821));
+    assert.equal((await worker.request('/api/registrations/'+id(821)+'/withdraw',{method:'POST',cookie:group,
+      body:{source:'FAMILY_COMMUNICATION',expectedVersion:toWithdraw.version}})).status,200);
+    run(isolated,['d1','execute','parpallo-gestio-local','--local','--config','wrangler.toml','--command',
+      "INSERT INTO activity_registration(id,activity_id,submitted_name,match_key,submitted_section_id,receipt_email,expected_amount_cents,match_status,status,"+
+      "consent_version,participation_terms_version,participation_authorized_at,privacy_notice_version,privacy_notice_acknowledged_at,idempotency_key,payload_sha256,"+
+      "created_at,updated_at,submitted_birth_date) VALUES('"+id(860)+"','"+id(803)+"','Persona Recuperació (ficticia)','persona recuperacio ficticia','"+id(2)+
+      "','recuperacio@example.test',0,'NONE','NEEDS_PARTICIPANT_REVIEW','DEPRECATED','DEMO-3A-PARTICIPATION-V1',1,'DEMO-3A-PRIVACY-NOTICE-V1',1,"+
+      "'recovery-correction-0001','"+'0'.repeat(64)+"',1,1,'2012-02-02')",'--yes']);
+    assert.equal((await worker.request('/api/registrations/'+id(860)+'/section',{method:'POST',cookie:group,
+      body:{sectionId:id(4),expectedVersion:1}})).status,200);
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -247,6 +260,17 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(restoredFeeSchema.status,0);
     assert.deepEqual(JSON.parse(restoredFeeSchema.stdout)[0].results.map(row=>[row.parts,row.family_revisions]),[[0,0]]);
     assert.equal(manifest.table_counts.participant_guardian,2);
+    assert.equal(manifest.table_counts.activity_registration_section_change,1);
+    for (const object of ['trigger:registration_section_correction_guard','trigger:registration_withdrawal_immutable',
+      'trigger:activity_registration_section_change_no_delete','trigger:activity_terms_locked'])
+      assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
+    const restoredRegistrations=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT (SELECT status||':'||withdrawal_source FROM activity_registration WHERE id='"+id(821)+"') AS withdrawn,"+
+      "(SELECT submitted_section_id||'>'||registration_section_id FROM activity_registration WHERE id='"+id(860)+"') AS corrected",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredRegistrations.status,0);
+    assert.deepEqual(JSON.parse(restoredRegistrations.stdout)[0].results[0],
+      {withdrawn:'WITHDRAWN:FAMILY_COMMUNICATION',corrected:id(2)+'>'+id(4)});
     for (const object of ['index:participant_guardian_current_unique','trigger:participant_guardian_history_immutable',
       'trigger:participant_guardian_no_delete','trigger:participant_guardian_episode_order'])
       assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
