@@ -16,6 +16,10 @@ export function renderHome(root, ctx, summary) {
     attention.push(item(summary.movements.partialCount, summary.movements.partialCount === 1 ? 'moviment parcialment imputat' : 'moviments parcialment imputats', ['moviments'], { estat: 'parcials' }));
     attention.push(item(summary.movements.duplicateCount, summary.movements.duplicateCount === 1 ? 'possible duplicat per revisar' : 'possibles duplicats per revisar', ['moviments'], { estat: 'duplicats' }));
   }
+  if (summary.movements) attention.push(item(summary.movements.unidentifiedIncomingCount, summary.movements.unidentifiedIncomingCount === 1
+    ? 'moviment d’entrada sense identificar' : 'moviments d’entrada sense identificar', ['moviments'], { estat: 'pendents', sentit: 'entrades' }));
+  if (summary.incomes) attention.push(item(summary.incomes.pendingCount,
+    `${summary.incomes.pendingCount === 1 ? 'ingrés pendent' : 'ingressos pendents'} de conciliar (${formatEur(summary.incomes.pendingCents)})`, ['ingressos'], { estat: 'pendents' }));
   if (summary.expenses) attention.push(item(summary.expenses.proposedCount,
     `${summary.expenses.proposedCount === 1 ? 'despesa proposada' : 'despeses proposades'} (${formatEur(summary.expenses.proposedCents)}, encara no comptades)`, ['despeses'], { estat: 'propostes' }));
   const items = attention.filter(Boolean);

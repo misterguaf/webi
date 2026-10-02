@@ -60,6 +60,8 @@ export const PERMISSIONS = Object.freeze({
     note: 'Original bank description, audited; explicit grant only (LEGAL DECISION REQUIRED); not delegable.' },
   'finance.expense.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.expense.manage': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.income.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
+  'finance.income.manage': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.budget.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.budget.propose': { kind: 'GLOBAL', note: 'Prepare the budget and propose revisions; not delegable.' },
   'finance.budget.approve': { kind: 'GLOBAL', note: 'Coordinació general approves the budget and its revisions; not delegable.' },

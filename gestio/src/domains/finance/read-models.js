@@ -34,6 +34,9 @@ export async function expenseSummaries(db, ids) {
 export async function describeAllocations(db, rows) {
   const lines = await budgetLineLabels(db, rows.map(row => row.budgetLineId));
   const expenses = await expenseSummaries(db, rows.map(row => row.expenseId));
+  const incomeIds = [...new Set(rows.map(row => row.incomeId).filter(Boolean))];
+  const incomes = new Map(incomeIds.length ? (await db.prepare(`SELECT id,concept,income_date,total_cents FROM finance_income WHERE id IN (${incomeIds.map(() => '?').join(',')})`)
+    .bind(...incomeIds).all()).results.map(row => [row.id, { id: row.id, concept: row.concept, incomeDate: row.income_date, totalCents: row.total_cents }]) : []);
   const pairedIds = [...new Set(rows.map(row => row.pairedMovementId).filter(Boolean))];
   const paired = new Map(pairedIds.length ? (await db.prepare(`SELECT m.id,m.operation_date,m.amount_cents,p.name AS position_name,p.kind
     FROM finance_movement m JOIN finance_position p ON p.id=m.position_id WHERE m.id IN (${pairedIds.map(() => '?').join(',')})`)
@@ -41,6 +44,7 @@ export async function describeAllocations(db, rows) {
       positionName: row.position_name, positionKind: row.kind }]) : []);
   return rows.map(row => ({ id: row.id, kind: row.kind, amountCents: row.amountCents, sectionId: row.sectionId ?? null, activityId: row.activityId ?? null,
     budgetLineId: row.budgetLineId ?? null, expenseId: row.expenseId ?? null, pairedMovementId: row.pairedMovementId ?? null,
+    incomeId: row.incomeId ?? null, income: row.incomeId ? incomes.get(row.incomeId) ?? null : null,
     budgetLine: row.budgetLineId ? lines.get(row.budgetLineId) ?? null : null,
     expense: row.expenseId ? expenses.get(row.expenseId) ?? null : null,
     pairedMovement: row.pairedMovementId ? paired.get(row.pairedMovementId) ?? null : null }));

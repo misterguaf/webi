@@ -30,6 +30,7 @@ export const ACTIONS = new Set([
   'MOVEMENT_CLASSIFIED','MOVEMENT_RECLASSIFIED','BANK_DESCRIPTION_REVEALED',
   'COUNTERPARTY_CREATED','COUNTERPARTY_REVISED','COUNTERPARTY_USER_LINKED','COUNTERPARTY_USER_UNLINKED',
   'EXPENSE_PROPOSED','EXPENSE_RECOGNISED','EXPENSE_REVISED','EXPENSE_REJECTED','EXPENSE_VOIDED',
+  'INCOME_CREATED','INCOME_REVISED','INCOME_RECONCILED','INCOME_VOIDED',
   'BUDGET_CREATED','BUDGET_PROPOSED','BUDGET_RETURNED_TO_DRAFT','BUDGET_APPROVED','BUDGET_LINE_CREATED','BUDGET_LINE_REVISED',
   'BUDGET_LINE_DEACTIVATED','BUDGET_REVISION_PROPOSED','BUDGET_REVISION_APPROVED','BUDGET_REVISION_REJECTED'
 ]);
@@ -41,7 +42,7 @@ const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_rol
   'auth_identity','auth_identity_invitation',
   'guardian','participant_guardian','contact_point','participant_review','activity_payment_allocation',
   'finance_round','finance_position','finance_opening_balance','finance_reserve_opening','finance_import_batch','finance_movement',
-  'finance_counterparty','finance_expense','finance_budget','finance_budget_line','finance_budget_revision']);
+  'finance_counterparty','finance_expense','finance_income','finance_budget','finance_budget_line','finance_budget_revision']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);
 const SOURCES = new Set(['local-fixture','retention-job']);
 const safeId = value => value === null || (typeof value === 'string' && UUID.test(value));

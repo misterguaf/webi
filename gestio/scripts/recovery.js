@@ -37,7 +37,7 @@ const TABLES=[
   'finance_post_close_adjustment','finance_import_batch','finance_movement','finance_movement_description',
   'finance_counterparty','finance_counterparty_revision','finance_budget','finance_budget_line','finance_budget_line_revision',
   'finance_budget_revision','finance_expense','finance_expense_line','finance_expense_revision','finance_expense_evidence',
-  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_allocation'
+  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_income','finance_income_revision','finance_allocation'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -273,7 +273,22 @@ export function createBackup(outputPath,configPath=resolve(root,'wrangler.toml')
     const memberTable=ordered.indexOf('CREATE TABLE annual_fee_family_member');
     const memberEnd=memberTable<0?-1:ordered.indexOf(';\n',memberTable);
     if (memberEnd<0) fail('SCHEMA_OBJECT_MISSING');
-    writeFileSync(dumpPath,ordered.slice(0,memberEnd+2)+bindingIndex+ordered.slice(memberEnd+2),{mode:0o600});
+    let fixed=ordered.slice(0,memberEnd+2)+bindingIndex+ordered.slice(memberEnd+2);
+    // 3.5G.2A: finance_allocation gained a FK to finance_income (migration 0029), but Wrangler exports tables
+    // in creation order. The income tables and their rows move before finance_allocation.
+    const incomeStart=fixed.indexOf('CREATE TABLE finance_income');
+    const allocationStart=fixed.indexOf('CREATE TABLE finance_allocation');
+    if (incomeStart>=0) {
+      if (allocationStart<0) fail('SCHEMA_OBJECT_MISSING');
+      let incomeEnd=fixed.indexOf('CREATE TABLE ',incomeStart+1);
+      while (incomeEnd>=0 && fixed.startsWith('CREATE TABLE finance_income',incomeEnd)) incomeEnd=fixed.indexOf('CREATE TABLE ',incomeEnd+1);
+      if (incomeEnd<0) { const rest=fixed.slice(incomeStart).search(/\nCREATE (UNIQUE )?INDEX|\nCREATE TRIGGER|\nCREATE VIEW/); incomeEnd=rest<0?-1:incomeStart+rest+1; }
+      if (incomeStart>allocationStart && incomeEnd>incomeStart) {
+        const block=fixed.slice(incomeStart,incomeEnd);
+        fixed=fixed.slice(0,allocationStart)+block+fixed.slice(allocationStart,incomeStart)+fixed.slice(incomeEnd);
+      }
+    }
+    writeFileSync(dumpPath,fixed,{mode:0o600});
     chmodSync(join(temp,'dump.sql'),0o600);
     const snapshot=inspectSql(join(temp,'dump.sql'),info);
     const commit=spawnSync('git',['rev-parse','HEAD'],{cwd:repo,encoding:'utf8'});

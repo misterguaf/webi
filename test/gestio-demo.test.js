@@ -172,15 +172,16 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
       .map(row => [row.status, row.n]), [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 11]]);
     assert.deepEqual(query('PRAGMA foreign_key_check'), []);
     // 3.5G.1 treasury demo: the cash cycle counts nothing, cash and card expenses once, the proposal not at all.
-    // 3.5G.2A operations demo on top: partial income 150 €, the multi-line and unpaid expenses once, a 45 € proposal.
+    // 3.5G.2A operations demo on top: partial income 150 €, the multi-line and unpaid expenses once, a 45 € proposal;
+    // income demo: the 450 € lottery sale reconciled with its movement counts once, the pending grant not yet.
     assert.deepEqual(query('SELECT income_cents,expense_gross_cents,proposed_expense_cents FROM finance_round_economics'),
-      [{ income_cents: 25000, expense_gross_cents: 94000, proposed_expense_cents: 7000 }]);
+      [{ income_cents: 70000, expense_gross_cents: 94000, proposed_expense_cents: 7000 }]);
     query("INSERT INTO participant(id,display_name,current_section_id,status,birth_date) VALUES('00000000-0000-4000-8000-000000099999','Extra Demo','00000000-0000-4000-8000-000000000001','ACTIVE','2017-01-01')");
     run('node', [cli, 'seed'], temp);
     assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 41);
     assert.equal(query('SELECT COUNT(*) n FROM audit_event WHERE action=\'DEMO_DATASET_SEEDED\'')[0].n, 1);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);
-    assert.equal(query('SELECT COUNT(*) n FROM finance_movement')[0].n, 13, 'repeat seed adds no treasury data twice');
+    assert.equal(query('SELECT COUNT(*) n FROM finance_movement')[0].n, 15, 'repeat seed adds no treasury data twice');
     assert.match(run('node', [cli, 'reset'], temp), /Demo ready:/);
     assert.equal(query('SELECT COUNT(*) n FROM finance_round')[0].n, 1);
     assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 40);

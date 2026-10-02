@@ -14,6 +14,7 @@ Detalle: [PHASE_3_5G2A_REPORT](PHASE_3_5G2A_REPORT.md). Pantallas: [TREASURY_HOM
 - **Moviments:** lista con filtros en servidor y estados humanos, detalle, clasificación (solo tipos habilitados), corrección con historial, duplicados (anular o mantener, nunca borrar), descripción original bajo demanda y auditada.
 - **Despeses:** lista y detalle, alta manual y desde movimiento (una despesa reconocida + liquidación, cuenta una vez), reparto Total/Distribuït/Pendent, selector jerárquico de líneas, contrapartes mínimas, reconocimiento explícito.
 - **Migración 0028** (concepto de la despesa); demo sintética ampliada. No se ha empezado G.2B.
+- **Ingressos (extensión, migración 0029):** ingreso económico propio, pendiente o conciliado (derivado), creado a mano o desde un movimiento, y vinculación de movimientos con ingresos existentes; cuenta una vez.
 
 ## Actualización FASE 3.5G.1 — fundación financiera (2026-10-01, pendiente de revisión)
 

@@ -4,7 +4,8 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildDemoData, buildTreasuryDemo, buildTreasuryOperationsDemo, DEMO_MARKER_ID, TREASURY_DEMO_ROUND_ID, TREASURY_OPERATIONS_MARKER_ID } from './data.js';
+import { buildDemoData, buildTreasuryDemo, buildTreasuryIncomeDemo, buildTreasuryOperationsDemo, DEMO_MARKER_ID, TREASURY_DEMO_ROUND_ID, TREASURY_INCOME_MARKER_ID,
+  TREASURY_OPERATIONS_MARKER_ID } from './data.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(root, '..');
@@ -98,6 +99,11 @@ function ensureTreasuryDemo() {
   if (!execute(`SELECT 1 AS present FROM finance_movement WHERE id='${TREASURY_OPERATIONS_MARKER_ID}'`).length &&
       execute(`SELECT 1 AS present FROM finance_round WHERE id='${TREASURY_DEMO_ROUND_ID}' AND status='OPEN'`).length) {
     applySql('gestio-treasury-ops-demo-', buildTreasuryOperationsDemo()); added = true;
+  }
+  // 3.5G.2A income extension: needs the operations demo (its lines and movements) and is added once.
+  if (!execute(`SELECT 1 AS present FROM finance_income WHERE id='${TREASURY_INCOME_MARKER_ID}'`).length &&
+      execute(`SELECT 1 AS present FROM finance_movement WHERE id='${TREASURY_OPERATIONS_MARKER_ID}' AND allocation_version=0`).length) {
+    applySql('gestio-treasury-income-demo-', buildTreasuryIncomeDemo()); added = true;
   }
   return added;
 }

@@ -44,7 +44,7 @@ const CONFLICTS = [
   ['invalid_duplicate_void', 'invalid_duplicate_void'], ['movement_immutable', 'movement_immutable'],
   ['stale_allocation_set', 'stale_movement'], ['allocation_exceeds_movement', 'allocation_exceeds_movement'],
   ['allocation_kind_not_enabled', 'allocation_kind_not_enabled'], ['invalid_allocation_direction', 'invalid_allocation_direction'],
-  ['invalid_income_allocation', 'invalid_income_allocation'], ['invalid_expense_allocation', 'invalid_expense_allocation'],
+  ['invalid_income_allocation', 'invalid_income_allocation'], ['invalid_income', 'invalid_income'], ['income_immutable', 'income_immutable'], ['invalid_expense_allocation', 'invalid_expense_allocation'],
   ['invalid_internal_transfer', 'invalid_internal_transfer'],
   ['UNIQUE constraint failed: finance_counterparty.user_id', 'counterparty_user_linked'], ['counterparty_in_use', 'counterparty_in_use'],
   ['invalid_expense_line', 'invalid_expense_line'], ['invalid_expense', 'invalid_expense'],

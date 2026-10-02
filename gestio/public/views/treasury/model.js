@@ -1,8 +1,12 @@
 // Tresoreria (3.5G.2A, docs/design/screens/TREASURY_*.md) — pure model: money, labels, filters, error
 // copy, the line split and the budget tree. Advisory only: the server authorises and validates everything.
-import { parseEuros } from '../activities/model.js';
+import { parseEuros as parsePlainEuros } from '../activities/model.js';
 
-export { parseEuros };
+/** Euros typed by a person, also with thousands dots ("1.500", "1.250,50") → cents, or null. */
+export function parseEuros(value, options) {
+  const text = String(value ?? '').trim().replace(/\s|€/g, '');
+  return parsePlainEuros(/^-?\d{1,3}(\.\d{3})+(,\d{1,2})?$/.test(text) ? text.replaceAll('.', '') : text, options);
+}
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -55,9 +59,9 @@ export const expenseStatus = code => EXPENSE_STATUS[code] ?? { label: 'Estat des
 
 /** Human summary of one current allocation ("Despesa · Material de campament"). */
 export function allocationLabel(allocation) {
-  if (allocation.kind === 'INCOME') return `Ingrés · ${allocation.budgetLine?.name ?? 'línia de pressupost'}`;
+  if (allocation.kind === 'INCOME') return `Ingrés · ${allocation.income?.concept ?? allocation.budgetLine?.name ?? 'línia de pressupost'}`;
   if (allocation.kind === 'EXPENSE_SETTLEMENT') return `Despesa · ${allocation.expense?.concept ?? 'despesa'}`;
-  if (allocation.kind === 'EXPENSE_REFUND') return `Devolució · ${allocation.expense?.concept ?? 'despesa'}`;
+  if (allocation.kind === 'EXPENSE_REFUND') return `Devolució de despesa · ${allocation.expense?.concept ?? 'despesa'}`;
   if (allocation.kind === 'INTERNAL_TRANSFER') {
     const pair = allocation.pairedMovement;
     return `Traspàs intern${pair ? ` · ${pair.positionName}` : ''}`;
@@ -76,15 +80,17 @@ export const budgetPath = line => line?.path?.length ? line.path.join(' › ') :
 // ---------------------------------------------------------------- capabilities (advisory)
 
 const t = caps => caps?.treasury ?? {};
-export const treasuryAvailable = caps => !!(t(caps).read || t(caps).readMovements || t(caps).readExpenses);
+export const treasuryAvailable = caps => !!(t(caps).read || t(caps).readMovements || t(caps).readExpenses || t(caps).readIncomes);
 export const TABS = [
   { id: 'inici', label: 'Inici', available: caps => treasuryAvailable(caps) },
   { id: 'moviments', label: 'Moviments', available: caps => !!t(caps).readMovements },
+  { id: 'ingressos', label: 'Ingressos', available: caps => !!t(caps).readIncomes },
   { id: 'despeses', label: 'Despeses', available: caps => !!t(caps).readExpenses }
 ];
 export const availableTabs = caps => TABS.filter(tab => tab.available(caps));
 export const canClassify = caps => !!t(caps).classifyMovements;
 export const canManageExpenses = caps => !!t(caps).manageExpenses;
+export const canManageIncomes = caps => !!t(caps).manageIncomes;
 export const canReveal = caps => !!t(caps).revealDescriptions;
 
 /**
@@ -94,8 +100,9 @@ export const canReveal = caps => !!t(caps).revealDescriptions;
 export function classificationOptions(movement, caps) {
   if (!movement || movement.state !== 'ACTIVE' || !canClassify(caps)) return [];
   if (movement.amountCents > 0) return [
-    { id: 'INCOME', label: 'És un ingrés', hint: 'Assigna’l a una línia d’ingressos del pressupost.' },
-    { id: 'EXPENSE_REFUND', label: 'És la devolució d’una despesa', hint: 'Reduïx una despesa ja reconeguda.' },
+    ...(canManageIncomes(caps) ? [{ id: 'NEW_INCOME', label: 'Crea un ingrés', hint: 'Subvenció, donació, loteria, venda… Es crea l’ingrés i queda conciliat amb aquest moviment.' }] : []),
+    ...(t(caps).readIncomes ? [{ id: 'LINK_INCOME', label: 'Vincula a un ingrés existent', hint: 'Un ingrés ja registrat que esperava aquest cobrament.' }] : []),
+    { id: 'EXPENSE_REFUND', label: 'És la devolució d’una despesa (proveïdor)', hint: 'Un proveïdor torna diners: reduïx una despesa ja reconeguda. No és un ingrés.' },
     { id: 'INTERNAL_TRANSFER', label: 'És un traspàs intern', hint: 'Diners que passen d’una posició del grup a una altra.' }
   ];
   return [
@@ -173,7 +180,7 @@ const ERRORS = {
   not_found: 'Aquest element ja no existeix o no hi tens accés.',
   movement_voided: 'Aquest moviment està anul·lat com a duplicat i no es pot classificar.',
   invalid_allocation_direction: 'Aquest tipus de classificació no correspon al sentit del moviment.',
-  invalid_income_allocation: 'Tria una línia d’ingressos activa i assignable de la ronda oberta.',
+  invalid_income_allocation: 'L’import supera el pendent de l’ingrés, o la partida no és vàlida.',
   invalid_expense_allocation: 'La despesa no admet aquest import: ha de ser reconeguda, del mateix mitjà de pagament i sense superar el total.',
   invalid_internal_transfer: 'El traspàs ha d’unir dos moviments sencers de posicions diferents, amb el mateix import i signe contrari.',
   allocation_kind_not_enabled: 'Aquest tipus de classificació encara no està disponible.',
@@ -188,6 +195,9 @@ const ERRORS = {
   counterparty_user_linked: 'Aquesta persona ja està vinculada a un altre tercer.',
   finance_round_closed: 'La ronda està tancada: no s’hi poden fer canvis.',
   invalid_filter: 'Algun filtre no és vàlid.',
+  invalid_income: 'Revisa l’ingrés: la partida ha de ser una partida d’ingressos activa i final d’esta ronda, i l’import no pot baixar del ja conciliat.',
+  income_reconciled: 'Aquest ingrés ja té cobraments vinculats. Corregeix primer la classificació del moviment.',
+  stale_income: 'Aquesta informació ha canviat. Torna a carregar-la.',
   invalid_version: 'Aquesta informació ha canviat. Torna a carregar-la.'
 };
 /** Server error → human Valencian copy; codes never reach the screen. */
@@ -279,14 +289,16 @@ export function validateExpense(values, { fixedTotalCents = null, roundId, manua
 /** Current described allocations → the payload that keeps them when a new set replaces the old one. */
 export function allocationPayload(allocations) {
   return allocations.map(item => Object.fromEntries(Object.entries({ kind: item.kind, amountCents: item.amountCents,
-    budgetLineId: item.budgetLineId, expenseId: item.expenseId, pairedMovementId: item.pairedMovementId,
-    activityId: item.activityId, sectionId: item.sectionId }).filter(([, value]) => value != null)));
+    budgetLineId: item.incomeId ? null : item.budgetLineId, expenseId: item.expenseId, pairedMovementId: item.pairedMovementId,
+    incomeId: item.incomeId, activityId: item.activityId, sectionId: item.sectionId }).filter(([, value]) => value != null)));
 }
 /** One new part for a movement, validated against what is still unallocated. */
-export function newAllocation({ kind, amount, budgetLineId, expenseId }, unallocatedCents) {
+export function newAllocation({ kind, amount, budgetLineId, expenseId, incomeId }, unallocatedCents) {
   const cents = parseEuros(amount);
   if (!cents || cents <= 0) return { error: 'Indica un import positiu.' };
   if (cents > unallocatedCents) return { error: 'L’import assignat supera l’import disponible del moviment.' };
+  if (kind === 'LINK_INCOME') return incomeId ? { allocation: { kind: 'INCOME', amountCents: cents, incomeId } } : { error: 'Tria l’ingrés.' };
+  if (kind === 'INCOME' && incomeId) return { allocation: { kind: 'INCOME', amountCents: cents, incomeId } };
   if (kind === 'INCOME' && !budgetLineId) return { error: 'Tria una línia d’ingressos.' };
   if ((kind === 'EXPENSE_SETTLEMENT' || kind === 'EXPENSE_REFUND') && !expenseId) return { error: 'Tria la despesa.' };
   return { allocation: { kind, amountCents: cents, ...(kind === 'INCOME' ? { budgetLineId } : { expenseId }) } };
@@ -295,4 +307,48 @@ export function newAllocation({ kind, amount, budgetLineId, expenseId }, unalloc
 export function settleableExpenses(expenses, movement, kind) {
   return expenses.filter(expense => expense.status === 'RECOGNISED' && (kind === 'EXPENSE_REFUND'
     || (expense.paymentMethod === movement.positionKind && expense.settledCents < expense.totalCents)));
+}
+
+// ---------------------------------------------------------------- incomes
+
+export const INCOME_STATE = {
+  PENDING: { label: 'Pendent de conciliar', tone: 'attention' },
+  PARTIAL: { label: 'Conciliat en part', tone: 'warning' },
+  RECONCILED: { label: 'Conciliat', tone: 'ok' },
+  VOID: { label: 'Anul·lat', tone: 'muted' }
+};
+export const incomeState = code => INCOME_STATE[code] ?? { label: 'Estat desconegut', tone: 'muted' };
+const INCOME_STATE_FILTERS = { pendents: 'PENDING', parcials: 'PARTIAL', conciliats: 'RECONCILED', anullats: 'VOID' };
+export const INCOME_STATE_CHOICES = [{ value: '', label: 'Tots' }, { value: 'pendents', label: 'Pendents de conciliar' },
+  { value: 'parcials', label: 'Conciliats en part' }, { value: 'conciliats', label: 'Conciliats' }, { value: 'anullats', label: 'Anul·lats' }];
+export function parseIncomeFilters(query = {}) {
+  return {
+    estat: INCOME_STATE_FILTERS[query.estat] ? query.estat : '',
+    des: DATE.test(query.des ?? '') ? query.des : '',
+    fins: DATE.test(query.fins ?? '') ? query.fins : '',
+    linia: UUID.test(query.linia ?? '') ? query.linia : ''
+  };
+}
+export function incomeApiQuery(roundId, filters) {
+  const params = new URLSearchParams({ roundId });
+  if (filters.estat) params.set('state', INCOME_STATE_FILTERS[filters.estat]);
+  if (filters.des) params.set('from', filters.des);
+  if (filters.fins) params.set('to', filters.fins);
+  if (filters.linia) params.set('budgetLineId', filters.linia);
+  return params.toString();
+}
+/** Validate the income form; returns { valid, errors, body } with integer cents. */
+export function validateIncome(values, { roundId, maxCents = null } = {}) {
+  const errors = {};
+  const concept = String(values.concept ?? '').trim();
+  if (!concept) errors.concept = 'Escriu un concepte curt.';
+  else if (concept.length > 120) errors.concept = 'Màxim 120 caràcters.';
+  if (!DATE.test(values.incomeDate ?? '')) errors.incomeDate = 'Indica la data.';
+  const total = parseEuros(values.total);
+  if (!total || total <= 0) errors.total = 'Indica un import positiu.';
+  else if (maxCents !== null && total > maxCents) errors.total = 'L’import assignat supera l’import disponible del moviment.';
+  if (!values.budgetLineId) errors.budgetLineId = 'Tria una partida d’ingressos.';
+  const valid = !Object.keys(errors).length;
+  return { valid, errors, body: valid ? { roundId, incomeDate: values.incomeDate, concept, totalCents: total, budgetLineId: values.budgetLineId,
+    ...(values.counterpartyId ? { counterpartyId: values.counterpartyId } : {}) } : null };
 }

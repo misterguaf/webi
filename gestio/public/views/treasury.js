@@ -5,16 +5,17 @@ import { announce, h } from '../ui.js';
 import { renderHome } from './treasury/home.js';
 import { renderMovementDetail, renderMovementList } from './treasury/movements.js';
 import { renderExpenseDetail, renderExpenseList } from './treasury/expenses.js';
+import { renderIncomeDetail, renderIncomeList } from './treasury/incomes.js';
 import { availableTabs, errorCopy, treasuryAvailable } from './treasury/model.js';
 
 const $ = id => document.getElementById(id);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const TITLES = { inici: 'Tresoreria', moviments: 'Moviments', despeses: 'Despeses' };
+const TITLES = { inici: 'Tresoreria', moviments: 'Moviments', ingressos: 'Ingressos', despeses: 'Despeses' };
 
 export function createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge }) {
   const root = $('treasuryView');
   let me = null, summary = null, token = 0;
-  const lastQuery = { moviments: {}, despeses: {} };
+  const lastQuery = { moviments: {}, ingressos: {}, despeses: {} };
   const go = ({ path = [], query = {} }, options) => routes.go({ page: 'tresoreria', path, query }, options);
   const ctx = {
     call, caps: () => me?.capabilities ?? {}, summary: () => summary, go,
@@ -57,6 +58,7 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
       if (onScreen()) setPageHeader({ title: 'Tresoreria', subtitle: summary?.round ? `Ronda ${summary.round.code}` : 'Sense ronda econòmica oberta' });
       if (tab.id === 'inici') renderHome(content, ctx, summary);
       else if (tab.id === 'moviments') await (id ? renderMovementDetail(content, ctx, id) : renderMovementList(content, ctx, route.query ?? {}));
+      else if (tab.id === 'ingressos') await (id ? renderIncomeDetail(content, ctx, id) : renderIncomeList(content, ctx, route.query ?? {}));
       else await (id ? renderExpenseDetail(content, ctx, id) : renderExpenseList(content, ctx, route.query ?? {}));
       if (id) announce(document.title);
     } catch (error) {

@@ -38,10 +38,14 @@ test('tabs and actions follow the advisory capabilities; no finance capability m
 });
 
 test('classification offers only the enabled kinds, by direction and permission', () => {
-  const full = caps({ classifyMovements: true, manageExpenses: true });
+  const full = caps({ classifyMovements: true, manageExpenses: true, readIncomes: true, manageIncomes: true });
   const out = { state: 'ACTIVE', amountCents: -3000 }, inn = { state: 'ACTIVE', amountCents: 3000 };
   assert.deepEqual(model.classificationOptions(out, full).map(o => o.id), ['NEW_EXPENSE', 'EXPENSE_SETTLEMENT', 'INTERNAL_TRANSFER']);
-  assert.deepEqual(model.classificationOptions(inn, full).map(o => o.id), ['INCOME', 'EXPENSE_REFUND', 'INTERNAL_TRANSFER']);
+  assert.deepEqual(model.classificationOptions(inn, full).map(o => o.id), ['NEW_INCOME', 'LINK_INCOME', 'EXPENSE_REFUND', 'INTERNAL_TRANSFER']);
+  assert.deepEqual(model.classificationOptions(inn, caps({ classifyMovements: true })).map(o => o.id), ['EXPENSE_REFUND', 'INTERNAL_TRANSFER'], 'no income choices without income capabilities');
+  const refund = model.classificationOptions(inn, full).find(o => o.id === 'EXPENSE_REFUND');
+  assert.match(refund.label, /despesa \(proveïdor\)/); assert.match(refund.hint, /No és un ingrés/); assert.doesNotMatch(refund.label + refund.hint, /famíl/i, 'supplier refund, never a family refund');
+  assert.equal(model.allocationLabel({ kind: 'EXPENSE_REFUND', expense: { concept: 'Bus' } }), 'Devolució de despesa · Bus');
   assert.deepEqual(model.classificationOptions(out, caps({ classifyMovements: true })).map(o => o.id), ['EXPENSE_SETTLEMENT', 'INTERNAL_TRANSFER'], 'no expense creation without expense.manage');
   assert.deepEqual(model.classificationOptions(out, caps({ readMovements: true })), []);
   assert.deepEqual(model.classificationOptions({ ...out, state: 'VOID_DUPLICATE' }, full), []);
@@ -133,4 +137,33 @@ test('wiring: each action label reaches its endpoint; reveal is on demand, never
   assert.match(html, /href="\/treasury\.css"/);
   assert.doesNotMatch(source('views/treasury.js') + movements + expenses + form + source('views/treasury/home.js') + source('views/treasury/forms.js'),
     /innerHTML|style=|fingerprint|import-batches', \{ method/, 'no HTML injection, no inline styles, no fingerprints, no import upload');
+});
+
+test('incomes: tab by capability, human states, filters, form validation and keeping income links', () => {
+  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readIncomes: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'ingressos', 'despeses']);
+  assert.ok(!model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).some(t => t.id === 'ingressos'), 'no Ingressos without finance.income.read');
+  assert.equal(model.treasuryAvailable(caps({ readIncomes: true })), true);
+  assert.deepEqual(['PENDING', 'PARTIAL', 'RECONCILED', 'VOID'].map(code => model.incomeState(code).label), ['Pendent de conciliar', 'Conciliat en part', 'Conciliat', 'Anul·lat']);
+  assert.equal(model.incomeApiQuery('r', model.parseIncomeFilters({ estat: 'pendents', linia: UUID, des: 'x' })), `roundId=r&state=PENDING&budgetLineId=${UUID}`);
+  const ok = model.validateIncome({ concept: ' Subvenció ', incomeDate: '2026-10-01', total: '1.500', budgetLineId: 'l' }, { roundId: 'r' });
+  assert.equal(ok.body.totalCents, 150000, 'thousands dots are accepted');
+  assert.equal(model.parseEuros('1.250,50'), 125050);
+  assert.equal(model.parseEuros('15.50'), 1550, 'a decimal point still works');
+  const good = model.validateIncome({ concept: ' Subvenció ', incomeDate: '2026-10-01', total: '1500', budgetLineId: 'l', counterpartyId: 'c' }, { roundId: 'r' });
+  assert.deepEqual(good.body, { roundId: 'r', incomeDate: '2026-10-01', concept: 'Subvenció', totalCents: 150000, budgetLineId: 'l', counterpartyId: 'c' });
+  assert.equal(model.validateIncome({ concept: 'V', incomeDate: '2026-10-01', total: '400', budgetLineId: 'l' }, { roundId: 'r', maxCents: 30000 }).errors.total,
+    'L’import assignat supera l’import disponible del moviment.');
+  assert.equal(model.validateIncome({ concept: '', incomeDate: '', total: '', budgetLineId: null }, { roundId: 'r' }).errors.budgetLineId, 'Tria una partida d’ingressos.');
+  assert.deepEqual(model.allocationPayload([{ kind: 'INCOME', amountCents: 100, budgetLineId: 'l', incomeId: 'i' }]), [{ kind: 'INCOME', amountCents: 100, incomeId: 'i' }],
+    'a kept income link carries no line (the income brings it)');
+  assert.deepEqual(model.newAllocation({ kind: 'LINK_INCOME', amount: '300', incomeId: 'i' }, 30000).allocation, { kind: 'INCOME', amountCents: 30000, incomeId: 'i' });
+  assert.equal(model.newAllocation({ kind: 'LINK_INCOME', amount: '300' }, 30000).error, 'Tria l’ingrés.');
+  assert.equal(model.allocationLabel({ kind: 'INCOME', income: { concept: 'Venda loteria' } }), 'Ingrés · Venda loteria');
+  assert.equal(model.errorCopy({ code: 'income_reconciled' }), 'Aquest ingrés ja té cobraments vinculats. Corregeix primer la classificació del moviment.');
+  assert.doesNotMatch(model.errorCopy({ code: 'invalid_income' }), /_|[A-Z]{4,}/);
+  const incomes = source('views/treasury/incomes.js'), form = source('views/treasury/income-form.js'), movements = source('views/treasury/movements.js');
+  for (const [text, label, endpoint] of [[incomes, 'Nou ingrés', 'openIncomeForm'], [form, 'Crea l’ingrés', "'/api/finance/incomes'"], [form, 'Crea i concilia', '/income`'],
+    [movements, 'LINK_INCOME', '/allocations'], [incomes, 'Concilia amb un moviment', '/allocations'], [incomes, 'Anul·la l’ingrés', '/void']])
+  { assert.ok(text.includes(label), label); assert.ok(text.includes(endpoint), endpoint); }
+  assert.doesNotMatch(incomes + form, /innerHTML|style=|localStorage/);
 });

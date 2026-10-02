@@ -140,6 +140,10 @@ Tresoreria · Moviments v0.1 (3.5G.2A, implemented — pending review): list wit
 human status, detail, classification with the enabled kinds only, correction keeping history, duplicate
 review, audited on-demand original description, read-only import batches.
 
+`screens/TREASURY_INCOMES.md`
+Tresoreria · Ingressos v0.1 (3.5G.2A income extension, implemented — pending review): general incomes as
+economic facts, pending vs reconciled (derived), creation manual or from a movement, linking an existing income.
+
 `screens/TREASURY_EXPENSES.md`
 Tresoreria · Despeses v0.1 (3.5G.2A, implemented — pending review): list and detail, manual expense and
 expense from a movement, Total / Distribuït / Pendent line split, hierarchical budget line picker,

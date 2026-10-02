@@ -58,11 +58,13 @@ Choices offered (only the kinds enabled in 3.5G.1):
 | Movement | Choices |
 |---|---|
 | Outgoing | És una despesa (needs expense.manage) · Paga una despesa existent · És un traspàs intern |
-| Incoming | És un ingrés · És la devolució d’una despesa · És un traspàs intern |
+| Incoming | Crea un ingrés (income.manage) · Vincula a un ingrés existent (income.read) · És la devolució d’una despesa (proveïdor) · És un traspàs intern |
 
 Never offered: fee, activity, family, card-settlement or reimbursement allocations.
 
-- Ingrés: income leaf (tree picker of active INCOME lines) + amount (default: pending).
+- Crea un ingrés → income form (TREASURY_INCOMES.md); the income is created and reconciled with the movement.
+- Vincula a un ingrés existent: incomes pending reconciliation, exact amount first; amount defaults to
+  min(income pending, movement pending).
 - Paga / Devolució: recognised expenses of the round; for payment only those with the position's
   method and still unpaid.
 - Traspàs intern: unclassified movements of another position with the opposite amount, nearest date

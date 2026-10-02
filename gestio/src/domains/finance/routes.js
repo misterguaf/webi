@@ -4,6 +4,7 @@ import * as rounds from './rounds.js';
 import * as movements from './movements.js';
 import * as expenses from './expenses.js';
 import * as budget from './budget.js';
+import * as incomes from './incomes.js';
 
 const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024;
 
@@ -68,6 +69,17 @@ export async function financeRoute({ db, context, requestId, method, path, url, 
   if (path === '/api/finance/internal-transfers' && method === 'POST')
     return ok(await movements.recordInternalTransfer(db, context, requestId, await body()), 201);
   // Counterparties and expenses.
+  // General incomes (3.5G.2A extension).
+  if (path === '/api/finance/incomes' && method === 'GET') return ok(await incomes.listIncomes(db, context, requestId, url.searchParams));
+  if (path === '/api/finance/incomes' && method === 'POST') return ok(await incomes.createIncome(db, context, requestId, await body()), 201);
+  if ((match = path.match(/^\/api\/finance\/incomes\/([^/]+)$/))) {
+    if (method === 'GET') return ok(await incomes.incomeDetail(db, context, requestId, match[1]));
+    if (method === 'PATCH') return ok(await incomes.reviseIncome(db, context, requestId, match[1], await body()));
+  }
+  if ((match = path.match(/^\/api\/finance\/incomes\/([^/]+)\/void$/)) && method === 'POST')
+    return ok(await incomes.voidIncome(db, context, requestId, match[1], await body()));
+  if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/income$/)) && method === 'POST')
+    return ok(await movements.incomeFromMovement(db, context, requestId, match[1], await body()), 201);
   if (path === '/api/finance/counterparties' && method === 'GET') return ok(await expenses.listCounterparties(db, context, requestId));
   if (path === '/api/finance/counterparties' && method === 'POST') return ok(await expenses.createCounterparty(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/counterparties\/([^/]+)$/)) && method === 'PATCH')

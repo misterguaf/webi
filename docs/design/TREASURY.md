@@ -1243,6 +1243,23 @@ Fixed by the implementation, without changing any decision above:
   `VOID_DUPLICATE`); list filters and search run on the server over the minimised projection only.
 - A classification adds a part to the current set; a correction writes a new set; history keeps every set.
 
+# 34.3 Implementation notes (3.5G.2A income extension)
+
+- The bank export has no useful concept, so the economic meaning lives in Gestió: `finance_income` (migration 0029)
+  is the general income fact (grants, donations, lottery, sales, other), with a concept, date, total, an active
+  INCOME leaf of its round and an optional counterparty. Categories are budget lines, never code enums.
+- Reconciliation is derived, not stored: the current INCOME allocations that carry `income_id`
+  (pending / partial / reconciled). One income can be collected by several movements and one movement can
+  collect several incomes; current allocations never exceed the income total (D1 trigger).
+- Round figures keep counting INCOME allocations: an income counts once, when collected; a pending income is
+  shown as pending, not as income of the round.
+- `POST /movements/:id/income` creates the income and its allocation atomically (counted once);
+  linking an existing income uses the ordinary allocation endpoint with `incomeId`.
+- Corrections keep `finance_income_revision`; voiding is refused while a movement collects the income.
+- Permissions `finance.income.read` / `finance.income.manage` (GLOBAL, financial delegation), granted to
+  Tresoreria and Coordinació general like the expense ones. Counterparties accept either family of permissions.
+- "Devolució de despesa (proveïdor)" stays an expense refund, never an income and never a family refund (3.5G.3).
+
 # 35. Deferred debt
 
 | Item | Decision |

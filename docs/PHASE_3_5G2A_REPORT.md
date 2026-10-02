@@ -74,3 +74,17 @@ ocultos y desbordamiento horizontal en móvil; errores de campo que no se limpia
 G.2B y siguientes: justificantes, reembolsos, extractos de tarjeta, ejecución presupuestaria, cierre, Quotes
 dentro de Tresoreria, importación real. LEGAL DECISION REQUIRED: descripción bancaria original, ficheros
 importados, justificantes. PENDING TREASURY INPUT: DEV.
+
+## Extensió — Ingressos i conciliació bàsica
+
+- **Migración 0029:** `finance_income` (+ `_revision`), `finance_allocation.income_id`, permisos
+  `finance.income.read/manage` (Tresoreria y Coordinació general). Estado de conciliación derivado de las
+  imputaciones vigentes; un ingreso cuenta una vez, al cobrarse.
+- **API:** `GET/POST /api/finance/incomes`, `GET/PATCH /api/finance/incomes/:id`, `POST /incomes/:id/void`,
+  `POST /movements/:id/income`; vincular usa `/movements/:id/allocations` con `incomeId`. Resumen con ingresos
+  pendientes y entradas sin identificar.
+- **UI:** pestaña **Ingressos** (lista, detalle, Nou ingrés, Concilia, Anul·la); en Moviments, «Crea un ingrés» y
+  «Vincula a un ingrés existent»; «Devolució d’una despesa (proveïdor)» etiquetada sin ambigüedad.
+- **Tests:** `gestio-treasury-incomes.test.js` (5) y ampliación de `gestio-treasury-ui.test.js`.
+- **Revisión manual (copia aislada):** Nou ingrés 1.500 € pendiente; +1.500 € → Vincula → conciliado; +300 € →
+  Crea ingrés «Venda loteria» → conciliado; Despeses/Moviments sin regresión; móvil sin desbordamiento.

@@ -5,16 +5,22 @@ import { append } from '../audit/repository.js';
 import { AppError, requireUuid, validUuid } from '../../services/common.js';
 import { allow, audit, cents, commit, fail, isDate, keysOnly, notFound, optionalId, syntheticName, uuid, version } from './shared.js';
 import { budgetLineLabels } from './read-models.js';
+import { authorize } from '../../policy.js';
 
 // ---------------------------------------------------------------- counterparties
 const COUNTERPARTY_FIELDS = 'id,kind,display_name AS displayName,user_id AS userId,status,version';
+// Counterparties serve expenses and incomes: either capability is enough (the denial is audited as before).
+async function allowEither(db, context, requestId, permissions, resourceType) {
+  for (const permission of permissions.slice(1)) if ((await authorize(db, context, { permission })).allow) return;
+  await allow(db, context, requestId, permissions[0], resourceType);
+}
 export async function listCounterparties(db, context, requestId) {
-  await allow(db, context, requestId, 'finance.expense.read', 'finance_counterparty');
+  await allowEither(db, context, requestId, ['finance.expense.read', 'finance.income.read'], 'finance_counterparty');
   return { counterparties: (await db.prepare(`SELECT ${COUNTERPARTY_FIELDS} FROM finance_counterparty ORDER BY display_name,id LIMIT 500`).all()).results };
 }
 async function activeUser(db, id) { return !!await db.prepare("SELECT 1 FROM app_user WHERE id=? AND status='ACTIVE'").bind(id).first(); }
 export async function createCounterparty(db, context, requestId, input, now = Date.now()) {
-  await allow(db, context, requestId, 'finance.expense.manage', 'finance_counterparty');
+  await allowEither(db, context, requestId, ['finance.expense.manage', 'finance.income.manage'], 'finance_counterparty');
   if (!keysOnly(input, ['kind', 'displayName', 'userId']) || !['PERSON', 'ORGANIZATION'].includes(input.kind) || !syntheticName(input.displayName) ||
       !optionalId(input.userId) || (input.userId != null && input.kind !== 'PERSON')) fail('invalid_counterparty');
   if (input.userId != null && !await activeUser(db, input.userId)) fail('invalid_counterparty');
