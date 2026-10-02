@@ -105,7 +105,12 @@ const REQUIRED_OBJECTS=[
   'trigger:finance_counterparty_user_link_guard','trigger:finance_budget_transition','trigger:finance_budget_line_insert_guard',
   'trigger:finance_budget_line_update_guard','trigger:finance_budget_line_no_delete','trigger:finance_budget_line_parent_in_use',
   'trigger:finance_budget_revision_insert_guard','trigger:finance_budget_revision_transition',
-  'view:finance_budget_line_amount','view:finance_allocation_current','view:finance_movement_allocation_balance','view:finance_round_economics'
+  'view:finance_budget_line_amount','view:finance_allocation_current','view:finance_movement_allocation_balance','view:finance_round_economics',
+  'index:finance_income_round_idx','index:finance_income_line_idx','trigger:finance_income_insert_guard',
+  'trigger:finance_income_update_guard','trigger:finance_income_no_delete',
+  'trigger:finance_income_revision_no_update','trigger:finance_income_revision_no_delete',
+  'index:finance_allocation_income_idx','trigger:finance_allocation_income_link_guard',
+  'trigger:finance_allocation_income_link_immutable'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};

@@ -247,6 +247,12 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       'table:annual_fee_issue_outbox',
       'table:annual_fee_issue_capture'])
       assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
+    for (const object of ['index:finance_income_round_idx','index:finance_income_line_idx',
+      'trigger:finance_income_insert_guard','trigger:finance_income_update_guard','trigger:finance_income_no_delete',
+      'trigger:finance_income_revision_no_update','trigger:finance_income_revision_no_delete',
+      'index:finance_allocation_income_idx','trigger:finance_allocation_income_link_guard',
+      'trigger:finance_allocation_income_link_immutable'])
+      assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
     assert.equal(verifyBackup(backup,config).manifest.sql_sha256,manifest.sql_sha256);
     assert.match(runNpm('db:backup:verify',['--config',config,'--backup',backup]),/BACKUP_VERIFIED/);
     const dump=readFileSync(join(backup,'dump.sql'),'utf8');
@@ -288,6 +294,16 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     cpSync(backup,secretBackup,{recursive:true});
     writeFileSync(join(secretBackup,'dump.sql'),dump+'\n-- CF_API_TOKEN_CANARY_2B\n');
     assert.throws(()=>verifyBackup(secretBackup,config),/SECRET_PATTERN_DETECTED/);
+    const missingIncomeGuard=join(temp,'missing-income-guard-backup');
+    cpSync(backup,missingIncomeGuard,{recursive:true});
+    const dumpWithoutGuard=dump.replace(/CREATE TRIGGER finance_income_insert_guard[\s\S]*?END;\n/,'');
+    assert.notEqual(dumpWithoutGuard,dump,'dump must contain finance_income_insert_guard');
+    writeFileSync(join(missingIncomeGuard,'dump.sql'),dumpWithoutGuard);
+    const missingManifest=JSON.parse(readFileSync(join(missingIncomeGuard,'manifest.json'),'utf8'));
+    missingManifest.sql_sha256=createHash('sha256').update(dumpWithoutGuard).digest('hex');
+    missingManifest.sql_bytes=Buffer.byteLength(dumpWithoutGuard);
+    writeFileSync(join(missingIncomeGuard,'manifest.json'),JSON.stringify(missingManifest));
+    assert.throws(()=>verifyBackup(missingIncomeGuard,config),/SCHEMA_OBJECT_MISSING/);
 
     // Temporary bad change, never a versioned migration: backup verifier must refuse it.
     run(isolated,['d1','execute','parpallo-gestio-local','--local','--config','wrangler.toml','--command',
@@ -367,11 +383,15 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const episodes=JSON.parse(restoredEpisodes.stdout)[0].results;
     assert.deepEqual(episodes.map(row=>[row.ended,row.created_by,row.ended_by]),[[1,id(101),id(101)],[0,id(101),null]]);
     assert.notEqual(episodes[0].id,episodes[1].id);
-    // The restored database still refuses to erase relationship history.
+    // The restored database still refuses to erase relationship history or income history.
     const eraseHistory=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"DELETE FROM participant_guardian WHERE id='"+episodes[0].id+"'",'--yes'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.notEqual(eraseHistory.status,0);
+    const eraseIncome=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"DELETE FROM finance_income WHERE id='"+pendingIncome+"'",'--yes'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.notEqual(eraseIncome.status,0);
     worker=await startWorker(isolated,restored);
     assert.equal((await worker.request('/api/me',{cookie:group})).status,200); // hashed session persisted
     const troopRestored=await worker.login('seed-102');
