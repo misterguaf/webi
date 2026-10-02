@@ -8,6 +8,8 @@ import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
 import { createAccountView, createDashboardView, createFeeStatusView, createFeesView } from './views/simple-views.js';
 import { createParticipantsView } from './views/participants.js';
+import { createTreasuryView } from './views/treasury.js';
+import { treasuryAvailable } from './views/treasury/model.js';
 
 const $ = id => document.getElementById(id);
 const message = value => { $('message').textContent = value; };
@@ -41,7 +43,8 @@ const views = createViewRegistry([
   activities,
   registrations,
   createFeesView({ call, message, reportLoadError }),
-  createFeeStatusView({ call, reportLoadError })
+  createFeeStatusView({ call, reportLoadError }),
+  createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge })
 ]);
 onNavigate((page, route) => views.enter(page, currentMe, route));
 
@@ -56,6 +59,7 @@ async function refresh() {
   try { me = await call('/api/me'); } catch (error) { hide(); reportLoadError(error); return; }
   $('login').hidden = true; $('logout').hidden = false; currentMe = me; setShellSession(me);
   setNavAvailable('inscripcions', !!(me.capabilities.registrations?.review || me.capabilities.registrations?.verifyPayments));
+  setNavAvailable('tresoreria', treasuryAvailable(me.capabilities));
   // Modules are requested only when /api/me says they are usable (no AUTHZ_DENY noise).
   await views.loadAll(me);
 }

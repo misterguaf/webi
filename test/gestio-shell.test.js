@@ -29,7 +29,7 @@ test('shell guards unavailable controls, session expiry and invalid payment revi
   let fixture='none';
   let paymentStatus='ISSUE';
   const themes=['system','light','dark'].map(choice=>{const button=new NodeStub();button.dataset.themeChoice=choice;return button;});
-  const emptyStates=new Map(['activitats','inscripcions','quotes','participants'].map(page=>[page,new NodeStub(page)]));
+  const emptyStates=new Map(['activitats','inscripcions','quotes','tresoreria','participants'].map(page=>[page,new NodeStub(page)]));
   const original={document:globalThis.document,window:globalThis.window,localStorage:globalThis.localStorage,
     MutationObserver:globalThis.MutationObserver,fetch:globalThis.fetch};
   try {

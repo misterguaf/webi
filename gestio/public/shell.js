@@ -6,6 +6,7 @@ const pages = [
   {id:'activitats',label:'Activitats',icon:'calendar'},
   {id:'inscripcions',label:'Inscripcions',icon:'clipboard'},
   {id:'quotes',label:'Quotes',icon:'wallet'},
+  {id:'tresoreria',label:'Tresoreria',icon:'bank'},
   {id:'participants',label:'Participants',icon:'people'},
   {id:'incidencies',label:'Incidències',icon:'alert'},
   {id:'administracio',label:'Administració',icon:'settings'}
@@ -226,7 +227,7 @@ $('brandLink').addEventListener('click',event=>{event.preventDefault();navigateT
 export function currentRouteOf(){return currentRoute}
 $('openFeeIssues').addEventListener('click',()=>{if($('feePanel').hidden)return;navigateTo('quotes');$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
 
-const emptyGroups={activitats:['activitiesView'],inscripcions:['registrationsView'],quotes:['feePanel','feeStatusPanel'],participants:['participantsView']};
+const emptyGroups={activitats:['activitiesView'],inscripcions:['registrationsView'],quotes:['feePanel','feeStatusPanel'],tresoreria:['treasuryView'],participants:['participantsView']};
 function syncEmptyStates(){
   for(const [page,ids] of Object.entries(emptyGroups)){
     const empty=document.querySelector(`[data-shell-empty-for="${page}"]`);
