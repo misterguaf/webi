@@ -190,6 +190,14 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       lines:[{budgetLineId:kitchen,amountCents:3000}],recognise:true})).data.id;
     const purchase=(await finance('movements',{positionId:card,operationDate:'2026-11-05',amountCents:-3000,label:'Compra amb targeta'})).data.id;
     assert.equal((await finance('movements/'+purchase+'/allocations',{expectedVersion:0,allocations:[{kind:'EXPENSE_SETTLEMENT',amountCents:3000,expenseId:expense}]})).status,200);
+    // 3.5G.2A incomes: a pending grant, a reconciled sale (with a correction) and its allocation must survive restore.
+    const incomeRoot=(await finance('budget-lines',{roundId:round,code:'1',name:'Ingressos',nature:'INCOME'})).data.id;
+    const grants=(await finance('budget-lines',{roundId:round,code:'1.1',name:'Subvencions',nature:'INCOME',parentId:incomeRoot})).data.id;
+    const pendingIncome=(await finance('incomes',{roundId:round,incomeDate:'2026-11-06',concept:'Subvenció pendent',totalCents:150000,budgetLineId:grants})).data.id;
+    const sale=(await finance('incomes',{roundId:round,incomeDate:'2026-11-07',concept:'Venda loteria',totalCents:30000,budgetLineId:grants})).data.id;
+    assert.equal((await finance('incomes/'+sale,{concept:'Venda de loteria',expectedVersion:1},'PATCH')).status,200);
+    const saleMove=(await finance('movements',{positionId:bank,operationDate:'2026-11-07',amountCents:30000,label:'Ingrés loteria'})).data.id;
+    assert.equal((await finance('movements/'+saleMove+'/allocations',{expectedVersion:0,allocations:[{kind:'INCOME',amountCents:30000,incomeId:sale}]})).status,200);
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -224,9 +232,9 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(manifest.table_counts.annual_fee_round,1);
     assert.equal(manifest.table_counts.annual_fee_payment,0);
     assert.equal(manifest.table_counts.finance_round,1);
-    assert.equal(manifest.table_counts.finance_movement,4);
+    assert.equal(manifest.table_counts.finance_movement,5);
     assert.equal(manifest.table_counts.finance_movement_description,2);
-    assert.equal(manifest.table_counts.finance_allocation,3);
+    assert.equal(manifest.table_counts.finance_allocation,4);
     assert.equal(manifest.table_counts.finance_budget_revision,1);
     for (const object of ['table:annual_fee_family_revision','table:annual_fee_family_revision_member',
       'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
@@ -309,8 +317,24 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       "(SELECT count(*) FROM finance_allocation_current) AS current_allocations,(SELECT current_cents FROM finance_budget_line_amount a JOIN finance_budget_line l ON l.id=a.line_id WHERE l.code='2') AS budget_current",'--json'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.equal(restoredFinance.status,0);
-    assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:3000,income:0,current_allocations:3,budget_current:105000},
-      'the transfer counts nothing, the card expense once; current budget = initial + approved revision');
+    assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:3000,income:30000,current_allocations:4,budget_current:105000},
+      'the transfer counts nothing, the card expense once, the collected sale once (the pending grant not yet); current budget = initial + approved revision');
+    const restoredIncomes=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT i.concept,i.total_cents AS total,i.status,COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.income_id=i.id),0) AS reconciled,"+
+      "(SELECT count(*) FROM finance_income_revision r WHERE r.income_id=i.id) AS revisions FROM finance_income i ORDER BY i.income_date",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredIncomes.status,0);
+    assert.deepEqual(JSON.parse(restoredIncomes.stdout)[0].results,[
+      {concept:'Subvenció pendent',total:150000,status:'ACTIVE',reconciled:0,revisions:0},
+      {concept:'Venda de loteria',total:30000,status:'ACTIVE',reconciled:30000,revisions:1}],
+      'pending stays pending (0 reconciled), the sale stays reconciled, its correction history survives');
+    const restoredLinks=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"PRAGMA foreign_key_check",'--json'],{cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredLinks.status,0);
+    assert.deepEqual(JSON.parse(restoredLinks.stdout)[0].results,[],'every income, allocation and revision FK is valid after restore');
+    assert.equal(manifest.table_counts.finance_income,2);
+    assert.equal(manifest.table_counts.finance_income_revision,1);
+    assert.ok(pendingIncome);
     const restoredFeeSchema=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"SELECT (SELECT count(*) FROM annual_fee_installment_part) AS parts,(SELECT count(*) FROM annual_fee_family_revision) AS family_revisions",'--json'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});

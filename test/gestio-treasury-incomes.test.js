@@ -159,3 +159,51 @@ test('synthetic demo: pending grant, reconciled lottery sale and an unidentified
   assert.deepEqual([reconciled(id(23001)), reconciled(id(23002))], [0, 45000]);
   sql.close();
 });
+
+test('financial delegation of finance.income.*: group-wide only, effective when authorised, never re-delegable, never widens', async () => {
+  const s = await setup();
+  try {
+    const A = 9611, B = 9612;
+    for (const [user, name] of [[A, 'Suport ingressos (fictici)'], [B, 'Segon suport (fictici)']]) {
+      s.f.sql.exec(`INSERT INTO app_user(id,display_name,status,created_at,updated_at) VALUES('${id(user)}','${name}','ACTIVE',1,1)`);
+      await s.f.login(user);
+    }
+    let seq = 0;
+    const provision = (userId, permissionCode, sectionId, authorizedBy, provisioner = 107) => s.call(provisioner, '/api/delegations', 'POST', { userId: id(userId),
+      permissionCode, sectionId, authorizedBy, authorizationReference: `DEMO-INCOME-DEL-${++seq}`, expiresAt: Date.now() + 86400000 });
+    const ratify = async created => {
+      await s.call(101, `/api/delegations/${created.data.id}/confirm`, 'POST', {});
+      assert.equal((await s.call(101, `/api/delegations/${created.data.id}/ratify`, 'POST', { ratificationReference: 'DEMO-INCOME-RATIFIED' })).status, 200);
+    };
+    const { authorize } = await import('../gestio/src/policy.js');
+    const can = async (user, permission) => (await authorize(s.f.db, s.f.context[user], { permission })).allow;
+    // GROUP scope: a section-scoped delegation is refused for both capabilities.
+    for (const code of ['finance.income.read', 'finance.income.manage'])
+      assert.equal((await provision(A, code, id(2), id(101))).status, 400, `${code} cannot be section-scoped`);
+    // Explicit group-wide delegation from an authority that holds it by role + grant: effective once ratified.
+    for (const code of ['finance.income.read', 'finance.income.manage']) {
+      const created = await provision(A, code, null, id(101));
+      assert.equal(created.status, 201, JSON.stringify(created.data));
+      await ratify(created);
+    }
+    assert.equal(await can(A, 'finance.income.read'), true);
+    assert.equal(await can(A, 'finance.income.manage'), true);
+    assert.equal((await s.call(A, `/api/finance/incomes?roundId=${s.round}`)).status, 200);
+    assert.equal((await s.call(A, '/api/finance/incomes', 'POST', { roundId: s.round, incomeDate: '2026-10-05', concept: 'Donació',
+      totalCents: 1000, budgetLineId: s.lines.lottery })).status, 201);
+    const caps = (await s.call(A, '/api/me')).data.capabilities.treasury;
+    assert.deepEqual([caps.readIncomes, caps.manageIncomes], [true, true]);
+    // It never widens: no movements, expenses, budget or treasury reading.
+    for (const permission of ['finance.expense.read', 'finance.expense.manage', 'finance.movement.read', 'finance.movement.classify',
+      'finance.treasury.read', 'finance.budget.read', 'finance.bank_description.reveal'])
+      assert.equal(await can(A, permission), false, permission);
+    assert.equal((await s.call(A, '/api/finance/movements')).status, 403);
+    assert.equal((await s.call(A, `/api/finance/expenses?roundId=${s.round}`)).status, 403);
+    // Received by delegation, usable but never re-delegable (as authoriser or as provisioner).
+    assert.equal((await provision(B, 'finance.income.read', null, id(A))).status, 403);
+    assert.equal((await provision(B, 'finance.income.manage', null, id(A))).status, 403);
+    assert.equal((await provision(B, 'finance.income.read', null, id(A), A)).status, 403);
+    assert.equal(await can(B, 'finance.income.read'), false);
+    assert.equal(s.count('delegated_permission', `user_id='${id(B)}'`), 0, 'nothing was created for B');
+  } finally { s.f.close(); }
+});
