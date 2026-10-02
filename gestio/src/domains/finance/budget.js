@@ -28,6 +28,18 @@ export async function getBudget(db, context, requestId, roundId) {
     decided_at AS decidedAt FROM finance_budget_revision WHERE budget_id=? ORDER BY proposed_at DESC,id DESC`).bind(budget.id).all()).results : [];
   return { budget: budget ?? null, lines, revisions };
 }
+/** FASE 3.5G.2A — the line picker: names and codes of the active lines of one nature (no amounts), so
+ *  people who classify or record expenses can choose an assignable leaf without reading the budget. */
+export async function assignableLines(db, context, requestId, roundId, params) {
+  const nature = params?.get('nature') ?? 'EXPENSE';
+  if (!['INCOME', 'EXPENSE'].includes(nature)) fail('invalid_filter');
+  await allow(db, context, requestId, nature === 'INCOME' ? 'finance.movement.read' : 'finance.expense.read', 'finance_budget_line');
+  await round(db, roundId);
+  const lines = (await db.prepare(`SELECT l.id,l.code,l.name,l.parent_id AS parentId,
+    NOT EXISTS(SELECT 1 FROM finance_budget_line c WHERE c.parent_id=l.id) AS assignable FROM finance_budget_line l
+    WHERE l.round_id=? AND l.nature=? AND l.status='ACTIVE' ORDER BY l.sort_order,l.code`).bind(roundId, nature).all()).results;
+  return { nature, lines: lines.map(row => ({ ...row, assignable: !!row.assignable })) };
+}
 export async function createBudget(db, context, requestId, roundId, now = Date.now()) {
   await allow(db, context, requestId, 'finance.budget.propose', 'finance_budget');
   const row = await round(db, roundId);

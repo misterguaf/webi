@@ -4,7 +4,9 @@ import { versionCas } from '../../concurrency.js';
 import { pageRequest, pageResult } from '../../pagination.js';
 import { append } from '../audit/repository.js';
 import { AppError, requireUuid, validUuid } from '../../services/common.js';
-import { allow, audit, cents, commit, fail, isDate, keysOnly, notFound, optionalId, signedCents, uuid, version } from './shared.js';
+import { allow, audit, cents, commit, fail, isDate, keysOnly, notFound, optionalId, signedCents, syntheticName, uuid, version } from './shared.js';
+import { describeAllocations, expenseSummaries } from './read-models.js';
+import { authorize } from '../../policy.js';
 
 const encoder = new TextEncoder();
 async function sha256(text) {
@@ -138,38 +140,100 @@ export async function createManualMovement(db, context, requestId, input, now = 
 }
 
 // ---------------------------------------------------------------- reads
-const MOVEMENT_FIELDS = `m.id,m.position_id AS positionId,m.operation_date AS operationDate,m.value_date AS valueDate,m.amount_cents AS amountCents,
-  m.origin,m.import_batch_id AS importBatchId,m.display_label AS label,m.bank_reference AS reference,m.auxiliary_balance_cents AS auxiliaryBalanceCents,
-  m.review_flag AS reviewFlag,m.state,m.duplicate_of_id AS duplicateOfId,m.allocation_version AS allocationVersion,m.review_version AS reviewVersion,
-  b.allocated_cents AS allocatedCents,b.unallocated_cents AS unallocatedCents`;
+const MOVEMENT_FIELDS = `m.id,m.position_id AS positionId,p.name AS positionName,p.kind AS positionKind,m.operation_date AS operationDate,
+  m.value_date AS valueDate,m.amount_cents AS amountCents,m.origin,m.import_batch_id AS importBatchId,m.display_label AS label,
+  m.bank_reference AS reference,m.auxiliary_balance_cents AS auxiliaryBalanceCents,m.review_flag AS reviewFlag,m.state,
+  m.duplicate_of_id AS duplicateOfId,m.allocation_version AS allocationVersion,m.review_version AS reviewVersion,
+  COALESCE(b.allocated_cents,0) AS allocatedCents,COALESCE(b.unallocated_cents,0) AS unallocatedCents`;
+const MOVEMENT_FROM = `finance_movement m JOIN finance_position p ON p.id=m.position_id
+  LEFT JOIN finance_movement_allocation_balance b ON b.movement_id=m.id`;
+// Status shown to people (derived): void duplicate, possible duplicate, pending, partial, classified.
+export const movementStatus = row => row.state === 'VOID_DUPLICATE' ? 'VOID_DUPLICATE' : row.reviewFlag ? 'POSSIBLE_DUPLICATE'
+  : row.allocatedCents === 0 ? 'PENDING' : row.unallocatedCents > 0 ? 'PARTIAL' : 'CLASSIFIED';
+const STATUS_FILTERS = {
+  pending: 'm.state=\'ACTIVE\' AND m.review_flag IS NULL AND COALESCE(b.allocated_cents,0)=0',
+  partial: 'm.state=\'ACTIVE\' AND m.review_flag IS NULL AND COALESCE(b.allocated_cents,0)>0 AND b.unallocated_cents>0',
+  classified: 'm.state=\'ACTIVE\' AND m.review_flag IS NULL AND COALESCE(b.unallocated_cents,1)=0',
+  attention: 'm.state=\'ACTIVE\' AND (m.review_flag IS NOT NULL OR b.unallocated_cents>0)',
+  duplicates: 'm.state=\'ACTIVE\' AND m.review_flag IS NOT NULL',
+  voided: 'm.state=\'VOID_DUPLICATE\''
+};
+/** Current allocations of several movements, summarised for a list row. */
+async function classificationSummaries(db, rows) {
+  const active = rows.filter(row => row.allocationVersion > 0 && row.state === 'ACTIVE');
+  if (!active.length) return new Map();
+  const allocations = (await db.prepare(`SELECT a.movement_id AS movementId,a.kind,a.amount_cents AS amountCents,a.budget_line_id AS budgetLineId,
+    a.expense_id AS expenseId,a.paired_movement_id AS pairedMovementId FROM finance_allocation_current a
+    WHERE a.movement_id IN (${active.map(() => '?').join(',')}) ORDER BY a.created_at,a.id`).bind(...active.map(row => row.id)).all()).results;
+  const described = await describeAllocations(db, allocations);
+  const byMovement = new Map();
+  allocations.forEach((row, index) => {
+    if (!byMovement.has(row.movementId)) byMovement.set(row.movementId, []);
+    byMovement.get(row.movementId).push(described[index]);
+  });
+  return byMovement;
+}
 export async function listMovements(db, context, requestId, params) {
   await allow(db, context, requestId, 'finance.movement.read', 'finance_movement');
   const filters = [], binds = [];
-  const positionId = params?.get('positionId'), from = params?.get('from'), to = params?.get('to'), state = params?.get('state') ?? 'ACTIVE';
+  const positionId = params?.get('positionId'), from = params?.get('from'), to = params?.get('to');
+  const status = params?.get('status') ?? (params?.get('state') === 'VOID_DUPLICATE' ? 'voided' : null), direction = params?.get('direction'), q = params?.get('q');
   if (positionId) { if (!validUuid(positionId)) fail('invalid_filter'); filters.push('m.position_id=?'); binds.push(positionId); }
   if (from) { if (!isDate(from)) fail('invalid_filter'); filters.push('m.operation_date>=?'); binds.push(from); }
   if (to) { if (!isDate(to)) fail('invalid_filter'); filters.push('m.operation_date<=?'); binds.push(to); }
-  if (!['ACTIVE', 'VOID_DUPLICATE'].includes(state)) fail('invalid_filter');
-  filters.push('m.state=?'); binds.push(state);
-  if (params?.get('pending') === '1') filters.push('(b.unallocated_cents>0 OR m.review_flag IS NOT NULL)');
+  if (status) { if (!STATUS_FILTERS[status]) fail('invalid_filter'); filters.push(STATUS_FILTERS[status]); }
+  else filters.push("m.state='ACTIVE'");
+  if (params?.get('pending') === '1') filters.push(STATUS_FILTERS.attention);
+  if (direction) { if (!['in', 'out'].includes(direction)) fail('invalid_filter'); filters.push(direction === 'in' ? 'm.amount_cents>0' : 'm.amount_cents<0'); }
+  // Search covers the minimised projection only (label, reference, position), never the original description.
+  if (q) {
+    if (typeof q !== 'string' || q.length > 80) fail('invalid_filter');
+    filters.push("(m.display_label LIKE ? ESCAPE '\\' OR m.bank_reference LIKE ? ESCAPE '\\' OR p.name LIKE ? ESCAPE '\\')");
+    const like = '%' + q.trim().replaceAll('\\', '\\\\').replaceAll('%', '\\%').replaceAll('_', '\\_') + '%';
+    binds.push(like, like, like);
+  }
   const page = pageRequest(params, ['string', 'string']);
   if (page.after) { filters.push('(m.operation_date<? OR (m.operation_date=? AND m.id<?))'); binds.push(page.after[0], page.after[0], page.after[1]); }
-  const rows = (await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM finance_movement m
-    LEFT JOIN finance_movement_allocation_balance b ON b.movement_id=m.id WHERE ${filters.join(' AND ')}
+  const rows = (await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM ${MOVEMENT_FROM} WHERE ${filters.join(' AND ')}
     ORDER BY m.operation_date DESC,m.id DESC LIMIT ?`).bind(...binds, page.limit + 1).all()).results;
   const result = pageResult(rows, page.limit, row => [row.operationDate, row.id]);
-  return { movements: result.items, nextCursor: result.nextCursor };
+  const summaries = await classificationSummaries(db, result.items);
+  return { movements: result.items.map(row => ({ ...row, status: movementStatus(row), classification: summaries.get(row.id) ?? [] })),
+    nextCursor: result.nextCursor };
 }
 const ALLOCATION_FIELDS = `id,kind,amount_cents AS amountCents,round_id AS roundId,budget_line_id AS budgetLineId,expense_id AS expenseId,
   paired_movement_id AS pairedMovementId,activity_id AS activityId,section_id AS sectionId,set_version AS setVersion,created_at AS createdAt`;
+const brief = row => ({ id: row.id, operationDate: row.operationDate, amountCents: row.amountCents, label: row.label, positionName: row.positionName,
+  positionKind: row.positionKind, status: movementStatus(row), allocationVersion: row.allocationVersion, reviewVersion: row.reviewVersion });
 export async function movementDetail(db, context, requestId, id) {
   await allow(db, context, requestId, 'finance.movement.read', 'finance_movement', validUuid(id) ? id : null);
-  const movement = await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM finance_movement m
-    LEFT JOIN finance_movement_allocation_balance b ON b.movement_id=m.id WHERE m.id=?`).bind(requireUuid(id)).first();
+  const movement = await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM ${MOVEMENT_FROM} WHERE m.id=?`).bind(requireUuid(id)).first();
   if (!movement) throw notFound();
-  const allocations = (await db.prepare(`SELECT ${ALLOCATION_FIELDS} FROM finance_allocation WHERE movement_id=? AND set_version=?
-    ORDER BY created_at,id`).bind(id, movement.allocationVersion).all()).results;
-  return { movement, allocations, previousSets: Math.max(0, movement.allocationVersion - 1) };
+  const sets = (await db.prepare(`SELECT ${ALLOCATION_FIELDS} FROM finance_allocation WHERE movement_id=? ORDER BY set_version,created_at,id`)
+    .bind(id).all()).results;
+  const described = await describeAllocations(db, sets);
+  const current = described.filter((_, index) => sets[index].setVersion === movement.allocationVersion);
+  // Classification history: every earlier set, newest first (kept, never rewritten).
+  const history = [];
+  for (let version = movement.allocationVersion - 1; version >= 1; version--) {
+    const items = described.filter((_, index) => sets[index].setVersion === version);
+    const createdAt = sets.find(row => row.setVersion === version + 1)?.createdAt ?? null;
+    history.push({ replacedAt: createdAt, allocations: items });
+  }
+  const batch = movement.importBatchId ? await db.prepare(`SELECT source_format AS format,imported_at AS importedAt FROM finance_import_batch WHERE id=?`)
+    .bind(movement.importBatchId).first() : null;
+  const duplicateOf = movement.duplicateOfId ? await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM ${MOVEMENT_FROM} WHERE m.id=?`).bind(movement.duplicateOfId).first() : null;
+  // Candidates offered by the screen: possible originals of a flagged movement, and transfer pairs.
+  const duplicateCandidates = movement.state === 'ACTIVE' ? (await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM ${MOVEMENT_FROM}
+    WHERE m.position_id=? AND m.amount_cents=? AND m.operation_date=? AND m.id!=? AND m.state='ACTIVE' ORDER BY m.created_at LIMIT 5`)
+    .bind(movement.positionId, movement.amountCents, movement.operationDate, id).all()).results.map(brief) : [];
+  const transferCandidates = movement.state === 'ACTIVE' ? (await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM ${MOVEMENT_FROM}
+    WHERE m.position_id!=? AND m.amount_cents=? AND m.state='ACTIVE' AND COALESCE(b.allocated_cents,0)=0
+    ORDER BY abs(julianday(m.operation_date)-julianday(?)),m.id LIMIT 8`).bind(movement.positionId, -movement.amountCents, movement.operationDate)
+    .all()).results.map(brief) : [];
+  const hasDescription = !!await db.prepare('SELECT 1 FROM finance_movement_description WHERE movement_id=?').bind(id).first();
+  return { movement: { ...movement, status: movementStatus(movement), origin: movement.origin, importedAt: batch?.importedAt ?? null, hasDescription },
+    allocations: current, history, duplicateOf: duplicateOf ? brief(duplicateOf) : null, duplicateCandidates, transferCandidates };
 }
 // The protected original description: explicit permission, audited without the value (LEGAL DECISION REQUIRED).
 export async function revealDescription(db, context, requestId, id) {
@@ -275,4 +339,87 @@ export async function recordInternalTransfer(db, context, requestId, input, now 
     audit(db, context, requestId, input.toExpectedVersion === 0 ? 'MOVEMENT_CLASSIFIED' : 'MOVEMENT_RECLASSIFIED', 'finance_movement', input.toMovementId, now)
   ], 'stale_movement');
   return { fromAllocationVersion: input.fromExpectedVersion + 1, toAllocationVersion: input.toExpectedVersion + 1 };
+}
+
+/** Classify an outgoing bank/card/cash movement as a new expense in one step: the expense is recognised
+ *  (a direct treasury expense, paid by the position's method) and settled by this movement, keeping the
+ *  movement's other current allocations. One economic fact, counted once. */
+export async function expenseFromMovement(db, context, requestId, id, input, now = Date.now()) {
+  await allow(db, context, requestId, 'finance.movement.classify', 'finance_movement', validUuid(id) ? id : null);
+  await allow(db, context, requestId, 'finance.expense.manage', 'finance_expense');
+  if (!keysOnly(input, ['expectedVersion', 'roundId', 'expenseDate', 'concept', 'counterpartyId', 'supplierLabel', 'lines']) ||
+      !version(input.expectedVersion) || !validUuid(input.roundId) || !isDate(input.expenseDate) ||
+      typeof input.concept !== 'string' || !input.concept.trim() || input.concept.length > 120 || !optionalId(input.counterpartyId) ||
+      (input.supplierLabel != null && (!syntheticName(input.supplierLabel) || input.supplierLabel.length > 80)) ||
+      !Array.isArray(input.lines) || input.lines.length < 1 || input.lines.length > 50) fail('invalid_expense');
+  for (const line of input.lines) if (!keysOnly(line, ['budgetLineId', 'amountCents', 'activityId', 'sectionId']) || !validUuid(line.budgetLineId) ||
+    !cents(line.amountCents) || !optionalId(line.activityId) || !optionalId(line.sectionId)) fail('invalid_expense');
+  const movement = await db.prepare(`SELECT m.state,m.amount_cents,m.allocation_version,p.kind FROM finance_movement m JOIN finance_position p ON p.id=m.position_id
+    WHERE m.id=?`).bind(requireUuid(id)).first();
+  if (!movement) throw notFound();
+  if (movement.state !== 'ACTIVE') throw new AppError(409, 'movement_voided');
+  if (movement.amount_cents >= 0) throw new AppError(409, 'invalid_allocation_direction');
+  const total = input.lines.reduce((sum, line) => sum + line.amountCents, 0);
+  const existing = (await db.prepare(`SELECT kind,amount_cents AS amountCents,budget_line_id AS budgetLineId,expense_id AS expenseId,
+    paired_movement_id AS pairedMovementId,activity_id AS activityId,section_id AS sectionId FROM finance_allocation WHERE movement_id=? AND set_version=?
+    ORDER BY created_at,id`).bind(id, movement.allocation_version).all()).results;
+  if (movement.allocation_version !== input.expectedVersion) throw new AppError(409, 'stale_movement');
+  const expenseId = uuid(), next = input.expectedVersion + 1;
+  const keep = existing.map(row => Object.fromEntries(Object.entries(row).filter(([, value]) => value !== null)));
+  await commit(db, [
+    db.prepare(`INSERT INTO finance_expense(id,round_id,expense_date,concept,counterparty_id,supplier_label,total_cents,payment_method,created_by,created_at,updated_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?,?)`).bind(expenseId, input.roundId, input.expenseDate, input.concept.trim(), input.counterpartyId ?? null,
+      input.supplierLabel?.trim() ?? null, total, movement.kind, context.userId, now, now),
+    ...input.lines.map((line, index) => db.prepare(`INSERT INTO finance_expense_line(expense_id,lines_version,line_no,budget_line_id,amount_cents,activity_id,section_id)
+      VALUES(?,1,?,?,?,?,?)`).bind(expenseId, index + 1, line.budgetLineId, line.amountCents, line.activityId ?? null, line.sectionId ?? null)),
+    db.prepare(`UPDATE finance_expense SET version=2,status='RECOGNISED',recognized_by=?,recognized_at=?,updated_at=? WHERE id=? AND version=1`)
+      .bind(context.userId, now, now, expenseId),
+    db.prepare(`UPDATE finance_movement SET ${versionCas('allocation_version')} WHERE id=?`).bind(input.expectedVersion, id),
+    ...await allocationRows(db, context, id, next, [...keep, { kind: 'EXPENSE_SETTLEMENT', amountCents: total, expenseId }], now),
+    audit(db, context, requestId, 'EXPENSE_RECOGNISED', 'finance_expense', expenseId, now),
+    audit(db, context, requestId, input.expectedVersion === 0 ? 'MOVEMENT_CLASSIFIED' : 'MOVEMENT_RECLASSIFIED', 'finance_movement', id, now)
+  ], 'stale_movement');
+  return { expenseId, allocationVersion: next };
+}
+
+/** Inici de Tresoreria: what needs attention now, from the blocks the user may read. */
+export async function treasurySummary(db, context, requestId) {
+  const can = async permission => (await authorize(db, context, { permission })).allow;
+  const [treasury, movementsRead, expensesRead] = await Promise.all(['finance.treasury.read', 'finance.movement.read', 'finance.expense.read'].map(can));
+  if (!treasury && !movementsRead && !expensesRead) await allow(db, context, requestId, 'finance.treasury.read', 'finance_round');
+  const round = await db.prepare("SELECT id,code,period_start AS periodStart,period_end AS periodEnd,status FROM finance_round WHERE status='OPEN'").first();
+  const result = { round: round ?? null };
+  if (treasury && round) {
+    const positions = (await db.prepare('SELECT id,kind,name,status FROM finance_position WHERE status=\'ACTIVE\' ORDER BY kind,name').all()).results;
+    result.positions = await Promise.all(positions.map(async position => {
+      const opening = await db.prepare('SELECT amount_cents FROM finance_opening_balance_current WHERE round_id=? AND position_id=?').bind(round.id, position.id).first();
+      const moved = await db.prepare(`SELECT COALESCE(sum(amount_cents),0) AS total FROM finance_movement WHERE position_id=? AND state='ACTIVE'
+        AND operation_date>=? AND operation_date<=?`).bind(position.id, round.periodStart, round.periodEnd).first();
+      const balance = (opening?.amount_cents ?? 0) + moved.total;
+      return { id: position.id, kind: position.kind, name: position.name, balanceCents: balance, hasOpening: !!opening };
+    }));
+  }
+  // Position names for filters and pickers (no balances unless treasury.read, above).
+  if (movementsRead || expensesRead) result.positionOptions = (await db.prepare(`SELECT id,kind,name,status FROM finance_position ORDER BY kind,name,id`).all()).results;
+  if (movementsRead) {
+    const counts = await db.prepare(`SELECT
+      (SELECT count(*) FROM ${MOVEMENT_FROM} WHERE ${STATUS_FILTERS.pending}) AS pending,
+      (SELECT count(*) FROM ${MOVEMENT_FROM} WHERE ${STATUS_FILTERS.partial}) AS partial,
+      (SELECT count(*) FROM ${MOVEMENT_FROM} WHERE ${STATUS_FILTERS.duplicates}) AS duplicates`).first();
+    const recent = (await db.prepare(`SELECT ${MOVEMENT_FIELDS} FROM ${MOVEMENT_FROM} WHERE m.state='ACTIVE' ORDER BY m.operation_date DESC,m.id DESC LIMIT 5`).all()).results;
+    const batches = (await db.prepare(`SELECT b.id,p.name AS positionName,b.source_format AS format,b.row_count AS rowCount,b.created_count AS createdCount,
+      b.duplicate_count AS duplicateCount,b.flagged_count AS flaggedCount,b.status,b.imported_at AS importedAt FROM finance_import_batch b
+      JOIN finance_position p ON p.id=b.position_id ORDER BY b.imported_at DESC LIMIT 3`).all()).results;
+    result.movements = { pendingCount: counts.pending, partialCount: counts.partial, duplicateCount: counts.duplicates,
+      recent: recent.map(row => ({ ...brief(row), allocatedCents: row.allocatedCents })), recentBatches: batches };
+  }
+  if (expensesRead && round) {
+    const proposed = await db.prepare(`SELECT count(*) AS n,COALESCE(sum(total_cents),0) AS total FROM finance_expense WHERE round_id=? AND status='PROPOSED'`)
+      .bind(round.id).first();
+    const recent = (await db.prepare(`SELECT id FROM finance_expense WHERE round_id=? AND status='RECOGNISED' ORDER BY recognized_at DESC,id DESC LIMIT 5`)
+      .bind(round.id).all()).results.map(row => row.id);
+    const summaries = await expenseSummaries(db, recent);
+    result.expenses = { proposedCount: proposed.n, proposedCents: proposed.total, recentRecognised: recent.map(expenseId => summaries.get(expenseId)) };
+  }
+  return result;
 }

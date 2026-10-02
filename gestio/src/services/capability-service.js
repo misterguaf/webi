@@ -71,7 +71,7 @@ export async function capabilities(db, context, now = Date.now()) {
       authorizeInstallments: installmentRole ? scope('finance.fee.installment.authorize') : null,
       configure: global('finance.fee.config.manage')
     },
-    // 3.5G.1 financial foundation (TREASURY.md §25). No workspace yet; the projection only tells the UI what exists.
+    // 3.5G.1 financial foundation (TREASURY.md §25); 3.5G.2A Tresoreria uses it to offer tabs and actions (advisory only).
     treasury: {
       read: global('finance.treasury.read'),
       manageRounds: global('finance.round.manage'),

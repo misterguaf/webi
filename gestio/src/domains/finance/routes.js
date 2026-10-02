@@ -12,6 +12,8 @@ export async function financeRoute({ db, context, requestId, method, path, url, 
   const body = () => readJson(request, BODY_MAX_BYTES);
   const ok = (data, status = 200) => json({ ...data, requestId }, status);
   let match;
+  // Tresoreria home (3.5G.2A): only the blocks the person may read.
+  if (path === '/api/finance/summary' && method === 'GET') return ok(await movements.treasurySummary(db, context, requestId));
   // Rounds, opening balances, reserves.
   if (path === '/api/finance/rounds' && method === 'GET') return ok(await rounds.listRounds(db, context, requestId));
   if (path === '/api/finance/rounds' && method === 'POST') return ok(await rounds.createRound(db, context, requestId, await body()), 201);
@@ -32,6 +34,8 @@ export async function financeRoute({ db, context, requestId, method, path, url, 
   }
   if ((match = path.match(/^\/api\/finance\/budgets\/([^/]+)\/(propose|return|approve)$/)) && method === 'POST')
     return ok(await budget.transitionBudget(db, context, requestId, match[1], match[2], await body()));
+  if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/assignable-lines$/)) && method === 'GET')
+    return ok(await budget.assignableLines(db, context, requestId, match[1], url.searchParams));
   if (path === '/api/finance/budget-lines' && method === 'POST') return ok(await budget.createLine(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/budget-lines\/([^/]+)$/)) && method === 'PATCH')
     return ok(await budget.updateLine(db, context, requestId, match[1], await body()));
@@ -55,6 +59,8 @@ export async function financeRoute({ db, context, requestId, method, path, url, 
     return ok(await movements.revealDescription(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/allocations$/)) && method === 'POST')
     return ok(await movements.allocateMovement(db, context, requestId, match[1], await body()));
+  if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/expense$/)) && method === 'POST')
+    return ok(await movements.expenseFromMovement(db, context, requestId, match[1], await body()), 201);
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/void-duplicate$/)) && method === 'POST')
     return ok(await movements.voidDuplicate(db, context, requestId, match[1], await body()));
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/clear-review$/)) && method === 'POST')
