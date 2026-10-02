@@ -4,7 +4,7 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildDemoData, buildTreasuryDemo, DEMO_MARKER_ID } from './data.js';
+import { buildDemoData, buildTreasuryDemo, buildTreasuryOperationsDemo, DEMO_MARKER_ID, TREASURY_DEMO_ROUND_ID, TREASURY_OPERATIONS_MARKER_ID } from './data.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(root, '..');
@@ -82,16 +82,24 @@ function verify(expected) {
   if (!markerExists()) throw new Error('Demo marker missing');
 }
 // 3.5G.1: the treasury demo is applied once, also to a local D1 that already holds the earlier demo.
-function ensureTreasuryDemo() {
-  if (count('finance_round') > 0) return false;
-  const temporary = mkdtempSync(resolve(tmpdir(), 'gestio-treasury-demo-'));
+// 3.5G.2A: the operations demo is added on top the same way (once, keyed by its first movement).
+function applySql(prefix, sqlText) {
+  const temporary = mkdtempSync(resolve(tmpdir(), prefix));
   try {
     const sql = resolve(temporary, 'treasury.sql');
-    writeFileSync(sql, buildTreasuryDemo());
+    writeFileSync(sql, sqlText);
     run(localD1Args(['execute', '--file', sql, '--yes']), { capture: true });
   } finally { rmSync(temporary, { recursive: true, force: true }); }
   if (execute('PRAGMA foreign_key_check').length) throw new Error('Treasury demo has foreign-key violations');
-  return true;
+}
+function ensureTreasuryDemo() {
+  let added = false;
+  if (count('finance_round') === 0) { applySql('gestio-treasury-demo-', buildTreasuryDemo()); added = true; }
+  if (!execute(`SELECT 1 AS present FROM finance_movement WHERE id='${TREASURY_OPERATIONS_MARKER_ID}'`).length &&
+      execute(`SELECT 1 AS present FROM finance_round WHERE id='${TREASURY_DEMO_ROUND_ID}' AND status='OPEN'`).length) {
+    applySql('gestio-treasury-ops-demo-', buildTreasuryOperationsDemo()); added = true;
+  }
+  return added;
 }
 function seed() {
   run(localD1Args(['migrations', 'apply']), { capture: true });

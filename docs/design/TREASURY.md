@@ -1225,6 +1225,24 @@ Fixed by the implementation, without changing any decision above:
 - Group-wide finance permissions are delegated group-wide only.
 - D1 rejects compound SELECTs with more than five terms: migrations and seeds use joins or `VALUES`.
 
+# 34.2 Implementation notes (3.5G.2A operations)
+
+Fixed by the implementation, without changing any decision above:
+
+- Migration 0028 adds a short `concept` to expenses (and `previous_concept` to their revisions).
+- `GET /api/finance/summary` returns only the blocks the caller may read (positions with
+  `finance.treasury.read`, movements with `finance.movement.read`, expenses with `finance.expense.read`);
+  403 only when none applies. No result, profit or budget consumption is exposed.
+- `GET /api/finance/rounds/:id/assignable-lines?nature=` gives names and codes of active lines (no amounts)
+  so classifiers and expense managers can pick leaves without `finance.budget.read`; INCOME needs
+  `finance.movement.read`, EXPENSE needs `finance.expense.read`.
+- `POST /api/finance/movements/:id/expense` creates one recognised expense (method = position kind), its
+  lines and the settlement in one atomic batch after the movement's compare-and-set; existing parts of the
+  set are kept. It needs `finance.movement.classify` and `finance.expense.manage`.
+- Movement status shown to people is derived (`PENDING`, `PARTIAL`, `CLASSIFIED`, `POSSIBLE_DUPLICATE`,
+  `VOID_DUPLICATE`); list filters and search run on the server over the minimised projection only.
+- A classification adds a part to the current set; a correction writes a new set; history keeps every set.
+
 # 35. Deferred debt
 
 | Item | Decision |

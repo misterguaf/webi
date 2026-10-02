@@ -131,6 +131,20 @@ rejection, neutral family notices, a purpose-limited payment projection for veri
 portal, retention-ready evidence, linked participant with profile access, and the confirmed
 list per activity.
 
+`screens/TREASURY_HOME.md`
+Tresoreria · Inici v0.1 (3.5G.2A, implemented — pending review): "Què necessita atenció ara?", position
+balances, pending work, proposals and recent activity; no result, profit or budget consumption.
+
+`screens/TREASURY_MOVEMENTS.md`
+Tresoreria · Moviments v0.1 (3.5G.2A, implemented — pending review): list with server-side filters and
+human status, detail, classification with the enabled kinds only, correction keeping history, duplicate
+review, audited on-demand original description, read-only import batches.
+
+`screens/TREASURY_EXPENSES.md`
+Tresoreria · Despeses v0.1 (3.5G.2A, implemented — pending review): list and detail, manual expense and
+expense from a movement, Total / Distribuït / Pendent line split, hierarchical budget line picker,
+minimal counterparties, explicit recognition.
+
 ### Domain specifications
 
 `TREASURY.md`

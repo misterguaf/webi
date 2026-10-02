@@ -6,6 +6,15 @@ Repositorio auditado: `/Users/borja/Desktop/Grup Scout Parpalló/Web Parpallo`
 Base: `phase-3b-complete`; remediación `phase-3.5-audit-remediated`; 3.5D y 3.5E en `phase/3.5-design`, checkpoints `phase-3.5d-complete` y `phase-3.5e-complete` (sin merge a `main`).
 Estado: **LOCAL / SYNTHETIC ONLY; NOT PRODUCTION READY; no desplegado**.
 
+## Actualización FASE 3.5G.2A — Tresoreria operativa (2026-10-02, pendiente de revisión)
+
+Detalle: [PHASE_3_5G2A_REPORT](PHASE_3_5G2A_REPORT.md). Pantallas: [TREASURY_HOME](design/screens/TREASURY_HOME.md), [TREASURY_MOVEMENTS](design/screens/TREASURY_MOVEMENTS.md), [TREASURY_EXPENSES](design/screens/TREASURY_EXPENSES.md). Rama `phase/3.5g-treasury` (sin merge, sin tag).
+
+- **Módulo Tresoreria en el shell** (Inici · Moviments · Despeses) según capacidades; sección, Secretaria y TECH_ADMIN no entran.
+- **Moviments:** lista con filtros en servidor y estados humanos, detalle, clasificación (solo tipos habilitados), corrección con historial, duplicados (anular o mantener, nunca borrar), descripción original bajo demanda y auditada.
+- **Despeses:** lista y detalle, alta manual y desde movimiento (una despesa reconocida + liquidación, cuenta una vez), reparto Total/Distribuït/Pendent, selector jerárquico de líneas, contrapartes mínimas, reconocimiento explícito.
+- **Migración 0028** (concepto de la despesa); demo sintética ampliada. No se ha empezado G.2B.
+
 ## Actualización FASE 3.5G.1 — fundación financiera (2026-10-01, pendiente de revisión)
 
 Detalle: [PHASE_3_5G1_REPORT](PHASE_3_5G1_REPORT.md). Especificación: [TREASURY.md](design/TREASURY.md). Rama `phase/3.5g-treasury` (sin merge, sin tag de G.1).
