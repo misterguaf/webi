@@ -408,8 +408,9 @@ async function openReimbursementReassignment(data, ctx, onDone) {
   try { reimbursements = (await ctx.call(`/api/finance/reimbursements?roundId=${round.id}`)).reimbursements
     .filter(row => row.status === 'APPROVED' && !row.cancelledAt); }
   catch (error) { toast(errorCopy(error), { tone: 'danger' }); return; }
-  const current = new Map(data.allocations.filter(item => item.kind === 'REIMBURSEMENT_SETTLEMENT')
-    .map(item => [item.reimbursementId, item.amountCents]));
+  const current = new Map();
+  for (const item of data.allocations.filter(row => row.kind === 'REIMBURSEMENT_SETTLEMENT'))
+    current.set(item.reimbursementId, (current.get(item.reimbursementId) ?? 0) + item.amountCents);
   const available = reimbursements.filter(row => row.outstandingCents + (current.get(row.id) ?? 0) > 0);
   const recipients = [...new Map(available.map(row => [row.recipientId, row.recipientName])).entries()];
   if (!recipients.length) { toast('No hi ha reemborsaments aprovats per assignar.', { tone: 'danger' }); return; }
