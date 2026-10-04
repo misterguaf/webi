@@ -82,6 +82,7 @@ export async function capabilities(db, context, now = Date.now()) {
       revealDescriptions: global('finance.bank_description.reveal'),
       readExpenses: global('finance.expense.read'),
       manageExpenses: global('finance.expense.manage'),
+      selfApproveReimbursement: global('finance.reimbursement.self_approve'),
       readIncomes: global('finance.income.read'),
       manageIncomes: global('finance.income.manage'),
       readBudget: global('finance.budget.read'),

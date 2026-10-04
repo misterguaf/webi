@@ -5,11 +5,13 @@ import * as movements from './movements.js';
 import * as expenses from './expenses.js';
 import * as budget from './budget.js';
 import * as incomes from './incomes.js';
+import * as evidence from './evidence.js';
+import * as reimbursements from './reimbursements.js';
 
-const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024;
+const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024, EVIDENCE_BODY_MAX_BYTES = 6 * 1024 * 1024;
 
 /** @returns {Promise<Response|null>} null when the path is not a finance route. */
-export async function financeRoute({ db, context, requestId, method, path, url, request, readJson, json }) {
+export async function financeRoute({ db, storage, context, requestId, method, path, url, request, readJson, json }) {
   const body = () => readJson(request, BODY_MAX_BYTES);
   const ok = (data, status = 200) => json({ ...data, requestId }, status);
   let match;
@@ -61,7 +63,7 @@ export async function financeRoute({ db, context, requestId, method, path, url, 
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/allocations$/)) && method === 'POST')
     return ok(await movements.allocateMovement(db, context, requestId, match[1], await body()));
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/expense$/)) && method === 'POST')
-    return ok(await movements.expenseFromMovement(db, context, requestId, match[1], await body()), 201);
+    return ok(await movements.expenseFromMovement(db, storage, context, requestId, match[1], await readJson(request, EVIDENCE_BODY_MAX_BYTES)), 201);
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/void-duplicate$/)) && method === 'POST')
     return ok(await movements.voidDuplicate(db, context, requestId, match[1], await body()));
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/clear-review$/)) && method === 'POST')
@@ -85,12 +87,19 @@ export async function financeRoute({ db, context, requestId, method, path, url, 
   if ((match = path.match(/^\/api\/finance\/counterparties\/([^/]+)$/)) && method === 'PATCH')
     return ok(await expenses.updateCounterparty(db, context, requestId, match[1], await body()));
   if (path === '/api/finance/expenses' && method === 'GET') return ok(await expenses.listExpenses(db, context, requestId, url.searchParams));
-  if (path === '/api/finance/expenses' && method === 'POST') return ok(await expenses.createExpense(db, context, requestId, await body()), 201);
+  if (path === '/api/finance/expenses' && method === 'POST')
+    return ok(await expenses.createExpense(db, storage, context, requestId, await readJson(request, EVIDENCE_BODY_MAX_BYTES)), 201);
   if ((match = path.match(/^\/api\/finance\/expenses\/([^/]+)$/))) {
     if (method === 'GET') return ok(await expenses.expenseDetail(db, context, requestId, match[1]));
     if (method === 'PATCH') return ok(await expenses.reviseExpense(db, context, requestId, match[1], await body()));
   }
   if ((match = path.match(/^\/api\/finance\/expenses\/([^/]+)\/(recognise|reject|void)$/)) && method === 'POST')
-    return ok(await expenses.decideExpense(db, context, requestId, match[1], match[2], await body()));
+    return ok(await expenses.decideExpense(db, storage, context, requestId, match[1], match[2], await body()));
+  if ((match = path.match(/^\/api\/finance\/expenses\/([^/]+)\/evidence$/)) && method === 'POST')
+    return ok(await evidence.uploadExpenseEvidence(db, storage, context, requestId, match[1], await readJson(request, EVIDENCE_BODY_MAX_BYTES)), 201);
+  if ((match = path.match(/^\/api\/finance\/expense-evidence\/([^/]+)$/)) && method === 'GET')
+    return evidence.expenseEvidenceRead(db, storage, context, requestId, match[1], url.searchParams.get('mode') ?? 'download');
+  if (path === '/api/finance/reimbursements' && method === 'GET')
+    return ok(await reimbursements.listReimbursements(db, context, requestId, url.searchParams));
   return null;
 }

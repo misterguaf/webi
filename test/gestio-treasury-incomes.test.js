@@ -9,6 +9,8 @@ import { fixture, id, migrations, root } from './helpers/gestio-sqlite.js';
 import { buildDemoData, buildTreasuryDemo, buildTreasuryIncomeDemo, buildTreasuryOperationsDemo } from '../gestio/demo/data.js';
 
 const ROUND = { code: '2026/2027', periodStart: '2026-10-01', periodEnd: '2027-09-30', annualFeeRoundId: id(901) };
+const evidence = { filename: 'ticket-synthetic.pdf', mime: 'application/pdf',
+  dataBase64: Buffer.from('%PDF-1.4\n%synthetic local fixture\n1 0 obj <<>> endobj\n%%EOF').toString('base64') };
 
 async function setup() {
   const f = fixture();
@@ -140,7 +142,7 @@ test('correction keeps history; version conflict; void refused while collected; 
     assert.deepEqual([caps.readIncomes, caps.manageIncomes], [true, true]);
     // Expenses are untouched by incomes.
     const expense = await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2026-11-03', concept: 'Gas', totalCents: 2000,
-      paymentMethod: 'BANK', recognise: true, lines: [{ budgetLineId: s.lines.kitchen, amountCents: 2000 }] });
+      paymentMethod: 'BANK', recognise: true, evidence, lines: [{ budgetLineId: s.lines.kitchen, amountCents: 2000 }] });
     assert.equal(expense.data.status, 'RECOGNISED');
     assert.equal((await s.economics()).expenseGrossCents, 2000);
   } finally { s.f.close(); }

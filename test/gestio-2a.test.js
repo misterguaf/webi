@@ -18,6 +18,10 @@ test('audit repository: taxonomy, metadata allowlist, filters and cursor bounded
   statement(db,{requestId,action:'AUTHZ_DENY',resourceType:'participant',resourceId:id(),result:'DENY',reasonCode:'OUT_OF_SCOPE',metadata:{count:1}});
   assert.match(db.calls.at(-1).sql,/INSERT INTO audit_event/);
   assert.equal(db.calls.at(-1).values[11],'{"count":1}');
+  statement(db,{requestId,action:'AUTHZ_DENY',metadata:{amountCents:1400}});
+  assert.equal(db.calls.at(-1).values[11],'{"amountCents":1400}');
+  for (const amountCents of [-1, 100000001, 1.5, '1400'])
+    assert.throws(()=>statement(db,{requestId,action:'AUTHZ_DENY',metadata:{amountCents}}),/AUDIT_METADATA_REJECTED/);
   for (const forbidden of ['password','token','cookie','jwt','dni','allergy','medication','diagnosis','requestBody']) {
     assert.throws(()=>statement(db,{requestId,action:'AUTHZ_DENY',metadata:{[forbidden]:'CANARY_SECRET'}}),/AUDIT_METADATA_REJECTED/);
   }

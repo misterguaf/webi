@@ -6,6 +6,8 @@ import { AppError, requireUuid, validUuid } from '../../services/common.js';
 import { allow, audit, cents, commit, fail, isDate, keysOnly, notFound, optionalId, syntheticName, uuid, version } from './shared.js';
 import { budgetLineLabels } from './read-models.js';
 import { authorize } from '../../policy.js';
+import { prepareExpenseEvidence, evidenceStatements, commitWithEvidence, verifiedEvidenceExists } from './evidence.js';
+import { approvedReimbursementStatements } from './reimbursements.js';
 
 // ---------------------------------------------------------------- counterparties
 const COUNTERPARTY_FIELDS = 'id,kind,display_name AS displayName,user_id AS userId,status,version';
@@ -78,40 +80,51 @@ function validHeader(input, creating) {
 const lineStatements = (db, expenseId, linesVersion, lines) => lines.map((line, index) => db.prepare(`INSERT INTO finance_expense_line
   (expense_id,lines_version,line_no,budget_line_id,amount_cents,activity_id,section_id) VALUES(?,?,?,?,?,?,?)`)
   .bind(expenseId, linesVersion, index + 1, line.budgetLineId, line.amountCents, line.activityId ?? null, line.sectionId ?? null));
-// Nobody recognises an expense they advanced themselves (the reimbursement self-approval rule, I20).
+// Ordinary expense authority does not allow own-beneficiary recognition. The explicit Treasury
+// exception is checked against the authenticated session here; D1 only checks its structural marker.
 async function refuseSelfRecognition(db, context, requestId, advancedById, id) {
-  if (!advancedById) return;
+  if (!advancedById) return false;
   const person = await db.prepare('SELECT user_id FROM finance_counterparty WHERE id=?').bind(advancedById).first();
   if (person?.user_id && person.user_id === context.userId) {
+    if ((await authorize(db, context, { permission: 'finance.reimbursement.self_approve' })).allow) return true;
     await append(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'AUTHZ_DENY',
       resourceType: 'finance_expense', resourceId: id, result: 'DENY', reasonCode: 'SELF_APPROVAL' });
     throw new AppError(403, 'self_approval');
   }
+  return false;
 }
-/** A proposed expense (default), or a direct expense recognised at once (`recognise: true`; not for
- *  money advanced by a person, which is recognised by someone else after review). */
-export async function createExpense(db, context, requestId, input, now = Date.now()) {
+/** Create a proposed expense, or recognise it with a stored receipt in the same controlled batch. */
+export async function createExpense(db, storage, context, requestId, input, now = Date.now()) {
   await allow(db, context, requestId, 'finance.expense.manage', 'finance_expense');
-  if (!keysOnly(input, ['roundId', 'expenseDate', 'concept', 'counterpartyId', 'supplierLabel', 'totalCents', 'paymentMethod', 'advancedById', 'lines', 'recognise']))
+  if (!keysOnly(input, ['roundId', 'expenseDate', 'concept', 'counterpartyId', 'supplierLabel', 'totalCents', 'paymentMethod', 'advancedById', 'lines', 'recognise', 'evidence']))
     fail('invalid_expense');
   validHeader(input, true);
   if ((input.paymentMethod === 'ADVANCED') !== (input.advancedById != null)) fail('invalid_expense');
   const recognise = input.recognise === true;
   if (input.recognise !== undefined && typeof input.recognise !== 'boolean') fail('invalid_expense');
-  if (recognise && input.paymentMethod === 'ADVANCED') throw new AppError(409, 'advanced_expense_requires_review');
+  if (recognise && !input.evidence) throw new AppError(409, 'expense_evidence_required');
   if (input.lines !== undefined || recognise) validLines(input.lines);
   if (recognise && input.lines.reduce((sum, line) => sum + line.amountCents, 0) !== input.totalCents) throw new AppError(409, 'expense_lines_total_mismatch');
   const id = uuid();
-  await commit(db, [
+  const selfApproved = recognise ? await refuseSelfRecognition(db, context, requestId, input.advancedById, id) : false;
+  const evidence = input.evidence ? await prepareExpenseEvidence(input.evidence) : null;
+  const reimbursement = recognise && input.paymentMethod === 'ADVANCED'
+    ? approvedReimbursementStatements(db, context, requestId, id, input.advancedById, input.totalCents, selfApproved, now) : null;
+  const statements = [
     db.prepare(`INSERT INTO finance_expense(id,round_id,expense_date,concept,counterparty_id,supplier_label,total_cents,payment_method,advanced_by_id,
       created_by,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id, input.roundId, input.expenseDate, input.concept?.trim() ?? null, input.counterpartyId ?? null,
       input.supplierLabel?.trim() ?? null, input.totalCents, input.paymentMethod, input.advancedById ?? null, context.userId, now, now),
     ...lineStatements(db, id, 1, input.lines ?? []),
-    ...(recognise ? [db.prepare(`UPDATE finance_expense SET ${versionCas('version')},status='RECOGNISED',recognized_by=?,recognized_at=?,updated_at=?
-      WHERE id=?`).bind(1, context.userId, now, now, id)] : []),
+    ...(evidence ? evidenceStatements(db, context, requestId, id, evidence, now) : []),
+    ...(recognise ? [db.prepare(`UPDATE finance_expense SET ${versionCas('version')},status='RECOGNISED',recognized_by=?,recognized_at=?,
+      self_approval_exception=?,updated_at=? WHERE id=?`).bind(1, context.userId, now, selfApproved ? 1 : 0, now, id)] : []),
+    ...(reimbursement?.statements ?? []),
     audit(db, context, requestId, recognise ? 'EXPENSE_RECOGNISED' : 'EXPENSE_PROPOSED', 'finance_expense', id, now)
-  ]);
-  return { id, status: recognise ? 'RECOGNISED' : 'PROPOSED', version: recognise ? 2 : 1 };
+  ];
+  if (evidence) await commitWithEvidence(db, storage, evidence, statements);
+  else await commit(db, statements);
+  return { id, status: recognise ? 'RECOGNISED' : 'PROPOSED', version: recognise ? 2 : 1,
+    ...(reimbursement ? { reimbursementId: reimbursement.id } : {}) };
 }
 async function expenseRow(db, id) {
   const row = await db.prepare('SELECT * FROM finance_expense WHERE id=?').bind(requireUuid(id)).first();
@@ -155,36 +168,46 @@ const DECISIONS = {
   reject: { from: 'PROPOSED', set: "status='REJECTED',rejected_by=?,rejected_at=?", action: 'EXPENSE_REJECTED', status: 'REJECTED' },
   void: { from: 'RECOGNISED', set: "status='VOID',voided_by=?,voided_at=?,void_reason=?", action: 'EXPENSE_VOIDED', status: 'VOID' }
 };
-export async function decideExpense(db, context, requestId, id, kind, input, now = Date.now()) {
+export async function decideExpense(db, storage, context, requestId, id, kind, input, now = Date.now()) {
   await allow(db, context, requestId, 'finance.expense.manage', 'finance_expense', validUuid(id) ? id : null);
   const row = await expenseRow(db, id);
   const step = DECISIONS[kind];
   if (!keysOnly(input, kind === 'void' ? ['expectedVersion', 'reason'] : ['expectedVersion']) || !version(input.expectedVersion) ||
       (kind === 'void' && !['DUPLICATE', 'ERROR', 'CANCELLED'].includes(input.reason))) fail('invalid_expense');
   if (row.status !== step.from) throw new AppError(409, 'invalid_transition');
+  let selfApproved = false;
   if (kind === 'recognise') {
-    await refuseSelfRecognition(db, context, requestId, row.advanced_by_id, id);
+    if (!await verifiedEvidenceExists(db, storage, id)) throw new AppError(409, 'expense_evidence_required');
+    selfApproved = await refuseSelfRecognition(db, context, requestId, row.advanced_by_id, id);
     const lines = await db.prepare('SELECT COALESCE(sum(amount_cents),0) AS total FROM finance_expense_line WHERE expense_id=? AND lines_version=?')
       .bind(id, row.lines_version).first();
     if (lines.total !== row.total_cents) throw new AppError(409, 'expense_lines_total_mismatch');
   }
+  const reimbursement = kind === 'recognise' && row.payment_method === 'ADVANCED'
+    ? approvedReimbursementStatements(db, context, requestId, id, row.advanced_by_id, row.total_cents, selfApproved, now) : null;
   await commit(db, [
-    db.prepare(`UPDATE finance_expense SET ${versionCas('version')},${step.set},updated_at=? WHERE id=?`)
-      .bind(input.expectedVersion, context.userId, now, ...(kind === 'void' ? [input.reason] : []), now, id),
+    db.prepare(`UPDATE finance_expense SET ${versionCas('version')},${step.set},self_approval_exception=?,updated_at=? WHERE id=?`)
+      .bind(input.expectedVersion, context.userId, now, ...(kind === 'void' ? [input.reason] : []), selfApproved ? 1 : row.self_approval_exception, now, id),
+    ...(reimbursement?.statements ?? []),
     audit(db, context, requestId, step.action, 'finance_expense', id, now)
   ], 'stale_expense');
-  return { id, status: step.status, version: input.expectedVersion + 1 };
+  return { id, status: step.status, version: input.expectedVersion + 1,
+    ...(reimbursement ? { reimbursementId: reimbursement.id } : {}) };
 }
 export async function listExpenses(db, context, requestId, params) {
   await allow(db, context, requestId, 'finance.expense.read', 'finance_expense');
   const roundId = params?.get('roundId'), status = params?.get('status'), from = params?.get('from'), to = params?.get('to');
   const budgetLineId = params?.get('budgetLineId'), counterpartyId = params?.get('counterpartyId'), method = params?.get('method');
+  const outstanding = params?.get('outstanding');
   if (!roundId || !validUuid(roundId)) fail('invalid_filter');
+  if (outstanding && outstanding !== '1') fail('invalid_filter');
   const filters = ['e.round_id=?'], binds = [roundId];
   if (status) { if (!['PROPOSED', 'RECOGNISED', 'REJECTED', 'VOID'].includes(status)) fail('invalid_filter'); filters.push('e.status=?'); binds.push(status); }
   if (from) { if (!isDate(from)) fail('invalid_filter'); filters.push('e.expense_date>=?'); binds.push(from); }
   if (to) { if (!isDate(to)) fail('invalid_filter'); filters.push('e.expense_date<=?'); binds.push(to); }
   if (method) { if (!['BANK', 'CARD', 'CASH', 'ADVANCED'].includes(method)) fail('invalid_filter'); filters.push('e.payment_method=?'); binds.push(method); }
+  if (outstanding === '1') filters.push(`r.status='APPROVED' AND r.amount_cents>COALESCE((SELECT sum(x.amount_cents)
+    FROM finance_allocation_current x WHERE x.reimbursement_id=r.id AND x.kind='REIMBURSEMENT_SETTLEMENT'),0)`);
   if (counterpartyId) { if (!validUuid(counterpartyId)) fail('invalid_filter'); filters.push('(e.counterparty_id=? OR e.advanced_by_id=?)'); binds.push(counterpartyId, counterpartyId); }
   // A heading selects every line below it.
   if (budgetLineId) {
@@ -196,11 +219,17 @@ export async function listExpenses(db, context, requestId, params) {
   const rows = (await db.prepare(`SELECT ${EXPENSE_FIELDS.replace(/(^|,)\s*/g, '$1e.')},c.display_name AS counterpartyName,a.display_name AS advancedByName,
     (SELECT count(*) FROM finance_expense_line l WHERE l.expense_id=e.id AND l.lines_version=e.lines_version) AS lineCount,
     (SELECT l.budget_line_id FROM finance_expense_line l WHERE l.expense_id=e.id AND l.lines_version=e.lines_version ORDER BY l.amount_cents DESC,l.line_no LIMIT 1) AS mainLineId,
-    COALESCE((SELECT sum(x.amount_cents) FROM finance_allocation_current x WHERE x.expense_id=e.id AND x.kind='EXPENSE_SETTLEMENT'),0) AS settledCents
+    COALESCE((SELECT sum(x.amount_cents) FROM finance_allocation_current x WHERE x.expense_id=e.id AND x.kind='EXPENSE_SETTLEMENT'),0) AS settledCents,
+    r.id AS reimbursementId,r.amount_cents AS reimbursementCents,r.status AS reimbursementStatus,
+    COALESCE((SELECT sum(x.amount_cents) FROM finance_allocation_current x WHERE x.reimbursement_id=r.id
+      AND x.kind='REIMBURSEMENT_SETTLEMENT'),0) AS reimbursedCents
     FROM finance_expense e LEFT JOIN finance_counterparty c ON c.id=e.counterparty_id LEFT JOIN finance_counterparty a ON a.id=e.advanced_by_id
+    LEFT JOIN finance_reimbursement r ON r.expense_id=e.id AND r.status!='REJECTED'
     WHERE ${filters.join(' AND ')} ORDER BY e.expense_date DESC,e.id DESC LIMIT 500`).bind(...binds).all()).results;
   const lines = await budgetLineLabels(db, rows.map(row => row.mainLineId));
-  return { expenses: rows.map(({ mainLineId, ...row }) => ({ ...row, mainLine: lines.get(mainLineId) ?? null })) };
+  return { expenses: rows.map(({ mainLineId, ...row }) => ({ ...row,
+    outstandingCents: row.reimbursementId ? Math.max(0, row.reimbursementCents - row.reimbursedCents) : null,
+    mainLine: lines.get(mainLineId) ?? null })) };
 }
 export async function expenseDetail(db, context, requestId, id) {
   await allow(db, context, requestId, 'finance.expense.read', 'finance_expense', validUuid(id) ? id : null);
@@ -222,10 +251,16 @@ export async function expenseDetail(db, context, requestId, id) {
     WHERE expense_id=? ORDER BY previous_version DESC`).bind(id).all()).results;
   const evidence = (await db.prepare(`SELECT id,detected_mime AS mime,size_bytes AS sizeBytes,created_at AS createdAt,
     object_purged_at IS NOT NULL AS purged FROM finance_expense_evidence WHERE expense_id=? ORDER BY created_at`).bind(id).all()).results;
+  const reimbursement = await db.prepare(`SELECT r.id,r.recipient_id AS recipientId,r.amount_cents AS amountCents,r.status,
+    COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.reimbursement_id=r.id
+      AND a.kind='REIMBURSEMENT_SETTLEMENT'),0) AS settledCents FROM finance_reimbursement r
+    WHERE r.expense_id=? AND r.status!='REJECTED'`).bind(id).first();
   const settled = settlements.filter(row => row.kind === 'EXPENSE_SETTLEMENT').reduce((sum, row) => sum + row.amountCents, 0);
   const refunded = settlements.filter(row => row.kind === 'EXPENSE_REFUND').reduce((sum, row) => sum + row.amountCents, 0);
   return { expense: { ...expense, counterpartyName: nameOf(expense.counterpartyId), advancedByName: nameOf(expense.advancedById),
     settledCents: settled, refundedCents: refunded,
     settlementState: settled === 0 ? 'UNSETTLED' : settled < expense.totalCents ? 'PARTIAL' : 'SETTLED' },
-  lines, settlements, revisions, evidence };
+  lines, settlements, revisions, evidence,
+  reimbursement: reimbursement ? { ...reimbursement, outstandingCents: Math.max(0, reimbursement.amountCents - reimbursement.settledCents),
+    paymentState: reimbursement.settledCents === 0 ? 'PENDING' : reimbursement.settledCents < reimbursement.amountCents ? 'PARTIAL' : 'PAID' } : null };
 }

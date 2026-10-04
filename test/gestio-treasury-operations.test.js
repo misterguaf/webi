@@ -7,6 +7,8 @@ import { fixture, id } from './helpers/gestio-sqlite.js';
 
 const ROUND = { code: '2026/2027', periodStart: '2026-10-01', periodEnd: '2027-09-30', annualFeeRoundId: id(901) };
 const csv = rows => ['# synthetic', 'operation_date,value_date,amount_cents,reference,description,balance_cents', ...rows].join('\n');
+const evidence = { filename: 'justificant-demo.pdf', mime: 'application/pdf',
+  dataBase64: Buffer.from('%PDF-1.4\n%synthetic local fixture\n1 0 obj <<>> endobj\n%%EOF').toString('base64') };
 
 async function setup() {
   const f = fixture();
@@ -218,7 +220,7 @@ test('expense from a movement: one recognised expense, split lines, settled by t
     const supplier = (await s.call(104, '/api/finance/counterparties', 'POST', { kind: 'ORGANIZATION', displayName: 'Autocars Demo (fictici)' })).data.id;
     const movement = await s.manual(s.bank, -36000, '2026-11-10', 'Càrrec autobús');
     const create = (body, expectedVersion = 0) => s.call(104, `/api/finance/movements/${movement}/expense`, 'POST',
-      { expectedVersion, roundId: s.round, expenseDate: '2026-11-10', concept: 'Autobús Campament', counterpartyId: supplier, ...body });
+      { expectedVersion, roundId: s.round, expenseDate: '2026-11-10', concept: 'Autobús Campament', counterpartyId: supplier, evidence, ...body });
     const expensesBefore = s.count('finance_expense');
     assert.equal((await create({ lines: [{ budgetLineId: s.lines.transport, amountCents: 40000 }] })).data.error, 'allocation_exceeds_movement');
     assert.equal((await create({ lines: [{ budgetLineId: s.lines.summer, amountCents: 1000 }] })).data.error, 'invalid_expense_line', 'a heading is not assignable');
@@ -234,14 +236,14 @@ test('expense from a movement: one recognised expense, split lines, settled by t
       [['Campaments › Campament d’Estiu › Autobús', 20000], ['Campaments › Campament d’Estiu › Cuina', 16000]]);
     assert.deepEqual(detail.settlements.map(x => [x.movementId, x.kind, x.amountCents, x.positionName]), [[movement, 'EXPENSE_SETTLEMENT', 36000, 'Compte corrent']]);
     assert.equal(detail.expense.settlementState, 'SETTLED');
-    assert.deepEqual(detail.evidence, [], 'no evidence: the screen says “Sense justificant adjunt”');
+    assert.equal(detail.evidence.length, 1, 'recognised expenses retain their evidence metadata');
     assert.equal((await s.detail(movement)).movement.status, 'CLASSIFIED');
     const economics = await s.economics();
     assert.deepEqual([economics.expenseGrossCents, economics.proposedExpenseCents], [36000, 0], 'counted once: the expense, not the movement too');
     // Positive movements cannot become expenses.
     const incoming = await s.manual(s.bank, 5000);
     assert.equal((await s.call(104, `/api/finance/movements/${incoming}/expense`, 'POST', { expectedVersion: 0, roundId: s.round, expenseDate: '2026-11-10',
-      concept: 'X', lines: [{ budgetLineId: s.lines.transport, amountCents: 5000 }] })).data.error, 'invalid_allocation_direction');
+      concept: 'X', evidence, lines: [{ budgetLineId: s.lines.transport, amountCents: 5000 }] })).data.error, 'invalid_allocation_direction');
     // Needs both classify and expense.manage.
     assert.equal((await s.call(105, `/api/finance/movements/${incoming}/expense`, 'POST', {})).status, 403);
   } finally { s.f.close(); }
@@ -258,12 +260,12 @@ test('expenses: list filters and enriched rows, manual proposal not counted, rec
     const proposal = await post({ concept: 'Material de manualitats', counterpartyId: supplier, totalCents: 4500, paymentMethod: 'BANK',
       lines: [{ budgetLineId: s.lines.office, amountCents: 4500 }] });
     assert.equal(proposal.data.status, 'PROPOSED');
-    const multi = await post({ concept: 'Compra mixta', totalCents: 10000, paymentMethod: 'CARD', recognise: true, expenseDate: '2026-12-01',
+    const multi = await post({ concept: 'Compra mixta', totalCents: 10000, paymentMethod: 'CARD', recognise: true, evidence, expenseDate: '2026-12-01',
       lines: [{ budgetLineId: s.lines.kitchen, amountCents: 7000 }, { budgetLineId: s.lines.transport, amountCents: 3000 }] });
     assert.equal(multi.data.status, 'RECOGNISED');
-    assert.equal((await post({ concept: 'Descuadrada', totalCents: 9000, paymentMethod: 'CARD', recognise: true,
+    assert.equal((await post({ concept: 'Descuadrada', totalCents: 9000, paymentMethod: 'CARD', recognise: true, evidence,
       lines: [{ budgetLineId: s.lines.kitchen, amountCents: 7000 }] })).data.error, 'expense_lines_total_mismatch');
-    assert.equal((await post({ concept: 'Línia d’ingressos', totalCents: 1000, paymentMethod: 'CARD', recognise: true,
+    assert.equal((await post({ concept: 'Línia d’ingressos', totalCents: 1000, paymentMethod: 'CARD', recognise: true, evidence,
       lines: [{ budgetLineId: s.lines.quotes, amountCents: 1000 }] })).data.error, 'invalid_expense_line');
     assert.equal((await post({ concept: 'x'.repeat(121), totalCents: 1000, paymentMethod: 'CARD' })).status, 400);
     let economics = await s.economics();
@@ -280,6 +282,7 @@ test('expenses: list filters and enriched rows, manual proposal not counted, rec
     assert.deepEqual((await rows('&from=2026-11-20')).map(row => row.id), [multi.data.id]);
     assert.equal((await s.call(104, `/api/finance/expenses?roundId=${s.round}&status=MAYBE`)).status, 400);
     // Recognition: once; then revision keeps the previous concept in history.
+    assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}/evidence`, 'POST', evidence)).status, 201);
     assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}/recognise`, 'POST', { expectedVersion: 1 })).data.status, 'RECOGNISED');
     assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}/recognise`, 'POST', { expectedVersion: 2 })).data.error, 'invalid_transition');
     economics = await s.economics();
@@ -299,6 +302,7 @@ test('expenses: list filters and enriched rows, manual proposal not counted, rec
     const advance = await post({ concept: 'Piles', totalCents: 800, paymentMethod: 'ADVANCED', advancedById: scouter, lines: [{ budgetLineId: s.lines.office, amountCents: 800 }] });
     s.f.sql.exec(`INSERT INTO user_role(id,user_id,role_code,valid_from,justification) VALUES('${id(9711)}','${id(102)}','TREASURY',1,'Fixture');
       INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,justification) VALUES('${id(9712)}','${id(102)}','finance.expense.manage',1,'Fixture')`);
+    assert.equal((await s.call(104, `/api/finance/expenses/${advance.data.id}/evidence`, 'POST', evidence)).status, 201);
     assert.equal((await s.call(102, `/api/finance/expenses/${advance.data.id}/recognise`, 'POST', { expectedVersion: 1 })).data.error, 'self_approval');
     assert.equal(s.count('audit_event', "action='AUTHZ_DENY' AND reason_code='SELF_APPROVAL'"), 1);
     // The line picker returns names only (no amounts) and marks assignable leaves.

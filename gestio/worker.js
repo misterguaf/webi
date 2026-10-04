@@ -255,7 +255,7 @@ async function api(request,env,url,requestId) {
   if (match && method==='POST') return json({...await fees.resolveFeeIssue(db,context,requestId,match[1]),requestId});
   // 3.5G.1 financial foundation (TREASURY.md): rounds, positions, movements, allocations, expenses, budget.
   if (path.startsWith('/api/finance/')) {
-    const response=await financeRoute({db,context,requestId,method,path,url,request,json,readJson});
+    const response=await financeRoute({db,storage:env.EVIDENCE_STORAGE,context,requestId,method,path,url,request,json,readJson});
     if (response) return response;
   }
 

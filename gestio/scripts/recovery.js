@@ -110,7 +110,11 @@ const REQUIRED_OBJECTS=[
   'trigger:finance_income_update_guard','trigger:finance_income_no_delete',
   'trigger:finance_income_revision_no_update','trigger:finance_income_revision_no_delete',
   'index:finance_allocation_income_idx','trigger:finance_allocation_income_link_guard',
-  'trigger:finance_allocation_income_link_immutable'
+  'trigger:finance_allocation_income_link_immutable',
+  'index:finance_allocation_reimbursement_idx','trigger:finance_expense_recognition_evidence',
+  'trigger:finance_expense_self_exception_insert_guard','trigger:finance_expense_self_exception_guard','trigger:finance_expense_reimbursement_lock',
+  'trigger:finance_reimbursement_v1_insert_guard','trigger:finance_reimbursement_transition_guard',
+  'trigger:finance_reimbursement_settlement_guard'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};

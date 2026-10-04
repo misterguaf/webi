@@ -267,3 +267,11 @@ SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VAL
   ('00000000-0000-4000-8000-000000000493','00000000-0000-4000-8000-000000000101','finance.income.read'),
   ('00000000-0000-4000-8000-000000000494','00000000-0000-4000-8000-000000000101','finance.income.manage'))
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.income.read');
+
+-- G.2B synthetic fixture: explicit narrow Treasury self-reimbursement authority.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT '00000000-0000-4000-8000-000000000495','00000000-0000-4000-8000-000000000104',
+  'finance.reimbursement.self_approve',1700000000000,NULL,'Fixture sintético'
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.reimbursement.self_approve')
+  AND NOT EXISTS(SELECT 1 FROM user_permission_grant WHERE user_id='00000000-0000-4000-8000-000000000104'
+    AND permission_code='finance.reimbursement.self_approve' AND revoked_at IS NULL);

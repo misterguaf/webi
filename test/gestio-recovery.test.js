@@ -186,10 +186,25 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal((await finance('budgets/'+budget+'/approve',{expectedVersion:2},'POST',group)).status,200);
     const revision=(await finance('budget-revisions',{budgetId:budget,lineId:kitchen,deltaCents:5000})).data.id;
     assert.equal((await finance('budget-revisions/'+revision+'/decision',{decision:'APPROVE',expectedVersion:1},'POST',group)).status,200);
+    const receipt={filename:'ticket-synthetic.pdf',mime:'application/pdf',
+      dataBase64:Buffer.from('%PDF-1.4\n%synthetic local fixture\n1 0 obj <<>> endobj\n%%EOF').toString('base64')};
     const expense=(await finance('expenses',{roundId:round,expenseDate:'2026-11-05',totalCents:3000,paymentMethod:'CARD',
-      lines:[{budgetLineId:kitchen,amountCents:3000}],recognise:true})).data.id;
+      lines:[{budgetLineId:kitchen,amountCents:3000}],recognise:true,evidence:receipt})).data.id;
     const purchase=(await finance('movements',{positionId:card,operationDate:'2026-11-05',amountCents:-3000,label:'Compra amb targeta'})).data.id;
     assert.equal((await finance('movements/'+purchase+'/allocations',{expectedVersion:0,allocations:[{kind:'EXPENSE_SETTLEMENT',amountCents:3000,expenseId:expense}]})).status,200);
+    // G.2B: three approved liabilities, one actual BANK transfer, D1 evidence metadata and settlement survive restore.
+    const recipient=(await finance('counterparties',{kind:'PERSON',displayName:'Scouter Recuperació (fictici)'})).data.id;
+    const reimbursementIds=[];
+    for (const amountCents of [2000,3500,1500]) {
+      const response=await finance('expenses',{roundId:round,expenseDate:'2026-11-06',concept:'Avançament demo',totalCents:amountCents,
+        paymentMethod:'ADVANCED',advancedById:recipient,lines:[{budgetLineId:kitchen,amountCents}],recognise:true,evidence:receipt});
+      assert.equal(response.status,201,JSON.stringify(response.data));
+      reimbursementIds.push(response.data.reimbursementId);
+    }
+    const reimbursementMove=(await finance('movements',{positionId:bank,operationDate:'2026-11-08',amountCents:-7000,label:'Reemborsament demo'})).data.id;
+    assert.equal((await finance('movements/'+reimbursementMove+'/allocations',{expectedVersion:0,
+      allocations:reimbursementIds.map((reimbursementId,index)=>({kind:'REIMBURSEMENT_SETTLEMENT',
+        reimbursementId,amountCents:[2000,3500,1500][index]}))})).status,200);
     // 3.5G.2A incomes: a pending grant, a reconciled sale (with a correction) and its allocation must survive restore.
     const incomeRoot=(await finance('budget-lines',{roundId:round,code:'1',name:'Ingressos',nature:'INCOME'})).data.id;
     const grants=(await finance('budget-lines',{roundId:round,code:'1.1',name:'Subvencions',nature:'INCOME',parentId:incomeRoot})).data.id;
@@ -206,7 +221,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,29);
+    assert.equal(manifest.schema_version,30);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -217,7 +232,8 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0019_activity_payment_allocations.sql','0020_payment_attempts.sql',
       '0021_issue_notices_per_attempt.sql','0022_financial_delegation.sql','0023_finance_rounds_positions.sql',
       '0024_finance_movements.sql','0025_finance_counterparties_budget.sql','0026_finance_expenses_allocations.sql',
-      '0027_finance_permissions.sql','0028_finance_expense_concept.sql','0029_finance_income.sql']);
+      '0027_finance_permissions.sql','0028_finance_expense_concept.sql','0029_finance_income.sql',
+      '0030_finance_reimbursements_evidence.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);
@@ -232,9 +248,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(manifest.table_counts.annual_fee_round,1);
     assert.equal(manifest.table_counts.annual_fee_payment,0);
     assert.equal(manifest.table_counts.finance_round,1);
-    assert.equal(manifest.table_counts.finance_movement,5);
+    assert.equal(manifest.table_counts.finance_movement,6);
     assert.equal(manifest.table_counts.finance_movement_description,2);
-    assert.equal(manifest.table_counts.finance_allocation,4);
+    assert.equal(manifest.table_counts.finance_allocation,7);
+    assert.equal(manifest.table_counts.finance_expense_evidence,4);
+    assert.equal(manifest.table_counts.finance_reimbursement,3);
     assert.equal(manifest.table_counts.finance_budget_revision,1);
     for (const object of ['table:annual_fee_family_revision','table:annual_fee_family_revision_member',
       'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
@@ -252,6 +270,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       'trigger:finance_income_revision_no_update','trigger:finance_income_revision_no_delete',
       'index:finance_allocation_income_idx','trigger:finance_allocation_income_link_guard',
       'trigger:finance_allocation_income_link_immutable'])
+      assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
+    for (const object of ['index:finance_allocation_reimbursement_idx','trigger:finance_expense_recognition_evidence',
+      'trigger:finance_expense_self_exception_guard','trigger:finance_expense_reimbursement_lock',
+      'trigger:finance_reimbursement_v1_insert_guard','trigger:finance_reimbursement_transition_guard',
+      'trigger:finance_reimbursement_settlement_guard'])
       assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
     assert.equal(verifyBackup(backup,config).manifest.sql_sha256,manifest.sql_sha256);
     assert.match(runNpm('db:backup:verify',['--config',config,'--backup',backup]),/BACKUP_VERIFIED/);
@@ -304,6 +327,16 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     missingManifest.sql_bytes=Buffer.byteLength(dumpWithoutGuard);
     writeFileSync(join(missingIncomeGuard,'manifest.json'),JSON.stringify(missingManifest));
     assert.throws(()=>verifyBackup(missingIncomeGuard,config),/SCHEMA_OBJECT_MISSING/);
+    const missingSettlementGuard=join(temp,'missing-reimbursement-guard-backup');
+    cpSync(backup,missingSettlementGuard,{recursive:true});
+    const withoutSettlementGuard=dump.replace(/CREATE TRIGGER finance_reimbursement_settlement_guard[\s\S]*?END;\n/,'');
+    assert.notEqual(withoutSettlementGuard,dump,'dump must contain finance_reimbursement_settlement_guard');
+    writeFileSync(join(missingSettlementGuard,'dump.sql'),withoutSettlementGuard);
+    const missingSettlementManifest=JSON.parse(readFileSync(join(missingSettlementGuard,'manifest.json'),'utf8'));
+    missingSettlementManifest.sql_sha256=createHash('sha256').update(withoutSettlementGuard).digest('hex');
+    missingSettlementManifest.sql_bytes=Buffer.byteLength(withoutSettlementGuard);
+    writeFileSync(join(missingSettlementGuard,'manifest.json'),JSON.stringify(missingSettlementManifest));
+    assert.throws(()=>verifyBackup(missingSettlementGuard,config),/SCHEMA_OBJECT_MISSING/);
 
     // Temporary bad change, never a versioned migration: backup verifier must refuse it.
     run(isolated,['d1','execute','parpallo-gestio-local','--local','--config','wrangler.toml','--command',
@@ -333,8 +366,18 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       "(SELECT count(*) FROM finance_allocation_current) AS current_allocations,(SELECT current_cents FROM finance_budget_line_amount a JOIN finance_budget_line l ON l.id=a.line_id WHERE l.code='2') AS budget_current",'--json'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.equal(restoredFinance.status,0);
-    assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:3000,income:30000,current_allocations:4,budget_current:105000},
-      'the transfer counts nothing, the card expense once, the collected sale once (the pending grant not yet); current budget = initial + approved revision');
+    assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:10000,income:30000,current_allocations:7,budget_current:105000},
+      'the transfer counts nothing, the card and advanced expenses once, the collected sale once; current budget = initial + approved revision');
+    const restoredReimbursements=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT r.status,r.amount_cents AS amount,r.recipient_id AS recipient,"+
+      "COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.reimbursement_id=r.id),0) AS settled,"+
+      "(SELECT count(*) FROM finance_expense_evidence d WHERE d.expense_id=r.expense_id) AS receipts "+
+      "FROM finance_reimbursement r ORDER BY r.amount_cents",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredReimbursements.status,0);
+    assert.deepEqual(JSON.parse(restoredReimbursements.stdout)[0].results.map(row=>[row.status,row.amount,row.recipient,row.settled,row.receipts]),
+      [['APPROVED',1500,recipient,1500,1],['APPROVED',2000,recipient,2000,1],['APPROVED',3500,recipient,3500,1]],
+      'reimbursement liabilities, current settlements and receipt metadata survive D1 restore; R2 bytes are outside this backup');
     const restoredIncomes=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"SELECT i.concept,i.total_cents AS total,i.status,COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.income_id=i.id),0) AS reconciled,"+
       "(SELECT count(*) FROM finance_income_revision r WHERE r.income_id=i.id) AS revisions FROM finance_income i ORDER BY i.income_date",'--json'],

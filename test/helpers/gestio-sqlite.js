@@ -40,8 +40,15 @@ export function fixture({ seed = true } = {}) {
   if (seed) sql.exec(readFileSync(join(root, 'gestio/seed.sql'), 'utf8'));
   const db = d1(sql);
   const context = {}, token = {};
+  const objects = new Map();
+  const storage = {
+    async put(key, bytes) { objects.set(key, Uint8Array.from(bytes)); },
+    async get(key) { const bytes = objects.get(key); return bytes ? { body: bytes } : null; },
+    async head(key) { return objects.has(key) ? { key } : null; },
+    async delete(key) { objects.delete(key); }
+  };
   return {
-    sql, db, context, token,
+    sql, db, context, token, storage,
     async login(number) {
       token[number] = (await newSession(db, id(number))).token;
       const session = sql.prepare('SELECT id FROM app_session WHERE user_id=? ORDER BY created_at DESC LIMIT 1').get(id(number));
@@ -53,7 +60,7 @@ export function fixture({ seed = true } = {}) {
         headers: { Cookie: `gestio_session=${token[number]}`, ...(method !== 'GET' ? { Origin: 'http://127.0.0.1:8788' } : {}),
           ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {})
-      }), { DB: db, APP_ENV: 'development', DEV_IDENTITY_PROVIDER: 'enabled', ...env });
+      }), { DB: db, EVIDENCE_STORAGE: storage, APP_ENV: 'development', DEV_IDENTITY_PROVIDER: 'enabled', ...env });
       const text = await response.text();
       let data = null; try { data = JSON.parse(text); } catch { data = text; }
       return { status: response.status, data, headers: response.headers };

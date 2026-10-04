@@ -30,6 +30,9 @@ export const ACTIONS = new Set([
   'MOVEMENT_CLASSIFIED','MOVEMENT_RECLASSIFIED','BANK_DESCRIPTION_REVEALED',
   'COUNTERPARTY_CREATED','COUNTERPARTY_REVISED','COUNTERPARTY_USER_LINKED','COUNTERPARTY_USER_UNLINKED',
   'EXPENSE_PROPOSED','EXPENSE_RECOGNISED','EXPENSE_REVISED','EXPENSE_REJECTED','EXPENSE_VOIDED',
+  'EXPENSE_EVIDENCE_UPLOADED','EXPENSE_EVIDENCE_VIEWED','EXPENSE_EVIDENCE_DOWNLOADED',
+  'REIMBURSEMENT_CREATED','REIMBURSEMENT_APPROVED','REIMBURSEMENT_SELF_APPROVED','REIMBURSEMENT_SETTLED',
+  'REIMBURSEMENT_SETTLEMENT_REVISED',
   'INCOME_CREATED','INCOME_REVISED','INCOME_RECONCILED','INCOME_VOIDED',
   'BUDGET_CREATED','BUDGET_PROPOSED','BUDGET_RETURNED_TO_DRAFT','BUDGET_APPROVED','BUDGET_LINE_CREATED','BUDGET_LINE_REVISED',
   'BUDGET_LINE_DEACTIVATED','BUDGET_REVISION_PROPOSED','BUDGET_REVISION_APPROVED','BUDGET_REVISION_REJECTED'
@@ -42,7 +45,8 @@ const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_rol
   'auth_identity','auth_identity_invitation',
   'guardian','participant_guardian','contact_point','participant_review','activity_payment_allocation',
   'finance_round','finance_position','finance_opening_balance','finance_reserve_opening','finance_import_batch','finance_movement',
-  'finance_counterparty','finance_expense','finance_income','finance_budget','finance_budget_line','finance_budget_revision']);
+  'finance_counterparty','finance_expense','finance_expense_evidence','finance_reimbursement','finance_income',
+  'finance_budget','finance_budget_line','finance_budget_revision']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);
 const SOURCES = new Set(['local-fixture','retention-job']);
 const safeId = value => value === null || (typeof value === 'string' && UUID.test(value));
@@ -51,9 +55,11 @@ function safeMetadata(value) {
   if (value == null) return null;
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('AUDIT_METADATA_REJECTED');
   const keys=Object.keys(value);
-  if (keys.some(key => !['count','source'].includes(key))) throw new Error('AUDIT_METADATA_REJECTED');
+  if (keys.some(key => !['count','source','amountCents'].includes(key))) throw new Error('AUDIT_METADATA_REJECTED');
   if ('count' in value && (!Number.isInteger(value.count) || value.count < 0 || value.count > 1000)) throw new Error('AUDIT_METADATA_REJECTED');
   if ('source' in value && !SOURCES.has(value.source)) throw new Error('AUDIT_METADATA_REJECTED');
+  if ('amountCents' in value && (!Number.isSafeInteger(value.amountCents) || value.amountCents < 0 || value.amountCents > 100000000))
+    throw new Error('AUDIT_METADATA_REJECTED');
   return JSON.stringify(value);
 }
 

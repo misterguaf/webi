@@ -10,6 +10,8 @@ import { buildDemoData, buildTreasuryDemo } from '../gestio/demo/data.js';
 
 const ROUND = { code: '2026/2027', periodStart: '2026-10-01', periodEnd: '2027-09-30', annualFeeRoundId: id(901) };
 const csv = rows => ['# synthetic', 'operation_date,value_date,amount_cents,reference,description,balance_cents', ...rows].join('\n');
+const evidence = { filename: 'ticket-synthetic.pdf', mime: 'application/pdf',
+  dataBase64: Buffer.from('%PDF-1.4\n%synthetic local fixture\n1 0 obj <<>> endobj\n%%EOF').toString('base64') };
 
 async function setup({ open = true } = {}) {
   const f = fixture();
@@ -253,7 +255,8 @@ test('expenses: proposed is not counted, recognised counts once whatever settles
     let economics = await s.economics();
     assert.deepEqual([economics.expenseGrossCents, economics.proposedExpenseCents], [0, 5000], 'a proposal is not an expense');
     assert.equal((await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2027-07-25', totalCents: 5000, paymentMethod: 'ADVANCED',
-      advancedById: scout, lines: [{ budgetLineId: transport, amountCents: 5000 }], recognise: true })).data.error, 'advanced_expense_requires_review');
+      advancedById: scout, lines: [{ budgetLineId: transport, amountCents: 5000 }], recognise: true })).data.error, 'expense_evidence_required');
+    assert.equal((await s.call(104, `/api/finance/expenses/${advanced.data.id}/evidence`, 'POST', evidence)).status, 201);
     // The scouter (user 102) cannot recognise their own advance, even holding the permission.
     s.f.sql.exec(`INSERT INTO user_role(id,user_id,role_code,valid_from,justification) VALUES('${id(9871)}','${id(102)}','TREASURY',1,'Fixture');
       INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,justification) VALUES('${id(9872)}','${id(102)}','finance.expense.manage',1,'Fixture')`);
@@ -266,11 +269,11 @@ test('expenses: proposed is not counted, recognised counts once whatever settles
     assert.deepEqual([economics.expenseGrossCents, economics.proposedExpenseCents], [5000, 0]);
     // A direct card expense recognised at once; its lines must add up to the total.
     assert.equal((await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2027-07-28', totalCents: 15000, paymentMethod: 'CARD',
-      counterpartyId: supplier, lines: [{ budgetLineId: kitchen, amountCents: 9000 }], recognise: true })).data.error, 'expense_lines_total_mismatch');
+      counterpartyId: supplier, lines: [{ budgetLineId: kitchen, amountCents: 9000 }], recognise: true, evidence })).data.error, 'expense_lines_total_mismatch');
     assert.equal((await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2027-07-28', totalCents: 15000, paymentMethod: 'CARD',
-      lines: [{ budgetLineId: summer, amountCents: 15000 }], recognise: true })).data.error, 'invalid_expense_line', 'lines go to leaves');
+      lines: [{ budgetLineId: summer, amountCents: 15000 }], recognise: true, evidence })).data.error, 'invalid_expense_line', 'lines go to leaves');
     const card = await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2027-07-28', totalCents: 15000, paymentMethod: 'CARD',
-      counterpartyId: supplier, lines: [{ budgetLineId: kitchen, amountCents: 9000 }, { budgetLineId: kitchen, amountCents: 6000, sectionId: id(2) }], recognise: true });
+      counterpartyId: supplier, lines: [{ budgetLineId: kitchen, amountCents: 9000 }, { budgetLineId: kitchen, amountCents: 6000, sectionId: id(2) }], recognise: true, evidence });
     assert.equal(card.status, 201);
     assert.throws(() => {
       s.f.sql.exec('BEGIN');
@@ -299,11 +302,13 @@ test('expenses: proposed is not counted, recognised counts once whatever settles
     assert.equal(detail.revisions.length, 1); assert.equal(detail.lines.length, 1); assert.equal(detail.expense.settlementState, 'SETTLED');
     assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM finance_expense_line WHERE expense_id=?').get(card.data.id).n, 3, 'old lines kept');
     assert.equal((await s.call(104, `/api/finance/expenses/${card.data.id}/void`, 'POST', { expectedVersion: 3, reason: 'ERROR' })).data.error, 'invalid_expense');
-    assert.equal((await s.call(104, `/api/finance/expenses/${advanced.data.id}/void`, 'POST', { expectedVersion: 2, reason: 'ERROR' })).data.status, 'VOID');
-    assert.equal((await s.economics()).expenseGrossCents, 15000);
+    assert.equal((await s.call(104, `/api/finance/expenses/${advanced.data.id}/void`, 'POST', { expectedVersion: 2, reason: 'ERROR' })).data.error,
+      'reimbursement_expense_locked', 'approved debt cannot silently disappear');
+    assert.equal((await s.economics()).expenseGrossCents, 20000);
     // The scouter's user link cannot be reassigned silently while used: audited link changes.
-    assert.equal((await s.call(104, `/api/finance/counterparties/${scout}`, 'PATCH', { userId: null, expectedVersion: 1 })).status, 200);
-    assert.equal(s.audits('COUNTERPARTY_USER_UNLINKED').length, 1);
+    assert.equal((await s.call(104, `/api/finance/counterparties/${scout}`, 'PATCH', { userId: null, expectedVersion: 1 })).data.error,
+      'counterparty_in_use');
+    assert.equal(s.audits('COUNTERPARTY_USER_UNLINKED').length, 0);
     assert.doesNotMatch(JSON.stringify(s.f.sql.prepare('SELECT * FROM audit_event').all()), /fictici|Scouter|Supermercat/);
   } finally { s.f.close(); }
 });
@@ -473,7 +478,7 @@ test('economic figures never count twice: card purchase and its settlement, the 
   try {
     const { kitchen, transport } = await catalogue(s);
     const expense = async (paymentMethod, totalCents, lineId) => (await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round,
-      expenseDate: '2027-07-20', totalCents, paymentMethod, lines: [{ budgetLineId: lineId, amountCents: totalCents }], recognise: true })).data.id;
+      expenseDate: '2027-07-20', totalCents, paymentMethod, lines: [{ budgetLineId: lineId, amountCents: totalCents }], recognise: true, evidence })).data.id;
     const settle = async (movementId, expenseId, amountCents) => assert.equal((await s.call(104, `/api/finance/movements/${movementId}/allocations`, 'POST',
       { expectedVersion: 0, allocations: [{ kind: 'EXPENSE_SETTLEMENT', amountCents, expenseId }] })).status, 200);
     const transfer = async (from, to) => assert.equal((await s.call(104, '/api/finance/internal-transfers', 'POST',
@@ -521,6 +526,7 @@ test('economic figures never count twice: card purchase and its settlement, the 
     const proposed = (await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round, expenseDate: '2027-07-26', totalCents: 2000,
       paymentMethod: 'BANK', lines: [{ budgetLineId: kitchen, amountCents: 2000 }] })).data.id;
     assert.deepEqual(await figures(), { income: 0, expense: 49000, proposed: 2000 });
+    assert.equal((await s.call(104, `/api/finance/expenses/${proposed}/evidence`, 'POST', evidence)).status, 201);
     assert.equal((await s.call(104, `/api/finance/expenses/${proposed}/recognise`, 'POST', { expectedVersion: 1 })).status, 200);
     assert.deepEqual(await figures(), { income: 0, expense: 51000, proposed: 0 });
     await settle(await s.manual(s.bank, -2000, '2027-07-27', 'Transferència al proveïdor'), proposed, 2000);

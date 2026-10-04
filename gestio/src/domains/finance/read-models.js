@@ -31,7 +31,7 @@ export async function expenseSummaries(db, ids) {
 }
 
 /** Allocations with what they point to, ready for the screen. */
-export async function describeAllocations(db, rows) {
+export async function describeAllocations(db, rows, { reimbursementDetails = true } = {}) {
   const lines = await budgetLineLabels(db, rows.map(row => row.budgetLineId));
   const expenses = await expenseSummaries(db, rows.map(row => row.expenseId));
   const incomeIds = [...new Set(rows.map(row => row.incomeId).filter(Boolean))];
@@ -42,9 +42,17 @@ export async function describeAllocations(db, rows) {
     FROM finance_movement m JOIN finance_position p ON p.id=m.position_id WHERE m.id IN (${pairedIds.map(() => '?').join(',')})`)
     .bind(...pairedIds).all()).results.map(row => [row.id, { id: row.id, operationDate: row.operation_date, amountCents: row.amount_cents,
       positionName: row.position_name, positionKind: row.kind }]) : []);
+  const reimbursementIds = reimbursementDetails ? [...new Set(rows.map(row => row.reimbursementId).filter(Boolean))] : [];
+  const reimbursements = new Map(reimbursementIds.length ? (await db.prepare(`SELECT r.id,r.amount_cents,e.concept,e.expense_date,
+    c.display_name AS recipient_name FROM finance_reimbursement r JOIN finance_expense e ON e.id=r.expense_id
+    JOIN finance_counterparty c ON c.id=r.recipient_id WHERE r.id IN (${reimbursementIds.map(() => '?').join(',')})`)
+    .bind(...reimbursementIds).all()).results.map(row => [row.id, { id: row.id, amountCents: row.amount_cents,
+      concept: row.concept, expenseDate: row.expense_date, recipientName: row.recipient_name }]) : []);
   return rows.map(row => ({ id: row.id, kind: row.kind, amountCents: row.amountCents, sectionId: row.sectionId ?? null, activityId: row.activityId ?? null,
     budgetLineId: row.budgetLineId ?? null, expenseId: row.expenseId ?? null, pairedMovementId: row.pairedMovementId ?? null,
-    incomeId: row.incomeId ?? null, income: row.incomeId ? incomes.get(row.incomeId) ?? null : null,
+    incomeId: row.incomeId ?? null, reimbursementId: reimbursementDetails ? row.reimbursementId ?? null : null,
+    reimbursement: reimbursementDetails && row.reimbursementId ? reimbursements.get(row.reimbursementId) ?? null : null,
+    income: row.incomeId ? incomes.get(row.incomeId) ?? null : null,
     budgetLine: row.budgetLineId ? lines.get(row.budgetLineId) ?? null : null,
     expense: row.expenseId ? expenses.get(row.expenseId) ?? null : null,
     pairedMovement: row.pairedMovementId ? paired.get(row.pairedMovementId) ?? null : null }));
