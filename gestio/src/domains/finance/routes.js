@@ -26,6 +26,10 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
   }
   if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/(open|closing)$/)) && method === 'POST')
     return ok(await rounds.transitionRound(db, context, requestId, match[1], match[2], await body()));
+  if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/close$/)) && method === 'POST')
+    return ok(await rounds.closeRound(db, context, requestId, match[1], await body()));
+  if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/reserve-operations$/)) && method === 'POST')
+    return ok(await rounds.recordReserveOperation(db, context, requestId, match[1], await body()), 201);
   if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/opening-balances$/)) && method === 'POST')
     return ok(await rounds.recordOpeningBalance(db, context, requestId, match[1], await body()), 201);
   if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/reserves$/)) && method === 'POST')

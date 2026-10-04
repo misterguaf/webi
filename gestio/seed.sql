@@ -259,6 +259,13 @@ SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VAL
   ('00000000-0000-4000-8000-000000000490','00000000-0000-4000-8000-000000000101','finance.budget.approve'))
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.treasury.read');
 
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT '00000000-0000-4000-8000-000000000998','00000000-0000-4000-8000-000000000104',
+  'finance.round.close',1700000000000,NULL,'Fixture sintético'
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.round.close')
+  AND NOT EXISTS(SELECT 1 FROM user_permission_grant WHERE user_id='00000000-0000-4000-8000-000000000104'
+    AND permission_code='finance.round.close');
+
 -- FASE 3.5G.2A (ingressos): general incomes, mirroring migration 0029.
 INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
 SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VALUES

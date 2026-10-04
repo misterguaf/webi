@@ -37,6 +37,8 @@ const CONFLICTS = [
   ['UNIQUE constraint failed: finance_round.annual_fee_round_id', 'fee_round_already_linked'],
   ['invalid_finance_round_transition', 'invalid_transition'], ['finance_round_locked', 'finance_round_locked'],
   ['finance_round_closed', 'finance_round_closed'],
+  ['invalid_finance_round_close', 'invalid_finance_round_close'],
+  ['invalid_reserve_operation', 'invalid_reserve_operation'],
   ['invalid_opening_balance', 'stale_opening_balance'], ['UNIQUE constraint failed: finance_opening_balance', 'stale_opening_balance'],
   ['invalid_reserve_opening', 'stale_reserves'], ['UNIQUE constraint failed: finance_reserve_opening', 'stale_reserves'],
   ['UNIQUE constraint failed: finance_import_batch.file_sha256', 'duplicate_import'],

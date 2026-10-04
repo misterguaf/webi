@@ -6,11 +6,12 @@ import { renderHome } from './treasury/home.js';
 import { renderMovementDetail, renderMovementList } from './treasury/movements.js';
 import { renderExpenseDetail, renderExpenseList } from './treasury/expenses.js';
 import { renderIncomeDetail, renderIncomeList } from './treasury/incomes.js';
+import { renderRound } from './treasury/round.js';
 import { availableTabs, errorCopy, treasuryAvailable } from './treasury/model.js';
 
 const $ = id => document.getElementById(id);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const TITLES = { inici: 'Tresoreria', moviments: 'Moviments', ingressos: 'Ingressos', despeses: 'Despeses' };
+const TITLES = { inici: 'Tresoreria', moviments: 'Moviments', ingressos: 'Ingressos', despeses: 'Despeses', ronda: 'Ronda' };
 
 export function createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge }) {
   const root = $('treasuryView');
@@ -40,7 +41,7 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
     const [segment = 'inici', id] = route?.path ?? [];
     const tab = tabs.find(item => item.id === segment);
     if (!tab) { go({ path: tabs[0]?.id && tabs[0].id !== 'inici' ? [tabs[0].id] : [] }, { replace: true }); return; }
-    if (id && (!UUID.test(id) || tab.id === 'inici')) { go({ path: tab.id === 'inici' ? [] : [tab.id] }, { replace: true }); return; }
+    if (id && (!UUID.test(id) || tab.id === 'inici' || tab.id === 'ronda')) { go({ path: tab.id === 'inici' ? [] : [tab.id] }, { replace: true }); return; }
     if (!id && tab.id !== 'inici') lastQuery[tab.id] = route.query ?? {};
     const content = h('div', { className: 'treasury-content' });
     root.replaceChildren(
@@ -59,6 +60,7 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
       if (tab.id === 'inici') renderHome(content, ctx, summary);
       else if (tab.id === 'moviments') await (id ? renderMovementDetail(content, ctx, id) : renderMovementList(content, ctx, route.query ?? {}));
       else if (tab.id === 'ingressos') await (id ? renderIncomeDetail(content, ctx, id) : renderIncomeList(content, ctx, route.query ?? {}));
+      else if (tab.id === 'ronda') await renderRound(content, ctx);
       else await (id ? renderExpenseDetail(content, ctx, id) : renderExpenseList(content, ctx, route.query ?? {}));
       if (id) announce(document.title);
     } catch (error) {

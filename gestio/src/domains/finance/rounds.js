@@ -30,11 +30,22 @@ export async function roundDetail(db, context, requestId, id) {
     .bind(id).first();
   const budget = await db.prepare('SELECT id,status,version FROM finance_budget WHERE round_id=?').bind(id).first();
   const close = await db.prepare(`SELECT income_cents AS incomeCents,expense_cents AS expenseCents,result_cents AS resultCents,
-    reserves_final_cents AS reservesFinalCents,closed_at AS closedAt FROM finance_round_close WHERE round_id=?`).bind(id).first();
+    reserves_final_cents AS reservesFinalCents,reserve_contribution_cents AS reserveContributionCents,
+    reserve_application_cents AS reserveApplicationCents,result_after_reserves_cents AS resultAfterReservesCents,
+    closed_at AS closedAt FROM finance_round_close WHERE round_id=?`).bind(id).first();
+  const reserveOperations = (await db.prepare(`SELECT id,kind,amount_cents AS amountCents,created_at AS createdAt
+    FROM finance_reserve_operation WHERE round_id=? ORDER BY created_at,id`).bind(id).all()).results;
+  const contributionCents = reserveOperations.filter(row => row.kind === 'CONTRIBUTION')
+    .reduce((sum, row) => sum + row.amountCents, 0);
+  const applicationCents = reserveOperations.filter(row => row.kind === 'APPLICATION')
+    .reduce((sum, row) => sum + row.amountCents, 0);
+  const resultBeforeReservesCents = economics.incomeCents - (economics.expenseGrossCents - economics.expenseRefundCents);
   return { round, openingBalances: opening, reserves: reserves ?? null,
     economics: { ...economics, expenseNetCents: economics.expenseGrossCents - economics.expenseRefundCents,
-      resultBeforeReservesCents: economics.incomeCents - (economics.expenseGrossCents - economics.expenseRefundCents) },
-    budget: budget ?? null, officialClose: close ?? null };
+      resultBeforeReservesCents, reserveContributionCents: contributionCents,
+      reserveApplicationCents: applicationCents,
+      resultAfterReservesCents: resultBeforeReservesCents + applicationCents - contributionCents },
+    reserveOperations, budget: budget ?? null, officialClose: close ?? null };
 }
 function validRound(input, creating) {
   if (!keysOnly(input, creating ? ['code', 'periodStart', 'periodEnd', 'annualFeeRoundId']
@@ -100,6 +111,58 @@ export async function transitionRound(db, context, requestId, id, kind, input, n
     throw conflict(error, 'stale_round');
   }
   return { id, status: step.to, version: input.expectedVersion + 1 };
+}
+
+export async function recordReserveOperation(db, context, requestId, roundId, input, now = Date.now()) {
+  await allow(db, context, requestId, 'finance.round.manage', 'finance_reserve_operation');
+  const round = await roundRow(db, roundId);
+  if (!keysOnly(input, ['kind', 'amountCents']) || !['CONTRIBUTION', 'APPLICATION'].includes(input.kind) ||
+      !Number.isSafeInteger(input.amountCents) || input.amountCents < 1 || input.amountCents > 100000000)
+    fail('invalid_reserve_operation');
+  if (!['OPEN', 'CLOSING'].includes(round.status)) throw new AppError(409, 'invalid_transition');
+  if (input.kind === 'APPLICATION') {
+    const available = await db.prepare(`SELECT COALESCE((SELECT amount_cents FROM finance_reserve_opening
+      WHERE round_id=? ORDER BY revision DESC LIMIT 1),0)
+      +COALESCE((SELECT sum(amount_cents) FROM finance_reserve_operation WHERE round_id=? AND kind='CONTRIBUTION'),0)
+      -COALESCE((SELECT sum(amount_cents) FROM finance_reserve_operation WHERE round_id=? AND kind='APPLICATION'),0) AS cents`)
+      .bind(roundId, roundId, roundId).first();
+    if (input.amountCents > available.cents) throw new AppError(409, 'insufficient_reserve');
+  }
+  const id = uuid();
+  await commit(db, [
+    db.prepare(`INSERT INTO finance_reserve_operation(id,round_id,kind,amount_cents,created_by,created_at)
+      VALUES(?,?,?,?,?,?)`).bind(id, roundId, input.kind, input.amountCents, context.userId, now),
+    audit(db, context, requestId, input.kind === 'CONTRIBUTION' ? 'RESERVE_CONTRIBUTION_RECORDED' :
+      'RESERVE_APPLICATION_RECORDED', 'finance_reserve_operation', id, now)
+  ]);
+  return { id };
+}
+
+export async function closeRound(db, context, requestId, id, input, now = Date.now()) {
+  await allow(db, context, requestId, 'finance.round.close', 'finance_round', validUuid(id) ? id : null);
+  const round = await roundRow(db, id);
+  if (!keysOnly(input, ['expectedVersion']) || !version(input.expectedVersion)) fail('invalid_version');
+  if (round.status !== 'CLOSING') throw new AppError(409, 'invalid_transition');
+  if (round.version !== input.expectedVersion) throw new AppError(409, 'stale_round');
+  const values = await db.prepare(`SELECT income_cents,expense_gross_cents-expense_refund_cents AS expense_cents
+    FROM finance_round_economics WHERE round_id=?`).bind(id).first();
+  const reserves = await db.prepare(`SELECT
+    COALESCE((SELECT amount_cents FROM finance_reserve_opening WHERE round_id=? ORDER BY revision DESC LIMIT 1),0) AS opening,
+    COALESCE((SELECT sum(amount_cents) FROM finance_reserve_operation WHERE round_id=? AND kind='CONTRIBUTION'),0) AS contribution,
+    COALESCE((SELECT sum(amount_cents) FROM finance_reserve_operation WHERE round_id=? AND kind='APPLICATION'),0) AS application`)
+    .bind(id, id, id).first();
+  const result = values.income_cents - values.expense_cents;
+  await commit(db, [
+    db.prepare(`INSERT INTO finance_round_close(round_id,income_cents,expense_cents,result_cents,reserves_final_cents,
+      reserve_contribution_cents,reserve_application_cents,result_after_reserves_cents,closed_by,closed_at)
+      VALUES(?,?,?,?,?,?,?,?,?,?)`).bind(id, values.income_cents, values.expense_cents, result,
+      reserves.opening + reserves.contribution - reserves.application, reserves.contribution, reserves.application,
+      result + reserves.application - reserves.contribution, context.userId, now),
+    db.prepare(`UPDATE finance_round SET ${versionCas('version')},status='CLOSED',closed_by=?,closed_at=?,updated_at=? WHERE id=?`)
+      .bind(input.expectedVersion, context.userId, now, now, id),
+    audit(db, context, requestId, 'TREASURY_ROUND_CLOSED', 'finance_round', id, now)
+  ], 'stale_round');
+  return { id, status: 'CLOSED', version: input.expectedVersion + 1, resultCents: result };
 }
 
 // ---------------------------------------------------------------- positions

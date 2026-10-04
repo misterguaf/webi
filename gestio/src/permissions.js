@@ -54,6 +54,7 @@ export const PERMISSIONS = Object.freeze({
   // through explicit financial delegations (no role grants them by being held).
   'finance.treasury.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.round.manage': { kind: 'GLOBAL', note: 'Round configuration and state; not delegable.' },
+  'finance.round.close': { kind: 'GLOBAL', note: 'Official immutable close; Treasury authority only.' },
   'finance.position.manage': { kind: 'GLOBAL', note: 'Positions, opening balances and initial reserves; not delegable.' },
   'finance.movement.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.movement.import': { kind: 'GLOBAL', delegable: true, financialDelegation: true },

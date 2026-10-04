@@ -89,6 +89,43 @@ test('rounds: one OPEN at a time, no overlap, draft-only definition, closed roun
   } finally { s.f.close(); }
 });
 
+test('G.4: Treasury closes with an immutable exact snapshot and explicit reserve result', async () => {
+  const s = await setup();
+  try {
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/reserves`, 'POST',
+      { amountCents: 10000, expectedRevision: 0 })).status, 201);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/reserve-operations`, 'POST',
+      { kind: 'CONTRIBUTION', amountCents: 3000 })).status, 201);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/reserve-operations`, 'POST',
+      { kind: 'APPLICATION', amountCents: 2000 })).status, 201);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/reserve-operations`, 'POST',
+      { kind: 'APPLICATION', amountCents: 12000 })).data.error, 'insufficient_reserve');
+    assert.throws(() => s.f.sql.exec(`INSERT INTO finance_reserve_operation
+      (id,round_id,kind,amount_cents,created_by,created_at)
+      VALUES('${crypto.randomUUID()}','${s.round}','APPLICATION',12000,'${id(104)}',1)`),
+    /invalid_reserve_operation/);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/closing`, 'POST',
+      { expectedVersion: 2 })).status, 200);
+    assert.equal((await s.call(101, `/api/finance/rounds/${s.round}/close`, 'POST',
+      { expectedVersion: 3 })).status, 403, 'coordination can manage rounds but Treasury closes');
+    assert.throws(() => s.f.sql.exec(`INSERT INTO finance_round_close
+      (round_id,income_cents,expense_cents,result_cents,reserves_final_cents,closed_by,closed_at)
+      VALUES('${s.round}',0,0,0,0,'${id(104)}',1)`), /invalid_finance_round_close/);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/close`, 'POST',
+      { expectedVersion: 3 })).status, 200);
+    const detail = (await s.call(104, `/api/finance/rounds/${s.round}`)).data;
+    assert.deepEqual([detail.officialClose.reservesFinalCents, detail.officialClose.reserveContributionCents,
+      detail.officialClose.reserveApplicationCents, detail.officialClose.resultAfterReservesCents],
+    [11000, 3000, 2000, -1000]);
+    assert.equal(detail.round.status, 'CLOSED');
+    assert.throws(() => s.f.sql.exec(`UPDATE finance_round_close SET result_cents=100 WHERE round_id='${s.round}'`),
+      /finance_round_close_immutable/);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/reserve-operations`, 'POST',
+      { kind: 'CONTRIBUTION', amountCents: 1 })).status, 409);
+    assert.equal(s.audits('TREASURY_ROUND_CLOSED').length, 1);
+  } finally { s.f.close(); }
+});
+
 test('permissions: treasury and general coordination act; section coordination, Secretaria/delegate and TECH_ADMIN see nothing', async () => {
   const s = await setup();
   try {

@@ -26,6 +26,7 @@ export const ACTIONS = new Set([
   'IDENTITY_INVITED','IDENTITY_INVITATION_REVOKED','IDENTITY_LINKED','IDENTITY_REVOKED',
   'DELEGATION_AUTHORIZATION_CONFIRMED',
   'TREASURY_ROUND_CREATED','TREASURY_ROUND_UPDATED','TREASURY_ROUND_OPENED','TREASURY_ROUND_CLOSING_STARTED','TREASURY_ROUND_CLOSING_CANCELLED',
+  'TREASURY_ROUND_CLOSED','RESERVE_CONTRIBUTION_RECORDED','RESERVE_APPLICATION_RECORDED',
   'FINANCIAL_POSITION_CREATED','FINANCIAL_POSITION_UPDATED','OPENING_BALANCE_RECORDED','RESERVES_RECORDED',
   'BANK_IMPORT_CREATED','MOVEMENT_IMPORTED','MOVEMENT_CREATED_MANUAL','MOVEMENT_VOIDED_DUPLICATE','MOVEMENT_NEAR_MATCH_CLEARED',
   'MOVEMENT_CLASSIFIED','MOVEMENT_RECLASSIFIED','FINANCE_ALLOCATION_CORRECTED','BANK_DESCRIPTION_REVEALED',
@@ -46,7 +47,7 @@ const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_rol
   'annual_fee_evidence','annual_fee_notification_outbox','annual_fee_issue_outbox',
   'auth_identity','auth_identity_invitation',
   'guardian','participant_guardian','contact_point','participant_review','activity_payment_allocation',
-  'finance_round','finance_position','finance_opening_balance','finance_reserve_opening','finance_import_batch','finance_movement',
+  'finance_round','finance_position','finance_opening_balance','finance_reserve_opening','finance_reserve_operation','finance_import_batch','finance_movement',
   'finance_counterparty','finance_expense','finance_expense_evidence','finance_reimbursement','finance_income',
   'finance_budget','finance_budget_line','finance_budget_revision']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);

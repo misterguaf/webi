@@ -86,7 +86,8 @@ export const TABS = [
   { id: 'inici', label: 'Inici', available: caps => treasuryAvailable(caps) },
   { id: 'moviments', label: 'Moviments', available: caps => !!t(caps).readMovements },
   { id: 'ingressos', label: 'Ingressos', available: caps => !!t(caps).readIncomes },
-  { id: 'despeses', label: 'Despeses', available: caps => !!t(caps).readExpenses }
+  { id: 'despeses', label: 'Despeses', available: caps => !!t(caps).readExpenses },
+  { id: 'ronda', label: 'Ronda', available: caps => !!t(caps).readBudget }
 ];
 export const availableTabs = caps => TABS.filter(tab => tab.available(caps));
 export const canClassify = caps => !!t(caps).classifyMovements;
@@ -213,6 +214,9 @@ const ERRORS = {
   invalid_counterparty: 'Revisa el nom i el tipus del tercer. En l’entorn de prova el nom ha d’incloure «(fictici)».',
   counterparty_user_linked: 'Aquesta persona ja està vinculada a un altre tercer.',
   finance_round_closed: 'La ronda està tancada: no s’hi poden fer canvis.',
+  invalid_reserve_operation: 'La reserva no admet este import o la ronda ja està tancada.',
+  insufficient_reserve: 'L’aplicació supera la reserva general disponible.',
+  invalid_finance_round_close: 'El resultat ha canviat. Revisa les xifres abans de tancar.',
   invalid_filter: 'Algun filtre no és vàlid.',
   invalid_income: 'Revisa l’ingrés: la partida ha de ser una partida d’ingressos activa i final d’esta ronda, i l’import no pot baixar del ja conciliat.',
   income_reconciled: 'Aquest ingrés ja té cobraments vinculats. Corregeix primer la classificació del moviment.',
