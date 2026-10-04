@@ -53,6 +53,7 @@ export async function describeAllocations(db, rows, { reimbursementDetails = tru
     incomeId: row.incomeId ?? null, reimbursementId: reimbursementDetails ? row.reimbursementId ?? null : null,
     feePaymentId: receiptDetails ? row.feePaymentId ?? null : null,
     activityAllocationId: receiptDetails ? row.activityAllocationId ?? null : null,
+    overpaymentId: receiptDetails ? row.overpaymentId ?? null : null,
     reimbursement: reimbursementDetails && row.reimbursementId ? reimbursements.get(row.reimbursementId) ?? null : null,
     income: row.incomeId ? incomes.get(row.incomeId) ?? null : null,
     budgetLine: row.budgetLineId ? lines.get(row.budgetLineId) ?? null : null,

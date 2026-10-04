@@ -8,6 +8,7 @@ import * as incomes from './incomes.js';
 import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
 import * as activityInstallments from './activity-installments.js';
+import * as familyOverpayments from './family-overpayments.js';
 
 const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024, EVIDENCE_BODY_MAX_BYTES = 6 * 1024 * 1024;
 
@@ -16,6 +17,10 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
   const body = () => readJson(request, BODY_MAX_BYTES);
   const ok = (data, status = 200) => json({ ...data, requestId }, status);
   let match;
+  if (path === '/api/finance/family-overpayments' && method === 'POST')
+    return ok(await familyOverpayments.createOverpayment(db, context, requestId, await body()), 201);
+  if (path === '/api/finance/family-overpayments' && method === 'GET')
+    return ok(await familyOverpayments.listOverpayments(db, context, requestId, url.searchParams));
   if (path === '/api/finance/activity-installment-plans' && method === 'POST')
     return ok(await activityInstallments.authorizeActivityPlan(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)$/)) && method === 'GET')

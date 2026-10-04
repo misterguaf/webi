@@ -220,7 +220,7 @@ test('allocations: typed destinations, remaining amount, no over-allocation even
     assert.equal((await allocate(income, 0, [{ kind: 'INCOME', amountCents: 100, budgetLineId: quotes }])).data.error, 'stale_movement');
     assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: kitchen }], 'Corregir classificació')).data.error, 'invalid_income_allocation',
       'income needs an income line');
-    assert.equal((await allocate(income, 1, [{ kind: 'FAMILY_OVERPAYMENT', amountCents: 100 }])).data.error, 'allocation_kind_not_enabled');
+    assert.equal((await allocate(income, 1, [{ kind: 'RESERVED_CREDIT', amountCents: 100 }])).data.error, 'allocation_kind_not_enabled');
     assert.equal((await allocate(income, 1, [{ kind: 'FEE_PAYMENT', amountCents: 100 }])).data.error, 'invalid_allocation');
     assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: quotes, expenseId: id(1) }])).status, 400);
     // Two concurrent reclassifications with the same expected version: exactly one wins.
@@ -505,6 +505,77 @@ test('G.3: one bank receipt splits across a verified fee and activity without do
     assert.throws(() => s.f.sql.prepare(`DELETE FROM annual_fee_allocation WHERE payment_id=?`).run(fee.id),
       /reconciled_fee_payment_locked/);
   } finally { s.f.close(); }
+});
+
+test('G.3: excess fee money stays a separate open family claim and never becomes income', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const fee = s.f.sql.prepare(`SELECT p.id,sum(a.amount_cents) AS dueCents FROM annual_fee_payment p
+      JOIN annual_fee_allocation a ON a.payment_id=p.id WHERE p.review_status='VERIFIED'
+      GROUP BY p.id ORDER BY p.id LIMIT 1`).get();
+    assert.ok(fee?.dueCents > 0);
+    s.f.sql.prepare('UPDATE annual_fee_payment SET verified_amount_cents=? WHERE id=?')
+      .run(fee.dueCents + 2000, fee.id);
+    assert.equal(s.f.sql.prepare('SELECT unallocated_cents AS cents FROM annual_fee_payment_balance WHERE id=?')
+      .get(fee.id).cents, 2000);
+    const claim = await s.call(104, '/api/finance/family-overpayments', 'POST',
+      { feePaymentId: fee.id, amountCents: 2000, cause: 'PAYMENT_EXCESS' });
+    assert.equal(claim.status, 201, JSON.stringify(claim.data));
+    assert.equal(s.f.sql.prepare('SELECT unallocated_cents AS cents FROM annual_fee_payment_balance WHERE id=?')
+      .get(fee.id).cents, 0);
+    assert.equal((await s.call(105, '/api/finance/family-overpayments')).status, 403);
+    assert.equal((await s.call(104, '/api/finance/family-overpayments', 'POST',
+      { feePaymentId: fee.id, amountCents: 1, cause: 'PAYMENT_EXCESS' })).data.error, 'invalid_family_overpayment');
+    const movement = await s.manual(s.bank, fee.dueCents + 2000);
+    const candidates = await s.call(104, `/api/finance/movements/${movement}/receipt-candidates`);
+    assert.ok(candidates.data.overpayments.some(row => row.id === claim.data.id));
+    const allocations = [{ kind: 'FEE_PAYMENT', feePaymentId: fee.id, amountCents: fee.dueCents },
+      { kind: 'FAMILY_OVERPAYMENT', overpaymentId: claim.data.id, amountCents: 2000 }];
+    const path = `/api/finance/movements/${movement}/allocations`;
+    assert.equal((await s.call(104, path, 'POST', { expectedVersion: 0, allocations })).status, 200);
+    assert.equal((await s.call(104, path, 'POST', { expectedVersion: 1, allocations })).status, 200,
+      'retaining the same claim in a new allocation set is valid');
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, fee.dueCents);
+    assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM finance_income').get().n, 0);
+    assert.equal((await s.call(104, '/api/finance/family-overpayments?status=OPEN')).data.overpayments
+      .find(row => row.id === claim.data.id).reconciledCents, 2000);
+    const duplicate = await s.manual(s.bank, 1);
+    assert.equal((await s.call(104, `/api/finance/movements/${duplicate}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FAMILY_OVERPAYMENT', overpaymentId: claim.data.id, amountCents: 1 }]
+    })).data.error, 'invalid_family_overpayment_allocation');
+    assert.throws(() => s.f.sql.prepare(`INSERT INTO finance_overpayment
+      (id,round_id,fee_payment_id,recipient_email,cause,amount_cents,created_by,created_at)
+      SELECT ?,round_id,fee_payment_id,recipient_email,cause,1,created_by,created_at
+      FROM finance_overpayment WHERE id=?`).run(crypto.randomUUID(), claim.data.id), /invalid_family_overpayment/);
+    assert.equal(s.audits('FAMILY_OVERPAYMENT_CREATED').length, 1);
+  } finally { s.f.close(); }
+});
+
+test('migration 0039 preserves a populated legacy activity overpayment and every foreign key', () => {
+  const sql = new DatabaseSync(':memory:');
+  try {
+    sql.exec('PRAGMA foreign_keys=ON');
+    for (const name of readdirSync(migrations).filter(name => name.endsWith('.sql') && !name.startsWith('0039_')).sort())
+      sql.exec(readFileSync(join(migrations, name), 'utf8'));
+    sql.exec(readFileSync(join(root, 'gestio/seed.sql'), 'utf8'));
+    sql.exec(buildDemoData().sql);
+    const registration = sql.prepare('SELECT id FROM activity_registration LIMIT 1').get();
+    assert.ok(registration);
+    const claimId = crypto.randomUUID();
+    sql.prepare(`INSERT INTO finance_overpayment(id,registration_id,amount_cents,created_by,created_at)
+      VALUES(?,?,?,?,?)`).run(claimId, registration.id, 1250, id(104), 1);
+    const before = sql.prepare('SELECT * FROM finance_overpayment WHERE id=?').get(claimId);
+    sql.exec(readFileSync(join(migrations, '0039_finance_family_overpayments.sql'), 'utf8'));
+    const after = sql.prepare('SELECT * FROM finance_overpayment WHERE id=?').get(claimId);
+    assert.deepEqual([after.id, after.registration_id, after.amount_cents, after.status, after.created_by, after.created_at],
+      [before.id, before.registration_id, before.amount_cents, before.status, before.created_by, before.created_at]);
+    assert.equal(after.fee_payment_id, null);
+    assert.equal(after.recipient_email, sql.prepare('SELECT receipt_email FROM activity_registration WHERE id=?')
+      .get(registration.id).receipt_email);
+    assert.deepEqual(sql.prepare('PRAGMA foreign_key_check').all(), []);
+    assert.throws(() => sql.prepare('DELETE FROM finance_overpayment WHERE id=?').run(claimId), /overpayment_immutable/);
+  } finally { sql.close(); }
 });
 
 test('G.3: submitted activity fixes the third sibling price from the round family, not attendees', async () => {

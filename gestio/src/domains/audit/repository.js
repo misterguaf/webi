@@ -31,6 +31,7 @@ export const ACTIONS = new Set([
   'BANK_IMPORT_CREATED','MOVEMENT_IMPORTED','MOVEMENT_CREATED_MANUAL','MOVEMENT_VOIDED_DUPLICATE','MOVEMENT_NEAR_MATCH_CLEARED',
   'MOVEMENT_CLASSIFIED','MOVEMENT_RECLASSIFIED','FINANCE_ALLOCATION_CORRECTED','BANK_DESCRIPTION_REVEALED',
   'FEE_RECEIPT_RECONCILED','ACTIVITY_RECEIPT_RECONCILED',
+  'FAMILY_OVERPAYMENT_CREATED','FAMILY_OVERPAYMENT_RECONCILED',
   'ACTIVITY_INSTALLMENT_PLAN_AUTHORIZED','ACTIVITY_INSTALLMENT_PLAN_CORRECTED',
   'COUNTERPARTY_CREATED','COUNTERPARTY_REVISED','COUNTERPARTY_USER_LINKED','COUNTERPARTY_USER_UNLINKED',
   'EXPENSE_PROPOSED','EXPENSE_RECOGNISED','EXPENSE_REVISED','EXPENSE_REJECTED','EXPENSE_VOIDED',
@@ -50,7 +51,7 @@ const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_rol
   'auth_identity','auth_identity_invitation',
   'guardian','participant_guardian','contact_point','participant_review','activity_payment_allocation',
   'finance_round','finance_position','finance_opening_balance','finance_reserve_opening','finance_reserve_operation','finance_import_batch','finance_movement',
-  'finance_counterparty','finance_expense','finance_expense_evidence','finance_reimbursement','finance_income',
+  'finance_counterparty','finance_expense','finance_expense_evidence','finance_reimbursement','finance_income','finance_overpayment',
   'finance_budget','finance_budget_line','finance_budget_revision']);
 const RESULTS = new Set(['SUCCESS','ALLOW','DENY','ERROR']);
 const SOURCES = new Set(['local-fixture','retention-job']);

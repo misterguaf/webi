@@ -41,6 +41,8 @@ const CONFLICTS = [
   ['invalid_reserve_operation', 'invalid_reserve_operation'],
   ['invalid_fee_receipt', 'invalid_fee_receipt'],
   ['invalid_activity_receipt', 'invalid_activity_receipt'],
+  ['invalid_family_overpayment_allocation', 'invalid_family_overpayment_allocation'],
+  ['invalid_family_overpayment', 'invalid_family_overpayment'],
   ['reconciled_fee_payment_locked', 'reconciled_fee_payment_locked'],
   ['reconciled_activity_payment_locked', 'reconciled_activity_payment_locked'],
   ['invalid_opening_balance', 'stale_opening_balance'], ['UNIQUE constraint failed: finance_opening_balance', 'stale_opening_balance'],
