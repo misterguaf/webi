@@ -273,7 +273,8 @@ test('internal transfers: bank → cash and back are balanced pairs that never c
     assert.equal((await pair(sameSign, cashIn, 0, 1)).data.error, 'invalid_internal_transfer', 'an allocated pair never joins a third movement');
     assert.equal((await s.call(104, `/api/finance/movements/${bankIn}/allocations`, 'POST', { expectedVersion: 1, reason: 'Corregir classificació',
       allocations: [{ kind: 'INCOME', amountCents: 7000, budgetLineId: quotes }] })).status, 200, 'a pair can be reclassified');
-    assert.deepEqual(await s.economics(), { ...before, incomeCents: 7000, resultBeforeReservesCents: 7000 });
+    assert.deepEqual(await s.economics(), { ...before, incomeCents: 7000, resultBeforeReservesCents: 7000,
+      resultAfterReservesCents: 7000 });
   } finally { s.f.close(); }
 });
 
@@ -427,6 +428,35 @@ test('budget: per-round tree of 3+ levels, no cycles, approval freezes initial, 
     // Permissions: section coordination cannot read; nobody without propose can create lines.
     assert.equal((await s.call(102, `/api/finance/rounds/${s.round}/budget`)).status, 403);
     assert.equal((await s.call(107, '/api/finance/budget-lines', 'POST', { roundId: s.round, code: '9', name: 'x', nature: 'EXPENSE' })).status, 403);
+  } finally { s.f.close(); }
+});
+
+test('G.4: current budget warns about a real overrun and supplier refund reduces actual once', async () => {
+  const s = await setup();
+  try {
+    const category = await s.line({ code: '9', name: 'Material', nature: 'EXPENSE' });
+    const leaf = await s.line({ code: '9.1', name: 'Material de prova', nature: 'EXPENSE', parentId: category,
+      plannedCents: 50000 });
+    const budget = (await s.call(104, `/api/finance/rounds/${s.round}/budget`, 'POST')).data.id;
+    assert.equal((await s.call(104, `/api/finance/budgets/${budget}/propose`, 'POST', { expectedVersion: 1 })).status, 200);
+    assert.equal((await s.call(101, `/api/finance/budgets/${budget}/approve`, 'POST', { expectedVersion: 2 })).status, 200);
+    const created = await s.call(104, '/api/finance/expenses', 'POST', { roundId: s.round,
+      expenseDate: '2027-03-01', totalCents: 54000, paymentMethod: 'BANK',
+      lines: [{ budgetLineId: leaf, amountCents: 54000 }] });
+    assert.equal(created.status, 201);
+    const expenseId = created.data.id;
+    assert.equal((await s.call(104, `/api/finance/expenses/${expenseId}/evidence`, 'POST', evidence)).status, 201);
+    assert.equal((await s.call(104, `/api/finance/expenses/${expenseId}/recognise`, 'POST',
+      { expectedVersion: 1 })).status, 200);
+    const budgetLine = async () => (await s.call(104, `/api/finance/rounds/${s.round}/budget`)).data.lines
+      .find(row => row.id === leaf);
+    assert.deepEqual([ (await budgetLine()).initialCents, (await budgetLine()).currentCents,
+      (await budgetLine()).actualCents, (await budgetLine()).overrunCents ], [50000, 50000, 54000, 4000]);
+    const refund = await s.manual(s.bank, 4000);
+    assert.equal((await s.call(104, `/api/finance/movements/${refund}/allocations`, 'POST', { expectedVersion: 0,
+      allocations: [{ kind: 'EXPENSE_REFUND', amountCents: 4000, expenseId }] })).status, 200);
+    assert.deepEqual([(await budgetLine()).actualCents, (await budgetLine()).overrunCents], [50000, 0]);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.expenseNetCents, 50000);
   } finally { s.f.close(); }
 });
 

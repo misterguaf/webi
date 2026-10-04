@@ -26,7 +26,51 @@ export async function getBudget(db, context, requestId, roundId) {
     WHERE l.round_id=? ORDER BY l.nature,l.sort_order,l.code`).bind(roundId).all()).results.map(row => ({ ...row, hasChildren: !!row.hasChildren }));
   const revisions = budget ? (await db.prepare(`SELECT id,line_id AS lineId,delta_cents AS deltaCents,status,version,proposed_at AS proposedAt,
     decided_at AS decidedAt FROM finance_budget_revision WHERE budget_id=? ORDER BY proposed_at DESC,id DESC`).bind(budget.id).all()).results : [];
-  return { budget: budget ?? null, lines, revisions };
+  // Realised amounts are derived, never written back into the approved budget. Expense refunds reduce
+  // the original expense's lines proportionally; the last line receives the rounding remainder.
+  const actual = new Map();
+  const add = (lineId, cents) => actual.set(lineId, (actual.get(lineId) ?? 0) + cents);
+  const incomeRows = (await db.prepare(`SELECT a.budget_line_id AS lineId,sum(a.amount_cents) AS cents
+    FROM finance_allocation_current a WHERE a.round_id=? AND a.kind='INCOME'
+    GROUP BY a.budget_line_id`).bind(roundId).all()).results;
+  for (const row of incomeRows) add(row.lineId, row.cents);
+  const expenses = (await db.prepare(`SELECT e.id,e.total_cents AS totalCents,l.budget_line_id AS lineId,
+    l.line_no AS lineNo,l.amount_cents AS amountCents
+    FROM finance_expense e JOIN finance_expense_line l ON l.expense_id=e.id AND l.lines_version=e.lines_version
+    WHERE e.round_id=? AND e.status='RECOGNISED' ORDER BY e.id,l.line_no`).bind(roundId).all()).results;
+  const refundRows = (await db.prepare(`SELECT a.expense_id AS expenseId,sum(a.amount_cents) AS cents
+    FROM finance_allocation_current a JOIN finance_expense e ON e.id=a.expense_id
+    WHERE e.round_id=? AND a.kind='EXPENSE_REFUND' GROUP BY a.expense_id`).bind(roundId).all()).results;
+  const refunds = new Map(refundRows.map(row => [row.expenseId, row.cents]));
+  for (let index = 0; index < expenses.length;) {
+    const id = expenses[index].id, group = [];
+    while (index < expenses.length && expenses[index].id === id) group.push(expenses[index++]);
+    const refund = refunds.get(id) ?? 0;
+    let assignedRefund = 0;
+    group.forEach((line, position) => {
+      const part = position === group.length - 1 ? refund - assignedRefund :
+        Math.floor(refund * line.amountCents / line.totalCents);
+      assignedRefund += part;
+      add(line.lineId, line.amountCents - part);
+    });
+  }
+  const children = new Map();
+  for (const line of lines) if (line.parentId) {
+    if (!children.has(line.parentId)) children.set(line.parentId, []);
+    children.get(line.parentId).push(line.id);
+  }
+  const subtotal = (id, seen = new Set()) => {
+    if (seen.has(id)) return 0;
+    seen.add(id);
+    return (actual.get(id) ?? 0) + (children.get(id) ?? []).reduce((sum, child) => sum + subtotal(child, seen), 0);
+  };
+  const compared = lines.map(line => {
+    const actualCents = subtotal(line.id);
+    const currentCents = line.currentCents ?? null;
+    return { ...line, actualCents, varianceCents: currentCents === null ? null : actualCents - currentCents,
+      overrunCents: line.nature === 'EXPENSE' && currentCents !== null ? Math.max(0, actualCents - currentCents) : 0 };
+  });
+  return { budget: budget ?? null, lines: compared, revisions };
 }
 /** FASE 3.5G.2A — the line picker: names and codes of the active lines of one nature (no amounts), so
  *  people who classify or record expenses can choose an assignable leaf without reading the budget. */

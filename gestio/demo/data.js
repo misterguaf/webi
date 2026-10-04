@@ -272,7 +272,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const installmentPeople=[503,1002,1007];
   const installmentRows=installmentPeople.map((n,index)=>{
     const o=byPerson.get(n),half=Math.floor(o.due/2);
-    return [id(8001+index),o.id,treasury,createdAt,half,o.due-half,at(10,15),at(12,15)];
+    return {id:id(8001+index),obligationId:o.id,first:half,second:o.due-half,firstAt:at(10,15),secondAt:at(12,15)};
   });
   const issueRows=[];let nextIssue=9001;
   for(const n of issuePeople){const o=byPerson.get(n);issueRows.push([id(nextIssue++),round,null,o.id,'DISCREPANCY','OPEN',treasury,createdAt,null,null]);}
@@ -323,7 +323,11 @@ export function buildDemoData({ now = Date.now() } = {}) {
     insert('annual_fee_family_group',['id','round_id','reference','created_by','created_at'],familyGroupRows),
     insert('annual_fee_family_member',['group_id','round_id','participant_id','sibling_ordinal','assigned_by','assigned_at'],familyMemberRows),
     insert('annual_fee_obligation',['id','round_id','participant_id','family_group_id','sibling_ordinal','base_cents','discount_cents','amount_due_cents','created_by','created_at','updated_at'],obligationRows),
-    insert('annual_fee_installment_plan',['id','obligation_id','authorized_by','authorized_at','first_cents','second_cents','first_target_at','second_target_at'],installmentRows),
+    insert('annual_fee_installment_plan',['id','obligation_id','status','authorized_by','authorized_at'],
+      installmentRows.map(row=>[row.id,row.obligationId,'DRAFT',treasury,createdAt])),
+    insert('annual_fee_installment_part',['plan_id','ordinal','planned_cents','target_at'],
+      installmentRows.flatMap(row=>[[row.id,1,row.first,row.firstAt],[row.id,2,row.second,row.secondAt]])),
+    ...installmentRows.map(row=>`UPDATE annual_fee_installment_plan SET status='ACTIVE' WHERE id='${row.id}';\n`),
     insert('annual_fee_payment',['id','round_id','receipt_email','submitted_by_name','contact_phone','declared_amount_cents','verified_amount_cents','review_status','idempotency_key','payload_sha256','privacy_notice_version','privacy_notice_acknowledged_at','created_at','reviewed_by','reviewed_at'],paymentRows),
     insert('annual_fee_submission_person',['id','payment_id','submitted_name','match_key','submitted_birth_date','section_id','participant_id','match_status','reviewed_by','reviewed_at'],personRows),
     insert('annual_fee_evidence',['id','payment_id','object_key','sha256','size_bytes','detected_mime','created_at'],feeEvidenceRows),

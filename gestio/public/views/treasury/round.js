@@ -1,5 +1,6 @@
 import { h } from '../../ui.js';
 import { errorCopy, formatEur, parseEuros } from './model.js';
+import { renderBudget } from './budget.js';
 
 const line = (label, cents) => h('div', { className: 'mini-row' },
   h('span', { className: 'mini-main', text: label }), h('strong', { text: formatEur(cents) }));
@@ -59,4 +60,5 @@ export async function renderRound(root, ctx) {
       caps.manageRounds && ['OPEN', 'CLOSING'].includes(round.status) ? reserveForm : null,
       actions.length ? h('div', { className: 'form-actions' }, actions) : null,
       message));
+  if (caps.readBudget) await renderBudget(root, ctx, round, () => renderRound(root, ctx));
 }
