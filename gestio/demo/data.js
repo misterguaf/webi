@@ -11,6 +11,16 @@ const at = (month, day) => Date.UTC(2026, month - 1, day, 12);
 const createdAt = at(9, 1);
 const sqlValue = value => value === null ? 'NULL' : typeof value === 'number' ? String(value) : `'${String(value).replaceAll("'", "''")}'`;
 const insert = (table, columns, rows) => rows.length ? `INSERT INTO ${table}(${columns.join(',')}) VALUES\n${rows.map(row => `  (${row.map(sqlValue).join(',')})`).join(',\n')};\n` : '';
+export const treasuryExpenseEvidenceKeys = numbers => numbers.map(number => `synthetic/demo-expense-${number}.pdf`);
+const treasuryEvidenceRows = (numbers, atTime, uploader) => {
+  const pdf = demoPdf(), digest = createHash('sha256').update(pdf).digest('hex');
+  return numbers.map(number => [id(number + 300), id(number), `synthetic/demo-expense-${number}.pdf`, digest,
+    pdf.length, 'application/pdf', uploader, atTime]);
+};
+export function buildTreasuryEvidenceBackfill(numbers) {
+  return insert('finance_expense_evidence', ['id', 'expense_id', 'object_key', 'sha256', 'size_bytes', 'detected_mime', 'uploaded_by', 'created_at'],
+    treasuryEvidenceRows(numbers, Date.UTC(2026, 9, 25, 9), treasury));
+}
 
 // A small, valid PNG receipt (3.5F image evidence) with the synthetic marker in a tEXt chunk inside the
 // first KiB, as the SYNTHETIC_ONLY evidence fence requires. No external tools.
@@ -387,6 +397,8 @@ export function buildTreasuryDemo() {
       [expense(21301, '2026-10-14', 43000, 'CASH'), expense(21302, '2026-10-20', 3000, 'CARD'), expense(21303, '2026-10-22', 2500, 'ADVANCED', scouter)]),
     insert('finance_expense_line', ['expense_id', 'lines_version', 'line_no', 'budget_line_id', 'amount_cents'],
       [[id(21301), 1, 1, id(21123), 43000], [id(21302), 1, 1, id(21131), 3000], [id(21303), 1, 1, id(21122), 2500]]),
+    insert('finance_expense_evidence', ['id', 'expense_id', 'object_key', 'sha256', 'size_bytes', 'detected_mime', 'uploaded_by', 'created_at'],
+      treasuryEvidenceRows([21301, 21302], T, u)),
     `UPDATE finance_expense SET status='RECOGNISED',recognized_by=${sqlValue(u)},recognized_at=${T},version=2 WHERE id IN (${sqlValue(id(21301))},${sqlValue(id(21302))});\n`,
     `UPDATE finance_expense SET counterparty_id=${sqlValue(id(21402))},version=3 WHERE id=${sqlValue(id(21302))};\n`,
     insert('finance_movement', ['id', 'position_id', 'operation_date', 'amount_cents', 'origin', 'fingerprint', 'display_label', 'created_by', 'created_at'], movements),
@@ -442,6 +454,8 @@ export function buildTreasuryOperationsDemo() {
       expense(22303, '2026-10-27', 'Material de manualitats', 22403, 4500, 'BANK')]),
     insert('finance_expense_line', ['expense_id', 'lines_version', 'line_no', 'budget_line_id', 'amount_cents'], [
       [id(22301), 1, 1, id(22111), 20000], [id(22301), 1, 2, id(22112), 16000], [id(22302), 1, 1, id(22111), 12000], [id(22303), 1, 1, id(22120), 4500]]),
+    insert('finance_expense_evidence', ['id', 'expense_id', 'object_key', 'sha256', 'size_bytes', 'detected_mime', 'uploaded_by', 'created_at'],
+      treasuryEvidenceRows([22301, 22302], T, u)),
     `UPDATE finance_expense SET status='RECOGNISED',recognized_by=${sqlValue(u)},recognized_at=${T},version=2 WHERE id IN (${sqlValue(id(22301))},${sqlValue(id(22302))});\n`,
     `UPDATE finance_movement SET allocation_version=1 WHERE id IN (${sqlValue(id(22205))},${sqlValue(id(22206))});\n`,
     insert('finance_allocation', ['id', 'movement_id', 'set_version', 'kind', 'amount_cents', 'round_id', 'budget_line_id', 'expense_id', 'created_by', 'created_at'], [

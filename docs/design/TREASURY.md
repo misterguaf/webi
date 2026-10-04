@@ -17,6 +17,14 @@ This is a **domain and functional specification**. Unlike the screen specificati
 does define financial rules, data invariants and authorisation for 3.5G. Visual design
 follows the design system; no artistic redesign belongs to 3.5G (reserved for 3.5J).
 
+**G.2B v1 decision (supersedes earlier card, cash and reimbursement examples below):**
+Tresoreria enters scouter receipts centrally; there is no scouter self-service. Evidence is
+mandatory before a new expense is recognised. The group card is debit, so its purchase is a
+`BANK` movement and an expense. `CARD`/`CARD_SETTLEMENT` and `CASH` remain prepared schema, with no
+ordinary operational workflow in G.2B. Treasury may approve its own reimbursement only with the
+explicit, non-delegable `finance.reimbursement.self_approve` capability. One BANK transfer may
+settle several approved debts to the same person; settlement never creates another expense.
+
 Notation used in this document:
 
 - **[D]** decision approved by Borja/Atlas (or already implemented and kept).
@@ -131,7 +139,7 @@ trigger or guarded view — and always in the service; tests cover each one):
 | I17 | States and balances are derived, not stored as primary truth. |
 | I18 | Every allocation and assignment is traceable to its origin and actor. |
 | I19 | Every correction leaves a revision or a reversal. |
-| I20 | Nobody approves their own reimbursement: when the recipient counterparty is linked to a user identity, that user is never the approver (checked server-side). A counterparty without a user can be reimbursed and gains no access to Gestió (§10.3). |
+| I20 | Own-beneficiary recognition and reimbursement approval require the explicit `finance.reimbursement.self_approve` capability, checked server-side in addition to ordinary expense authority. This narrow Treasury exception is audited; no other user gains generic self-approval. A counterparty without a user can be reimbursed and gains no access to Gestió (§10.3). |
 | I21 | Reserves are never ordinary income; a late collection of a closed round is never ordinary income of another round (§5.4). |
 | I22 | The official close snapshot of a round is immutable; every later economic effect on a closed round is a separate post-close adjustment (§5.4). |
 | I23 | R2 objects are private with opaque keys; access only through authenticated, audited endpoints. |
@@ -222,9 +230,10 @@ Rules **[D]**:
 
 # 6. Financial positions
 
-`FinancialPosition` **[D]**: group level; kind `BANK`, `CARD` (credit card; its balance is a
-debt) or `CASH`; display name; state active/archived. Today: one bank account, one credit card,
-one cash box; the model allows more of each **[D]**. No full IBAN or card number is stored on
+`FinancialPosition` **[D]**: group level; kind `BANK`, `CARD` (prepared credit-card debt) or
+`CASH` (prepared cash box); display name; state active/archived. The real group card is debit
+and uses the bank account's `BANK` position. Synthetic CARD/CASH fixtures test the dormant model.
+No full IBAN or card number is stored on
 the position (masked last digits at most) **[S]**.
 
 Balances are derived from movements: balance(position, date) = opening reference + Σ movements
@@ -359,12 +368,11 @@ allocation in one transaction **[S]**.
 
 | Path | Step | Result | Financial position |
 |---|---|---|---|
-| Advanced by a scouter | submitted → `PROPOSED` (reimbursement `PENDING_REVIEW`) | **not counted** | no change |
-| | approved → `RECOGNISED` (reimbursement `APPROVED`) | **counted once** | debt to the person opens |
-| | paid → reimbursement `PAID` | no new expense | bank decreases, debt decreases |
-| | reconciled → reimbursement `RECONCILED` | no new expense | linked to the bank movement |
+| Advanced by a scouter | Treasury records a proposal with the receipt → `PROPOSED` | **not counted** | no change |
+| | Treasury recognises with valid evidence → `RECOGNISED`, liability `APPROVED` in one operation | **counted once** | debt to the person opens |
+| | BANK transfer reconciled against one or more liabilities | no new expense; payment `PENDING` / `PARTIAL` / `PAID` is derived | bank decreases, debt decreases |
 | | rejected → `REJECTED` | never counted | no change |
-| Direct by Tresoreria (bank, card, cash) | recorded with a valid classification (lines on active expense lines of the round, settlement allocation) | `RECOGNISED` directly, counted once | the settling movement |
+| Direct by Tresoreria (BANK, including debit card) | recorded with valid evidence and classification (lines on active expense lines of the round, settlement allocation) | `RECOGNISED` directly, counted once | the settling movement |
 | Any | voided → `VOID` (reason code, history kept) | removed from the result (post-close adjustment if the round is closed) | unchanged |
 
 `PROPOSED` and `RECOGNISED` are never mixed in any figure: budget vs actual shows proposed
@@ -387,8 +395,10 @@ user identity, state (`ACTIVE`, `INACTIVE`).
 
 # 11. Reimbursements
 
-Workflow **[D]**: scouter pays → delivers ticket → Tresoreria reviews → approves → reimburses →
-the bank movement settles the debt. The reimbursement is never a second expense.
+Workflow **[D]**: scouter pays → sends the ticket to Tresoreria outside Gestió → Tresoreria
+records and recognises the expense with private evidence → an approved liability is created →
+Tresoreria transfers outside Gestió → a BANK movement settles one or more liabilities owed to
+the same person. The reimbursement is never a second expense.
 
 `Reimbursement` **[S]**:
 
@@ -396,33 +406,30 @@ the bank movement settles the debt. The reimbursement is never a second expense.
 |---|---|
 | expense | exactly one; method `ADVANCED` |
 | recipient | a `PERSON` counterparty (§10.3), with or without a user identity |
-| amount | = expense total unless partially approved |
-| state | `PENDING_REVIEW` → `APPROVED` / `REJECTED`; `APPROVED` → `PAID` (derived from settlements) → `RECONCILED` |
-| approved by / at | never the recipient's linked user (I20) |
+| amount | = recognised expense total; partial **payment** is allowed, partial approval is not in G.2B |
+| state | `PENDING_REVIEW` → `APPROVED` / `REJECTED`; payment state is derived from current settlement allocations |
+| approved by / at | may be the recipient's linked Treasury user only with the narrow I20 exception |
 
-- `PENDING_REVIEW`: the expense is `PROPOSED`; nothing counts.
-- `APPROVED`: the expense becomes `RECOGNISED` in the same transaction; the debt to the
-  recipient is open. Approvers: Tresoreria, Coordinació general or any user with the explicit
-  permission **[D]**. One approval is enough **[D]**.
-- Self-approval check **[D]**: if the recipient counterparty is linked to a user identity, the
-  server rejects an approval by that user (403, `AUTHZ_DENY` reason `SELF_APPROVAL`). Linking or
-  unlinking a counterparty's user identity is audited, and changing the link of a counterparty
-  with a pending reimbursement is refused (409), so the check cannot be bypassed by editing the
-  link. A recipient without a user identity cannot use Gestió, so cannot approve.
-- `PAID`/`RECONCILED`: a bank movement allocated `REIMBURSEMENT_SETTLEMENT`; `PAID` while
-  Σ settlements < amount is shown as partially paid; `RECONCILED` when fully settled by bank
-  movements. **[S]** If a settlement is recorded before the bank import exists (manual bank
-  movement), the state is `PAID`; linking the imported movement makes it `RECONCILED`.
-- `REJECTED`: the expense becomes `REJECTED`; nothing counts; the ticket is kept per retention.
+- A proposal is not counted and has no approved liability. Recognition requires evidence and
+  atomically creates/approves one liability for an `ADVANCED` expense.
+- If the beneficiary is linked to the acting user, ordinary `finance.expense.manage` is insufficient.
+  The service requires `finance.reimbursement.self_approve`; the structural exception is stored and
+  audited. D1 triggers check coherence, while application policy owns authorization.
+- Payment is `PENDING`, `PARTIAL` or `PAID` from current `REIMBURSEMENT_SETTLEMENT` allocations.
+  There is no manual paid flag or payment initiation in Gestió.
 - No reimbursing twice: one active reimbursement per expense; Σ settlements ≤ amount (I9).
 - No IBAN of the recipient is stored; the transfer is made in the bank.
 - Paying or reconciling never creates another expense (I11, §10.2).
 - An approval after the round of the expense was closed is a post-close adjustment (§5.4).
 
-Self-submission by scouters inside Gestió is not in v1 **[S]**: Tresoreria (or a financial
-delegate) records the proposal with the ticket.
+Scouters do not submit, upload or browse reimbursements in Gestió v1. Treasury operates this
+workflow centrally.
 
 # 12. Credit card
+
+**Dormant foundation for G.2B:** the actual group card is debit. Its purchases use `BANK`
+movements and expenses. The credit-card statement model below is retained only as prepared
+architecture and has no operational v1 UI.
 
 The card is a position whose balance is a debt **[D]**.
 
@@ -449,6 +456,9 @@ ticket **[S]**. Double counting is impossible by construction: the purchase is t
 (once), the settlement is a debt payment (never a line).
 
 # 13. Cash (Caixa / Efectiu)
+
+**Dormant foundation for G.2B:** the group does not operationally use cash. The following
+generic model is preserved, without cash operations or a cash workflow in G.2B.
 
 **[D]** Withdrawal = bank → cash internal transfer; expense recognised when cash is spent;
 all surplus re-deposited (cash → bank).
@@ -867,7 +877,7 @@ capabilities from `/api/me` and never probes with 403s.
 | `finance.budget.approve` | GLOBAL | Approve budget and revisions |
 | `finance.expense.read` / `.manage` | GLOBAL | Expenses (record, classify, revise, void) and counterparties |
 | `finance.evidence.read` | GLOBAL | View/download expense evidence (audited) |
-| `finance.reimbursement.approve` | GLOBAL | Approve/reject reimbursements (never own) |
+| `finance.reimbursement.self_approve` | GLOBAL, non-delegable | Explicit narrow exception for Treasury's own advanced expense and reimbursement; ordinary `finance.expense.manage` remains necessary |
 | `finance.adjustment.authorize` | SCOPED | Exceptional fee amount and activity price adjustments |
 | `finance.plan.authorize` | SCOPED | Payment plans (fees and activities; supersedes `finance.fee.installment.authorize`) |
 | `finance.fee.generate` | GLOBAL | Fee generation preview/commit |
@@ -959,9 +969,9 @@ and new values live in revision tables, not in the audit log.
 | Round | `TREASURY_ROUND_CREATED`, `TREASURY_ROUND_CLOSING_STARTED`, `TREASURY_ROUND_CLOSED`, `PRICING_POLICY_VERSIONED`, `OPENING_BALANCE_INITIALISED`, `RESERVES_INITIALISED`, `POST_CLOSE_ADJUSTMENT_RECORDED`, `RESERVE_CARRY_ADJUSTMENT` |
 | Budget | `BUDGET_CREATED`, `BUDGET_PROPOSED`, `BUDGET_APPROVED`, `BUDGET_LINE_CREATED`, `BUDGET_LINE_REVISED`, `BUDGET_LINE_DEACTIVATED`, `BUDGET_REVISION_PROPOSED`, `BUDGET_REVISION_APPROVED`, `BUDGET_REVISION_REJECTED` |
 | Movements | `BANK_IMPORT_CREATED`, `BANK_IMPORT_ROLLED_BACK`, `MOVEMENT_IMPORTED` (one summary per batch with counts), `MOVEMENT_CREATED_MANUAL`, `MOVEMENT_VOIDED_DUPLICATE`, `MOVEMENT_CLASSIFIED`, `MOVEMENT_RECLASSIFIED`, `BANK_DESCRIPTION_REVEALED` |
-| Card / cash | `CARD_STATEMENT_CREATED`, `CARD_STATEMENT_RECONCILED`, `CASH_TRANSFER_PAIRED`, `CASH_COUNT_RECORDED` |
-| Expenses | `EXPENSE_PROPOSED`, `EXPENSE_RECOGNISED`, `EXPENSE_REVISED`, `EXPENSE_REJECTED`, `EXPENSE_VOIDED`, `EVIDENCE_UPLOADED`, `EVIDENCE_VIEWED`, `EVIDENCE_DOWNLOADED`, `EVIDENCE_PURGED` |
-| Reimbursements | `REIMBURSEMENT_REQUESTED`, `REIMBURSEMENT_APPROVED`, `REIMBURSEMENT_REJECTED`, `REIMBURSEMENT_PAID`, `REIMBURSEMENT_RECONCILED`, `REIMBURSEMENT_REVERSED`, `AUTHZ_DENY` with reason `SELF_APPROVAL` |
+| Card / cash (prepared, dormant) | `CARD_STATEMENT_CREATED`, `CARD_STATEMENT_RECONCILED`, `CASH_TRANSFER_PAIRED`, `CASH_COUNT_RECORDED` |
+| Expenses | `EXPENSE_PROPOSED`, `EXPENSE_RECOGNISED`, `EXPENSE_REVISED`, `EXPENSE_REJECTED`, `EXPENSE_VOIDED`, `EXPENSE_EVIDENCE_UPLOADED`, `EXPENSE_EVIDENCE_VIEWED`, `EXPENSE_EVIDENCE_DOWNLOADED` |
+| Reimbursements | `REIMBURSEMENT_CREATED`, `REIMBURSEMENT_APPROVED`, `REIMBURSEMENT_SELF_APPROVED`, `REIMBURSEMENT_SETTLED`, `REIMBURSEMENT_SETTLEMENT_REVISED`, `AUTHZ_DENY` with reason `SELF_APPROVAL` |
 | Quotes | `FEE_GENERATION_PREVIEWED`, `FEE_OBLIGATIONS_GENERATED`, `FEE_AMOUNT_ADJUSTED`, `FEE_EVIDENCE_VIEWED`, `FEE_EVIDENCE_DOWNLOADED`, `FEE_CONTACT_REVEALED` (existing FEE_* kept) |
 | Payments | `INSTALLMENT_PLAN_AUTHORIZED`, `INSTALLMENT_PLAN_SUPERSEDED`, `PAYMENT_VERIFIED`, `PAYMENT_ALLOCATED`, `PAYMENT_RECONCILED`, `PAYMENT_REVERSED`, `FAMILY_REFUND_RECORDED`, `ACTIVITY_PRICE_COMPUTED`, `ACTIVITY_PRICE_ADJUSTED` |
 | Counterparties | `COUNTERPARTY_CREATED`, `COUNTERPARTY_REVISED`, `COUNTERPARTY_USER_LINKED`, `COUNTERPARTY_USER_UNLINKED`, `COUNTERPARTY_DEACTIVATED` |
@@ -1090,7 +1100,7 @@ metrics.
 | Quotes | Existing Quotes features, generation preview/commit, plans, adjustments, reconciliation of fee payments. |
 | Pagaments d'activitats | Treasury view of 3.5F payments: verification (existing), reconciliation, price adjustments, refunds. |
 | Despeses | Expenses list/record, lines, method, round, evidence. |
-| Reemborsaments | Proposals, approval (not own), payment and reconciliation. |
+| Reemborsaments | Treasury-owned entry in Despeses, mandatory evidence, explicit own-beneficiary exception, and BANK reconciliation. |
 | Justificants | Search of expense evidence by round, month, activity, line, section, amount, supplier. |
 | Resultat | Round result, reserves, bridge to financial position, closing checklist. |
 | Exportacions | Generate PRESSUPOST, RESULTAT, Quotes, Ingressos i Despeses. |
@@ -1115,9 +1125,9 @@ metrics.
 12. Withdrawal 500, expense 430, re-deposit 70 → expense 430, cash 0.
 13. Re-deposit imported before the cash entry is recorded → bank side "en trànsit".
 14. Scouter expense rejected → nothing counted; ticket kept per retention.
-15. Treasurer's own reimbursement (counterparty linked to the treasurer's user) → the treasurer's
-    approval is refused; another holder approves (I20).
-16. Reimbursement paid in two transfers → `PAID` partial, then `RECONCILED`.
+15. Treasurer's own reimbursement (counterparty linked to the treasurer's user) → allowed only
+    with the explicit narrow capability; otherwise refused and audited (I20).
+16. Reimbursement paid in two BANK transfers → derived `PARTIAL`, then `PAID`.
 17. Same bank file imported twice → rejected by hash.
 18. Overlapping bank files → duplicate rows skipped by fingerprint, near matches flagged.
 19. Duplicate already classified → reallocate, then void.
@@ -1165,7 +1175,8 @@ metrics.
 
 - [ ] Every invariant I1–I30 enforced and covered by tests (D1 direct writes included where
       SQLite allows).
-- [ ] Cases A–D, card, cash and reimbursement flows end to end without double counting.
+- [ ] Cases A–D and reimbursements end to end without double counting; prepared credit-card and
+      cash workflows remain outside G.2B operations.
 - [ ] Round result statement reproduces the structure of §16 with synthetic data, separating
       reserves from income and result from financial position.
 - [ ] Budget vs actual at every hierarchy level with initial, current, actual, difference,
@@ -1191,7 +1202,7 @@ metrics.
 - [ ] Portal pricing: claim untrusted, no family data revealed, authoritative snapshot, review
       flow, no silent recalculation.
 - [ ] Proposed vs recognised expenses never mixed; reimbursement payment never adds an expense.
-- [ ] Counterparties without IBAN; self-approval refused for linked users.
+- [ ] Counterparties without IBAN; own-beneficiary approval only with the explicit Treasury exception.
 - [ ] No financial capability from a role alone; financial delegations explicit, scoped,
       expiring, revocable, audited.
 
@@ -1202,7 +1213,7 @@ metrics.
 | **3.5G.0-C** TREASURY.md | This document | 3.5G.0-A/B | — | Approved by Borja/Atlas |
 | **3.5G.1A** Security corrections | 3B privacy debt (§27.1); fee evidence audit; `SECTION_DELEGATE` without finance permissions; **G.1A AUTHORIZATION DESIGN TASK** (financial delegation outcome of §25.3); permission catalogue entries reserved for 3.5G | 0-C | Quotes UI regressions; authorization engine change; possible role table rebuild (0001 CHECK on role codes) | Permission/privacy tests; no contact data in fee projections |
 | **3.5G.1** Financial foundation | FinancialRound; positions; opening balances and initial reserves; movements; import batches with synthetic adapter; typed allocations; expenses (proposed/recognised); budget catalogue, budget, revisions and approval; audit; recovery D1 | 1A | Invariant complexity in D1; migration discipline (additive only) | Invariants enforced; recovery drill; CI green |
-| **3.5G.2** Daily operations | UI: Inici Tresoreria, Moviments, Despeses, Reemborsaments, Justificants; counterparties; card statements; cash; reimbursement workflow with self-approval rule; expense evidence in R2; corrections | 1 | Classification UX | Cases A–D, card, cash, reimbursement end to end |
+| **3.5G.2** Daily operations | UI: Inici Tresoreria, Moviments, Despeses including reimbursements and private evidence; debit card through BANK; credit-card and cash workflows dormant | 1 | Classification UX | Expense evidence and aggregated BANK reimbursement covered without double counting |
 | **3.5G.3** Integrations | Obligation state separated from overpayment / unallocated balance in 3B (legacy gap §17.1); pricing policy (3B evolution + activities); portal pricing claim, authoritative snapshot and pricing review; fee generation; N-part plans; verification vs reconciliation for fees and 3.5F; activity price adjustments; reversals and family refunds | 1, 2 | 3B/3.5F contracts | Legacy suites green; new scenarios green |
 | **3.5G.4** Reports and Excel | Budget vs actual; result and reserves; closing with official close snapshot and post-close adjustments; report model; template mapping; xlsx writer; exports | 1–3 | Output fidelity; xlsx dependency | Four outputs generated and checked against the historical structure |
 | **3.5G.5** Integral validation | Full synthetic year with the 2025/26 patterns; R2 backup and drills; privacy review; legal gate list | all | Real data forbidden | Synthetic year reconciles; checklist approved |
@@ -1268,7 +1279,7 @@ Fixed by the implementation, without changing any decision above:
 | Three notification systems | Not unified **[D]** |
 | Retention of fee and activity evidence, bank data | After the legal decision |
 | Earmarked reserve sub-funds | Future |
-| Scouter self-submission of tickets in Gestió | Future |
+| Scouter self-submission of tickets in Gestió | Out of v1; no planned G.2B surface |
 | Inventory/stock for lottery and clothing | Future |
 | Real bank format adapter | Before production, when the export format is known |
 

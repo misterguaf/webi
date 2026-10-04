@@ -3,7 +3,7 @@
 Status: IMPLEMENTED — pending Borja/Atlas functional and visual review
 Version: 0.1
 Project: Grup Scout Parpalló — Gestió
-Phase: 3.5G.2A
+Phase: 3.5G.2A + G.2B functional extension
 Baseline: `phase-3.5g1-complete` (`e1aa9f0`)
 Depends on: TREASURY\_HOME.md, TREASURY\_MOVEMENTS.md, ../TREASURY.md (§10 expenses, §10.3 counterparties, §14 budget, I20 self-approval)
 
@@ -30,24 +30,24 @@ line below it), counterparty (`tercer`), date from/to (`des`, `fins`). Expenses 
 Header: concept, status, counterparty / advanced by. Facts: total, date, method, payment state.
 Sections: budget lines (code, full path, amount; a warning if they do not add up), payments and refunds
 (movement date, position, signed amount, link to the movement, allocated amount), evidence
-(**"Sense justificant adjunt"**; no upload control in this phase), history (created, recognised,
+(**"Sense justificant adjunt"** until one is uploaded; private view/download controls), history (created, recognised,
 rejected, voided, revisions with the previous concept, total and date).
 
-**Reconeix la despesa** (PROPOSED + expense.manage) → confirmation ("comptaran com a despesa de la ronda,
-una sola vegada") → toast "Despesa reconeguda". Self-approval is refused by the server and shown as
-"No pots aprovar una despesa avançada per tu mateix."
+**Reconeix la despesa** (PROPOSED + evidence + expense.manage) → confirmation ("comptaran com a
+despesa de la ronda, una sola vegada") → toast "Despesa reconeguda". Own-beneficiary
+recognition also requires the explicit non-delegable `finance.reimbursement.self_approve`.
 
 ## 3. Nova despesa (drawer)
 
 Two entry points, one form:
 
-- **Manual** (Despeses → Nova despesa): concept, date, total, how it was paid (Banc, Targeta, Efectiu,
-  Avançada per una persona → choose the person), counterparty, line split, "Reconeix-la ara" (not for
-  advanced money, which is recognised by someone else after review). Without it the expense stays a
-  proposal and does not count.
+- **Manual** (Despeses → Nova despesa): concept, date, total, "Qui ho ha pagat?" (el grup via
+  compte/targeta de dèbit = BANK; or a scouter personally = ADVANCED → choose a PERSON),
+  counterparty, line split, private receipt and "Reconeix". Without recognition the expense
+  stays a proposal and does not count. ADVANCED recognition creates and approves the liability.
 - **From a movement** (Classifica → És una despesa): date defaults to the movement's; total defaults to
   the pending amount and cannot exceed it; the method is the position's. The server creates one
-  recognised expense and its settlement by the movement in one atomic step
+  recognised expense and its settlement by the movement in one controlled step with receipt
   (`POST /movements/:id/expense`); the expense counts once.
 
 Line split: rows of (budget line, amount) with **Total / Distribuït / Pendent** always visible.
@@ -65,10 +65,15 @@ data, no CRM. In SYNTHETIC\_ONLY the name must include "(fictici)".
 Errors: per field, plus a footer message; server codes map to copy (`invalid_expense_line`: "Una línia de
 pressupost no és vàlida…", `expense_lines_total_mismatch`, `allocation_exceeds_movement`, `stale_*`, 403).
 
-## 4. Not in this phase
+## 4. G.2B reimbursement extension and deferrals
 
-Evidence upload, reimbursements, card statements, budget execution, rejection/void screens, expense
-editing UI (the API revision keeps history and is covered by tests).
+The list filters by group-paid, reimbursements and outstanding reimbursements. Each advanced
+expense shows beneficiary and derived outstanding amount; the list groups outstanding debts by
+person. Multiple receipts can be uploaded to a proposal or recognised expense, viewed privately or downloaded. The actual bank
+transfer happens outside Gestió and is reconciled in Moviments.
+
+Card statements, cash workflow, budget execution, rejection/void screens and expense editing UI
+remain deferred. The generic CARD/CASH foundation stays in the schema.
 
 ## 5. Responsive
 

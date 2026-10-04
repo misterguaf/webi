@@ -4,8 +4,8 @@ import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildDemoData, buildTreasuryDemo, buildTreasuryIncomeDemo, buildTreasuryOperationsDemo, DEMO_MARKER_ID, TREASURY_DEMO_ROUND_ID, TREASURY_INCOME_MARKER_ID,
-  TREASURY_OPERATIONS_MARKER_ID } from './data.js';
+import { buildDemoData, buildTreasuryDemo, buildTreasuryEvidenceBackfill, buildTreasuryIncomeDemo, buildTreasuryOperationsDemo, demoPdf, treasuryExpenseEvidenceKeys,
+  DEMO_MARKER_ID, TREASURY_DEMO_ROUND_ID, TREASURY_INCOME_MARKER_ID, TREASURY_OPERATIONS_MARKER_ID } from './data.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(root, '..');
@@ -93,17 +93,35 @@ function applySql(prefix, sqlText) {
   } finally { rmSync(temporary, { recursive: true, force: true }); }
   if (execute('PRAGMA foreign_key_check').length) throw new Error('Treasury demo has foreign-key violations');
 }
+function putTreasuryReceipts(numbers) {
+  const temporary = mkdtempSync(resolve(tmpdir(), 'gestio-expense-receipts-'));
+  try {
+    const pdf = resolve(temporary, 'synthetic-receipt.pdf');
+    writeFileSync(pdf, demoPdf());
+    for (const key of treasuryExpenseEvidenceKeys(numbers)) run(localR2Args(key, pdf), { capture: true });
+  } finally { rmSync(temporary, { recursive: true, force: true }); }
+}
 function ensureTreasuryDemo() {
   let added = false;
-  if (count('finance_round') === 0) { applySql('gestio-treasury-demo-', buildTreasuryDemo()); added = true; }
+  if (count('finance_round') === 0) { putTreasuryReceipts([21301, 21302]); applySql('gestio-treasury-demo-', buildTreasuryDemo()); added = true; }
   if (!execute(`SELECT 1 AS present FROM finance_movement WHERE id='${TREASURY_OPERATIONS_MARKER_ID}'`).length &&
       execute(`SELECT 1 AS present FROM finance_round WHERE id='${TREASURY_DEMO_ROUND_ID}' AND status='OPEN'`).length) {
-    applySql('gestio-treasury-ops-demo-', buildTreasuryOperationsDemo()); added = true;
+    putTreasuryReceipts([22301, 22302]); applySql('gestio-treasury-ops-demo-', buildTreasuryOperationsDemo()); added = true;
   }
   // 3.5G.2A income extension: needs the operations demo (its lines and movements) and is added once.
   if (!execute(`SELECT 1 AS present FROM finance_income WHERE id='${TREASURY_INCOME_MARKER_ID}'`).length &&
       execute(`SELECT 1 AS present FROM finance_movement WHERE id='${TREASURY_OPERATIONS_MARKER_ID}' AND allocation_version=0`).length) {
     applySql('gestio-treasury-income-demo-', buildTreasuryIncomeDemo()); added = true;
+  }
+  // Existing local G.2A demos may predate mandatory expense receipts. Backfill only their fixed
+  // synthetic records; repeat seeding leaves already populated receipt metadata untouched.
+  const missingReceipts = [21301, 21302, 22301, 22302].filter(number => execute(`SELECT 1 AS present FROM finance_expense
+    WHERE id='00000000-0000-4000-8000-${String(number).padStart(12, '0')}' AND NOT EXISTS(
+      SELECT 1 FROM finance_expense_evidence WHERE expense_id=finance_expense.id AND object_purged_at IS NULL)`).length);
+  if (missingReceipts.length) {
+    putTreasuryReceipts(missingReceipts);
+    applySql('gestio-treasury-receipts-', buildTreasuryEvidenceBackfill(missingReceipts));
+    added = true;
   }
   return added;
 }

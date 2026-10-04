@@ -8,7 +8,7 @@ npm run demo:reset
 npm run dev:gestio
 ```
 
-`demo:seed` aplica el seed canònic si la D1 està buida i després el completa amb dades de demostració. Si ja hi ha un marcador demo, comprova la integritat bàsica i no modifica els canvis locals. Si la D1 està parcialment poblada i no és el seed canònic, s'atura i demana `demo:reset`.
+`demo:seed` aplica el seed canònic si la D1 està buida i després el completa amb dades de demostració. Si ja hi ha un marcador demo, comprova la integritat bàsica, afig només les extensions sintètiques pendents i preserva la resta de canvis locals. Si la D1 està parcialment poblada i no és el seed canònic, s'atura i demana `demo:reset`.
 
 `demo:reset` esborra **només** `gestio/.wrangler/state`, aplica les migracions existents, el seed canònic i el dataset demo. Elimina qualsevol canvi fet en aquesta D1/R2 local; useu-lo per tornar a l'estat conegut.
 
@@ -17,6 +17,8 @@ El dataset té 40 participants ficticis, 16 activitats, 43 inscripcions, 40 obli
 Inscripcions (3.5F, `docs/design/screens/REGISTRATIONS.md`): la demo inclou un vincle manual, un escalat automàtic a revisió global (un participant d'Escolta declarat com a Tropa a l'activitat de tot el grup), un escalat manual, una secció corregida amb el seu historial, una sol·licitud retirada (ja no es modela com a rebutjada), una retirada després d'un pagament verificat, una inscripció nova després d'una retirada, una incidència, un justificant PNG sintètic a més dels PDF, recomptes parcials en l'activitat de tot el grup, llista de confirmats amb transport i l'usuari de Tresoreria, que verifica pagaments des de la cua d'Inscripcions sense accés a Activitats. En la demo, `seed-105` (Secretaria) també fa de revisor global d'inscripcions.
 
 Tresoreria (3.5G.1 i 3.5G.2A, `docs/design/screens/TREASURY_*.md`): ronda 2026/2027 oberta amb compte, targeta i caixa; pressupost jeràrquic aprovat; un lot d'importació sintètic amb un possible duplicat; moviments pendents, un d'entrada parcialment imputat, el cicle d'efectiu, una compra amb targeta liquidada; una despesa en dues línies pagada amb un càrrec bancari, una reconeguda encara sense pagar (lloguer de furgoneta, per a provar «Paga una despesa existent»), dues propostes (una avançada per un scouter) i tercers fictius. Ningú té `finance.bank_description.reveal` per defecte. `demo:seed` afig la part de 3.5G.2A una sola vegada també a una base local que ja tenia la de 3.5G.1.
+
+G.2B afig justificants PDF sintètics a les quatre despeses reconegudes de la demo de Tresoreria. `demo:seed` repara únicament els justificants sintètics absents si la base local ja contenia una versió anterior de la demo. Els exemples CARD i CASH d'aquesta base són històrics per a provar la infraestructura preparada; el flux operatiu actual usa BANK per a la targeta de dèbit i deixa CARD/CASH inactius en la UI ordinària.
 
 Els scripts rebutgen arguments addicionals, configuració no local, variables de producció, enllaços simbòlics per a l'estat i servidor Gestió actiu al port 8788. Les ordres Wrangler es construeixen amb `--local`, directori de persistència fix i noms fixos de D1/R2; no accepten `--remote`. No fan servir credencials Cloudflare. Les dades procedeixen de valors explícits `Demo` i dominis `example.invalid`, mai d'exportacions o dades del projecte. El marcador visible «Entorn local · dades de demostració» només apareix quan respon el proveïdor d'identitats local de desenvolupament.
 

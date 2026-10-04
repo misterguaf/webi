@@ -3,7 +3,7 @@
 Status: IMPLEMENTED — pending Borja/Atlas functional and visual review
 Version: 0.1
 Project: Grup Scout Parpalló — Gestió
-Phase: 3.5G.2A
+Phase: 3.5G.2A + G.2B functional extension
 Baseline: `phase-3.5g1-complete` (`e1aa9f0`)
 Depends on:
 
@@ -37,7 +37,7 @@ The server returns only the blocks the person may read; the UI renders what arri
 | Block | Capability | Content |
 |---|---|---|
 | Attention | movement.read / expense.read | Pending movements, partially allocated, possible duplicates, proposed expenses (count + amount, "encara no comptades"). Each item opens the filtered list. Empty: "Res pendent. Tot està classificat i revisat." |
-| Posicions | treasury.read | One card per active position: bank and cash balance (opening of the OPEN round + active movements in its period); card shows the amount **pendent de liquidar**. Notes when no opening balance is recorded. |
+| Posicions | treasury.read | BANK balance is primary (including the real debit card). Prepared CARD/CASH positions, if present in old or synthetic data, sit in a secondary dormant-model disclosure; they are not ordinary v1 workflows. Notes appear when no opening balance is recorded. |
 | Moviments recents | movement.read | Last 5 active movements: label, amount, date, position, status. |
 | Despeses reconegudes recents | expense.read | Last 5 recognised expenses of the OPEN round. |
 | Importacions recents | movement.read | Last 3 batches: date, position, format, rows, new, repeated, possible duplicates, status. Read-only; "La importació d’extractes reals no està disponible en esta fase." |

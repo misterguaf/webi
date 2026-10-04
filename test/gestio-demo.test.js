@@ -7,7 +7,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { assertLocalConfig, localD1Args, localR2Args, main } from '../gestio/demo/cli.js';
-import { buildDemoData } from '../gestio/demo/data.js';
+import { buildDemoData, buildTreasuryDemo, buildTreasuryEvidenceBackfill } from '../gestio/demo/data.js';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const config = readFileSync(resolve(repo, 'gestio/wrangler.toml'), 'utf8');
@@ -76,6 +76,25 @@ test('synthetic fixture fits the migrated SQLite constraints and exercises fee s
   assert.deepEqual(data.installments, [[3]]);
   assert.deepEqual(data.residual, [[1]]);
   assert.deepEqual(data.registrations, [[43]]);
+});
+
+test('legacy G.2A demo can receive only the missing synthetic expense receipts after migration', () => {
+  const sql = new DatabaseSync(':memory:');
+  try {
+    sql.exec('PRAGMA foreign_keys=ON');
+    const names = readdirSync(resolve(repo, 'gestio/migrations')).filter(name => name.endsWith('.sql')).sort();
+    for (const name of names.filter(name => name < '0030')) sql.exec(readFileSync(resolve(repo, 'gestio/migrations', name), 'utf8'));
+    sql.exec(readFileSync(resolve(repo, 'gestio/seed.sql'), 'utf8'));
+    sql.exec(buildDemoData({ now: Date.UTC(2026, 9, 3) }).sql);
+    sql.exec(buildTreasuryDemo().replace(/INSERT INTO finance_expense_evidence[^;]+;\n/, ''));
+    assert.equal(sql.prepare('SELECT count(*) AS n FROM finance_expense_evidence').get().n, 0);
+    sql.exec(readFileSync(resolve(repo, 'gestio/migrations/0030_finance_reimbursements_evidence.sql'), 'utf8'));
+    assert.equal(sql.prepare("SELECT count(*) AS n FROM finance_expense WHERE status='RECOGNISED'").get().n, 2,
+      'historical recognised expenses are not invalidated');
+    sql.exec(buildTreasuryEvidenceBackfill([21301, 21302]));
+    assert.equal(sql.prepare('SELECT count(*) AS n FROM finance_expense_evidence').get().n, 2);
+    assert.deepEqual(sql.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally { sql.close(); }
 });
 
 // 3.5D (ACTIVITIES.md §21): D1–D12 hold whenever the demo is rebuilt, because dates are relative to seeding.
@@ -176,8 +195,11 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
     // income demo: the 450 € lottery sale reconciled with its movement counts once, the pending grant not yet.
     assert.deepEqual(query('SELECT income_cents,expense_gross_cents,proposed_expense_cents FROM finance_round_economics'),
       [{ income_cents: 70000, expense_gross_cents: 94000, proposed_expense_cents: 7000 }]);
+    assert.equal(query('SELECT COUNT(*) n FROM finance_expense_evidence')[0].n, 4);
     query("INSERT INTO participant(id,display_name,current_section_id,status,birth_date) VALUES('00000000-0000-4000-8000-000000099999','Extra Demo','00000000-0000-4000-8000-000000000001','ACTIVE','2017-01-01')");
     run('node', [cli, 'seed'], temp);
+    assert.equal(query('SELECT COUNT(*) n FROM finance_expense_evidence')[0].n, 4,
+      'repeat seed does not duplicate synthetic Treasury receipts');
     assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 41);
     assert.equal(query('SELECT COUNT(*) n FROM audit_event WHERE action=\'DEMO_DATASET_SEEDED\'')[0].n, 1);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);

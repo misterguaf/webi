@@ -3,7 +3,7 @@
 Status: IMPLEMENTED — pending Borja/Atlas functional and visual review
 Version: 0.1
 Project: Grup Scout Parpalló — Gestió
-Phase: 3.5G.2A
+Phase: 3.5G.2A + G.2B functional extension
 Baseline: `phase-3.5g1-complete` (`e1aa9f0`)
 Depends on: TREASURY\_HOME.md, TREASURY\_EXPENSES.md, ../TREASURY.md (§7–§11, §27.2), ../UX\_RULES.md
 
@@ -53,20 +53,25 @@ classification history (each replaced set with its time), duplicate banner.
 
 ## 4. Classifica (drawer)
 
-Choices offered (only the kinds enabled in 3.5G.1):
+Choices offered by the current service:
 
 | Movement | Choices |
 |---|---|
-| Outgoing | És una despesa (needs expense.manage) · Paga una despesa existent · És un traspàs intern |
+| Outgoing BANK | És una despesa (needs expense.manage) · Reemborsament a scouter · Paga una despesa existent · És un traspàs intern |
+| Outgoing CARD/CASH prepared position | És una despesa · Paga una despesa existent · És un traspàs intern |
 | Incoming | Crea un ingrés (income.manage) · Vincula a un ingrés existent (income.read) · És la devolució d’una despesa (proveïdor) · És un traspàs intern |
 
-Never offered: fee, activity, family, card-settlement or reimbursement allocations.
+Never offered: fee, activity, family or card-settlement allocations.
 
 - Crea un ingrés → income form (TREASURY_INCOMES.md); the income is created and reconciled with the movement.
 - Vincula a un ingrés existent: incomes pending reconciliation, exact amount first; amount defaults to
   min(income pending, movement pending).
 - Paga / Devolució: recognised expenses of the round; for payment only those with the position's
   method and still unpaid.
+- Reemborsament a scouter: choose one beneficiary, then one or more of that person's approved
+  outstanding expenses and the amount for each. Treasury confirms the semantic bank match;
+  imported movement data does not prove the recipient automatically. One movement may settle
+  several debts; partial settlement and later correction use the existing versioned set.
 - Traspàs intern: unclassified movements of another position with the opposite amount, nearest date
   first; it takes the whole movement (blocked with an explanation when part is already allocated).
 - És una despesa → continues in the expense form (TREASURY\_EXPENSES.md §3).
