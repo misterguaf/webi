@@ -6,7 +6,8 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   authorizeInstallments, correctFamilyGroup, createFamilyGroup, createObligation,
-  familyGroupRevisions, feePaymentDetail, listFeePayments, openFeeIssue, resolveFeeIssue,
+  familyGroupRevisions, listFamilyGroups, listFamilyRounds, listRounds,
+  feePaymentDetail, listFeePayments, openFeeIssue, resolveFeeIssue,
   reviewFeePayment, reviseFeeAllocations,
   submitFee, updateRound
 } from '../gestio/src/services/annual-fee-service.js';
@@ -29,7 +30,7 @@ function fixture() {
     sql.exec(readFileSync(join(root,'gestio/migrations',name),'utf8'));
   sql.exec(readFileSync(join(root,'gestio/seed.sql'),'utf8'));
   const contexts={};
-  for (const number of [101,104,105,107]) {
+  for (const number of [101,102,104,105,107]) {
     const session=crypto.randomUUID(),now=Date.now();
     sql.prepare(`INSERT INTO app_session(id,user_id,token_hash,created_at,last_seen_at,absolute_expires_at)
       VALUES(?,?,?,?,?,?)`).run(session,id(number),String(number).padStart(64,'a'),now,now,now+86_400_000);
@@ -209,15 +210,45 @@ test('3B blocker: D1 rejects unverified allocations and malformed installment to
     const paymentId=await payment(f,[{obligationId:ids.get(501),amountCents:10000}]);
     assert.throws(()=>f.sql.prepare('UPDATE annual_fee_payment SET verified_amount_cents=NULL WHERE id=?').run(paymentId));
     const plan=await authorizeInstallments(f.db,f.contexts[104],crypto.randomUUID(),ids.get(504),
-      {parts:[{amountCents:2000},{amountCents:3000}]});
-    assert.equal(f.sql.prepare('SELECT count(*) AS n FROM annual_fee_installment_part WHERE plan_id=?').get(plan.id).n,2);
-    assert.throws(()=>f.sql.prepare('UPDATE annual_fee_installment_plan SET first_cents=1000 WHERE id=?').run(plan.id));
-    assert.throws(()=>f.sql.prepare('UPDATE annual_fee_installment_plan SET first_cents=3000,second_cents=2000 WHERE id=?').run(plan.id));
+      {parts:[{amountCents:2000},{amountCents:2000},{amountCents:1000}]});
+    assert.equal(f.sql.prepare('SELECT count(*) AS n FROM annual_fee_installment_part WHERE plan_id=?').get(plan.id).n,3);
+    assert.throws(()=>f.sql.prepare('UPDATE annual_fee_installment_part SET planned_cents=1000 WHERE plan_id=? AND ordinal=1').run(plan.id));
+    assert.throws(()=>f.sql.prepare("UPDATE annual_fee_installment_plan SET status='DRAFT' WHERE id=?").run(plan.id));
     assert.throws(()=>f.sql.prepare('DELETE FROM annual_fee_installment_plan WHERE id=?').run(plan.id));
     assert.throws(()=>f.sql.prepare('UPDATE annual_fee_obligation SET amount_due_cents=6000 WHERE id=?').run(ids.get(504)));
-    assert.throws(()=>f.sql.prepare(`INSERT INTO annual_fee_installment_plan
-      (id,obligation_id,authorized_by,authorized_at,first_cents,second_cents) VALUES(?,?,?,?,?,?)`)
-      .run(crypto.randomUUID(),ids.get(505),id(104),Date.now(),1000,1000));
+    const malformed=crypto.randomUUID();
+    f.sql.prepare(`INSERT INTO annual_fee_installment_plan
+      (id,obligation_id,status,authorized_by,authorized_at) VALUES(?,?,'DRAFT',?,?)`)
+      .run(malformed,ids.get(505),id(104),Date.now());
+    f.sql.prepare('INSERT INTO annual_fee_installment_part(plan_id,ordinal,planned_cents) VALUES(?,?,?)')
+      .run(malformed,1,1000);
+    f.sql.prepare('INSERT INTO annual_fee_installment_part(plan_id,ordinal,planned_cents) VALUES(?,?,?)')
+      .run(malformed,2,1000);
+    assert.throws(()=>f.sql.prepare("UPDATE annual_fee_installment_plan SET status='ACTIVE' WHERE id=?").run(malformed));
+    const corrected=await authorizeInstallments(f.db,f.contexts[104],crypto.randomUUID(),ids.get(504),
+      {replacesPlanId:plan.id,reason:'Correcció autoritzada',parts:[{amountCents:1000},{amountCents:2000},{amountCents:2000}]});
+    assert.equal(f.sql.prepare('SELECT status FROM annual_fee_installment_plan WHERE id=?').get(plan.id).status,'SUPERSEDED');
+    assert.equal(f.sql.prepare('SELECT status FROM annual_fee_installment_plan WHERE id=?').get(corrected.id).status,'ACTIVE');
+    assert.deepEqual(f.sql.prepare('PRAGMA foreign_key_check').all(),[]);
+  } finally {f.close();}
+});
+
+test('G.3: Secretary may manage explicit family grouping without gaining fee or section financial access',async()=>{
+  const f=fixture();
+  try {
+    const request=()=>crypto.randomUUID();
+    const rounds=await listFamilyRounds(f.db,f.contexts[105],request());
+    assert.equal(rounds[0].id,id(901));
+    const group=await createFamilyGroup(f.db,f.contexts[105],request(),
+      {roundId:id(901),reference:'DEMO-FAMILY-SECRETARY',participantIds:[id(501),id(502)]});
+    const visible=await listFamilyGroups(f.db,f.contexts[105],request(),id(901));
+    assert.equal(visible.groups.length,2);
+    assert.equal(visible.groups[0].id,group.id);
+    await assert.rejects(listRounds(f.db,f.contexts[105],request()),error=>error.status===403);
+    await assert.rejects(createObligation(f.db,f.contexts[105],request(),
+      {roundId:id(901),participantId:id(503)}),error=>error.status===403);
+    await assert.rejects(listFamilyRounds(f.db,f.contexts[102],request()),error=>error.status===403);
+    await assert.rejects(listFamilyRounds(f.db,f.contexts[107],request()),error=>error.status===403);
   } finally {f.close();}
 });
 

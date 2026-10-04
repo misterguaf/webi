@@ -26,7 +26,7 @@ const TABLES=[
   'annual_fee_obligation','annual_fee_amount_revision',
   'annual_fee_payment','annual_fee_submission_person','annual_fee_evidence','annual_fee_allocation',
   'annual_fee_allocation_revision',
-  'annual_fee_installment_plan','annual_fee_issue',
+  'annual_fee_installment_plan','annual_fee_installment_part','annual_fee_issue',
   'annual_fee_notification_outbox','annual_fee_notification_capture',
   'annual_fee_issue_outbox','annual_fee_issue_capture','d1_migrations',
   'participant_section_membership','guardian','participant_guardian','contact_point','consent_record',
@@ -63,10 +63,13 @@ const REQUIRED_OBJECTS=[
   'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
   'trigger:annual_fee_obligation_allocation_amount_guard',
   'trigger:annual_fee_obligation_family_insert_guard','trigger:annual_fee_obligation_family_update_guard',
-  'trigger:annual_fee_installment_total_insert','trigger:annual_fee_installment_total_update',
-  'trigger:annual_fee_installment_immutable_update','trigger:annual_fee_installment_immutable_delete',
+  'index:annual_fee_one_active_installment_plan','index:annual_fee_plan_replaced_once',
+  'trigger:annual_fee_installment_plan_insert_guard',
+  'trigger:annual_fee_installment_part_insert_guard','trigger:annual_fee_installment_part_no_update',
+  'trigger:annual_fee_installment_part_no_delete','trigger:annual_fee_installment_plan_activation',
+  'trigger:annual_fee_installment_plan_transition','trigger:annual_fee_installment_plan_no_delete',
   'trigger:annual_fee_obligation_installment_total_update','index:annual_fee_family_revision_group_idx',
-  'view:annual_fee_installment_part','view:annual_fee_obligation_status',
+  'view:annual_fee_obligation_status',
   'view:annual_fee_payment_balance','trigger:annual_fee_payment_allocated_review_guard',
   'trigger:annual_fee_unallocated_issue_resolution_guard',
   'trigger:annual_fee_family_member_insert_guard','trigger:annual_fee_family_member_update_guard',
@@ -357,7 +360,7 @@ function verifyRestoredState(info,state,manifest) {
     "(SELECT count(*) FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id JOIN annual_fee_obligation o ON o.id=a.obligation_id WHERE p.round_id!=o.round_id) AS cross_round_fee,"+
     "(SELECT count(*) FROM annual_fee_payment p WHERE (SELECT COALESCE(SUM(a.amount_cents),0) FROM annual_fee_allocation a WHERE a.payment_id=p.id)>COALESCE(p.verified_amount_cents,0)) AS overallocated_fee,"+
     "(SELECT count(*) FROM annual_fee_obligation WHERE amount_due_cents<1) AS bad_fee_due,"+
-    "(SELECT count(*) FROM annual_fee_installment_plan p JOIN annual_fee_obligation o ON o.id=p.obligation_id WHERE p.first_cents<1 OR p.second_cents<1 OR p.first_cents+p.second_cents!=o.amount_due_cents) AS bad_fee_installment,"+
+    "(SELECT count(*) FROM annual_fee_installment_plan p JOIN annual_fee_obligation o ON o.id=p.obligation_id WHERE p.status='ACTIVE' AND ((SELECT count(*) FROM annual_fee_installment_part i WHERE i.plan_id=p.id)<2 OR (SELECT count(*) FROM annual_fee_installment_part i WHERE i.plan_id=p.id)!=(SELECT max(ordinal) FROM annual_fee_installment_part i WHERE i.plan_id=p.id) OR (SELECT sum(planned_cents) FROM annual_fee_installment_part i WHERE i.plan_id=p.id)!=o.amount_due_cents)) AS bad_fee_installment,"+
     "(SELECT count(*) FROM annual_fee_obligation o WHERE o.discount_cents!=CASE WHEN o.sibling_ordinal>=3 THEN CAST(o.base_cents/2 AS INTEGER) ELSE 0 END OR NOT EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id AND m.group_id=o.family_group_id AND m.sibling_ordinal=o.sibling_ordinal) AND o.family_group_id IS NOT NULL OR o.family_group_id IS NULL AND (o.sibling_ordinal!=1 OR EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id))) AS bad_fee_family,"+
     "(SELECT count(*) FROM annual_fee_family_correction_gate) AS open_family_gate,"+
     "(SELECT count(*) FROM participant p WHERE p.status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM participant_section_membership m WHERE m.participant_id=p.id AND m.ended_at IS NULL AND m.section_id=p.current_section_id)) AS membership_projection_gap,"+

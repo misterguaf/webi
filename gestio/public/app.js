@@ -9,6 +9,7 @@ import { createRegistrationsView } from './views/registrations.js';
 import { createAccountView, createDashboardView, createFeeStatusView, createFeesView } from './views/simple-views.js';
 import { createParticipantsView } from './views/participants.js';
 import { createTreasuryView } from './views/treasury.js';
+import { createFamilyGroupsView } from './views/family-groups.js';
 import { treasuryAvailable } from './views/treasury/model.js';
 
 const $ = id => document.getElementById(id);
@@ -43,6 +44,7 @@ const views = createViewRegistry([
   activities,
   registrations,
   createFeesView({ call, message, reportLoadError }),
+  createFamilyGroupsView({ call, message, reportLoadError }),
   createFeeStatusView({ call, reportLoadError }),
   createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge })
 ]);

@@ -275,3 +275,14 @@ SELECT '00000000-0000-4000-8000-000000000495','00000000-0000-4000-8000-000000000
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.reimbursement.self_approve')
   AND NOT EXISTS(SELECT 1 FROM user_permission_grant WHERE user_id='00000000-0000-4000-8000-000000000104'
     AND permission_code='finance.reimbursement.self_approve' AND revoked_at IS NULL);
+
+-- G.3 synthetic fixture: the three group-wide authorities for family grouping only.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VALUES
+  ('00000000-0000-4000-8000-000000000496','00000000-0000-4000-8000-000000000101','finance.family.read'),
+  ('00000000-0000-4000-8000-000000000497','00000000-0000-4000-8000-000000000101','finance.family.manage'),
+  ('00000000-0000-4000-8000-000000000498','00000000-0000-4000-8000-000000000104','finance.family.read'),
+  ('00000000-0000-4000-8000-000000000499','00000000-0000-4000-8000-000000000104','finance.family.manage'),
+  ('00000000-0000-4000-8000-000000000500','00000000-0000-4000-8000-000000000105','finance.family.read'),
+  ('00000000-0000-4000-8000-000000000501','00000000-0000-4000-8000-000000000105','finance.family.manage'))
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.family.read');

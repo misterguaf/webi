@@ -47,6 +47,8 @@ export const PERMISSIONS = Object.freeze({
     note: 'Submitter name, phone and e-mail of a fee payment, on demand and audited (3.5G.1A). Never in listings.' },
   'finance.fee.installment.authorize': { kind: 'SCOPED', note: 'Also requires a current TREASURY or GROUP_COORDINATOR role.' },
   'finance.fee.config.manage': { kind: 'GLOBAL' },
+  'finance.family.read': { kind: 'GLOBAL', note: 'Explicit round family groups, not family financial details.' },
+  'finance.family.manage': { kind: 'GLOBAL', note: 'Secretary, Group Coordination or Treasury; no fee amount authority.' },
 
   // 3.5G.1 financial foundation (TREASURY.md §25.1). All group-wide; the delegable ones reach other users only
   // through explicit financial delegations (no role grants them by being held).

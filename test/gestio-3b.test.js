@@ -152,10 +152,14 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
       {parts:[{amountCents:3000,targetAt:null},{amountCents:7000,targetAt:null}]})).status,201);
     assert.equal((await as(worker.base,group,`/api/fees/obligations/${obligationId(503)}/installments`,
       {parts:[{amountCents:2500},{amountCents:2500}],reason:'motiu familiar'})).status,400,
-    'no economic or family explanation may be stored');
+    'a correction reason requires an existing plan target');
+    assert.equal((await as(worker.base,treasury,`/api/fees/obligations/${obligationId(503)}/installments`,
+      {parts:[{amountCents:2000},{amountCents:2000},{amountCents:1000}]})).status,201);
     const firstPlan=(await request(worker.base,`/api/fees/obligations/${obligationId(501)}`,{cookie:treasury})).data.installmentPlan;
     const secondPlan=(await request(worker.base,`/api/fees/obligations/${obligationId(502)}`,{cookie:treasury})).data.installmentPlan;
+    const thirdPlan=(await request(worker.base,`/api/fees/obligations/${obligationId(503)}`,{cookie:treasury})).data.installmentPlan;
     assert.equal([...firstPlan.parts,...secondPlan.parts].filter(part=>part.target_at===null).length,4);
+    assert.deepEqual(thirdPlan.parts.map(part=>part.planned_cents),[2000,2000,1000]);
     await stop(worker);worker=null;
 
     worker=await startPortal(portal,gestio,state,registry);
@@ -307,7 +311,8 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
           AND m.participant_id=o.participant_id AND m.sibling_ordinal=o.sibling_ordinal)`)[0].n,0);
     assert.equal(rows(gestio,restored,'SELECT count(*) AS n FROM annual_fee_payment')[0].n,4);
     assert.equal(rows(gestio,restored,'SELECT count(*) AS n FROM annual_fee_allocation')[0].n,4);
-    assert.equal(rows(gestio,restored,'SELECT count(*) AS n FROM annual_fee_installment_plan')[0].n,2);
+    assert.equal(rows(gestio,restored,'SELECT count(*) AS n FROM annual_fee_installment_plan')[0].n,3);
+    assert.equal(rows(gestio,restored,'SELECT count(*) AS n FROM annual_fee_installment_part')[0].n,7);
     assert.equal(rows(gestio,restored,`SELECT status FROM annual_fee_obligation_status WHERE participant_id='${id(502)}'`)[0].status,'PAID');
     assert.equal(rows(gestio,restored,`SELECT status FROM annual_fee_obligation_status WHERE participant_id='${id(503)}'`)[0].status,'PAID');
     assert.equal(rows(gestio,restored,'SELECT count(*) AS n FROM annual_fee_issue')[0].n,1);

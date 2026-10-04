@@ -225,6 +225,7 @@ async function api(request,env,url,requestId) {
     if (kind==='groups') return json({...await fees.listFamilyGroups(db,context,requestId,id,url.searchParams),requestId});
     return json({...await fees.listFeeIssues(db,context,requestId,id,url.searchParams),requestId});
   }
+  if (path==='/api/fees/family-rounds' && method==='GET') return json({rounds:await fees.listFamilyRounds(db,context,requestId),requestId});
   if (path==='/api/fees/groups' && method==='POST') return json({...await fees.createFamilyGroup(db,context,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/fees\/groups\/([^/]+)$/);
   if (match && method==='PATCH') return json({...await fees.correctFamilyGroup(db,context,requestId,match[1],await readJson(request)),requestId});

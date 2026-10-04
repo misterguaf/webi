@@ -46,6 +46,10 @@ export async function listReviewRounds(db,context,requestId) {
   await requirePermission(db,context,requestId,'finance.fee.payment.review',{mode:'list',resourceType:'annual_fee_payment'});
   return (await db.prepare('SELECT id,code FROM annual_fee_round ORDER BY code DESC LIMIT 30').all()).results;
 }
+export async function listFamilyRounds(db,context,requestId) {
+  await globalPermission(db,context,requestId,'finance.family.read','annual_fee_round');
+  return (await db.prepare('SELECT id,code FROM annual_fee_round ORDER BY code DESC LIMIT 30').all()).results;
+}
 export async function roundRevisions(db,context,requestId,id) {
   await globalPermission(db,context,requestId,'finance.fee.read','annual_fee_round',id);
   await roundById(db,id);
@@ -111,7 +115,7 @@ export async function updateRound(db,context,requestId,id,input,now=Date.now()) 
   return {id};
 }
 export async function createFamilyGroup(db,context,requestId,input,now=Date.now()) {
-  await globalPermission(db,context,requestId,'finance.fee.manage','annual_fee_family_group');
+  await globalPermission(db,context,requestId,'finance.family.manage','annual_fee_family_group');
   if (!keysOnly(input,['roundId','reference','participantIds']) || !validUuid(input.roundId) ||
     !synthetic.reference(input.reference,{min:3,max:75}) ||
     !Array.isArray(input.participantIds) || input.participantIds.length<2 || input.participantIds.length>20 ||
@@ -137,7 +141,7 @@ export async function createFamilyGroup(db,context,requestId,input,now=Date.now(
   return {id};
 }
 export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.now(),creation=null) {
-  await globalPermission(db,context,requestId,'finance.fee.manage','annual_fee_family_group',id);
+  await globalPermission(db,context,requestId,'finance.family.manage','annual_fee_family_group',id);
   const group=creation?{id:requireUuid(id),round_id:creation.roundId,version:1}:
     await db.prepare('SELECT * FROM annual_fee_family_group WHERE id=?').bind(requireUuid(id)).first();
   if (!group) throw new AppError(404,'not_found');
@@ -252,7 +256,7 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
   return {id,revisionId};
 }
 export async function familyGroupRevisions(db,context,requestId,id) {
-  await globalPermission(db,context,requestId,'finance.fee.read','annual_fee_family_group',id);
+  await globalPermission(db,context,requestId,'finance.family.read','annual_fee_family_group',id);
   const group=await db.prepare('SELECT id FROM annual_fee_family_group WHERE id=?').bind(requireUuid(id)).first();
   if (!group) throw new AppError(404,'not_found');
   const revisions=(await db.prepare(`SELECT id,previous_version,new_version,changed_by,changed_at
@@ -745,35 +749,48 @@ export async function authorizeInstallments(db,context,requestId,id,input,now=Da
     AND revoked_at IS NULL AND valid_from<=? AND (expires_at IS NULL OR expires_at>?) LIMIT 1`)
     .bind(context.userId,now,now).first();
   if (!role) throw new AppError(403,'forbidden');
-  if (!keysOnly(input,['parts']) || !Array.isArray(input.parts) || input.parts.length!==2 ||
+  if (!keysOnly(input,['parts','replacesPlanId','reason']) || !Array.isArray(input.parts) ||
+    input.parts.length<2 || input.parts.length>100 ||
     input.parts.some(part=>!keysOnly(part,['amountCents','targetAt']) || !cents(part.amountCents) ||
       (part.targetAt!=null && (!Number.isSafeInteger(part.targetAt) || part.targetAt<0))) ||
-    input.parts[0].amountCents+input.parts[1].amountCents!==row.amount_due_cents) fail('invalid_installment_plan');
+    input.parts.reduce((sum,part)=>sum+part.amountCents,0)!==row.amount_due_cents) fail('invalid_installment_plan');
+  const current=await db.prepare("SELECT id FROM annual_fee_installment_plan WHERE obligation_id=? AND status='ACTIVE'")
+    .bind(id).first();
+  if (current) {
+    if (input.replacesPlanId!==current.id || typeof input.reason!=='string' ||
+      input.reason.trim().length<3 || input.reason.trim().length>240)
+      throw new AppError(409,'installment_plan_exists');
+  } else if (input.replacesPlanId!==undefined || input.reason!==undefined) fail('invalid_installment_plan');
   const planId=uuid();
   await db.batch([
     db.prepare(`INSERT INTO annual_fee_installment_plan
-      (id,obligation_id,authorized_by,authorized_at,first_cents,second_cents,first_target_at,second_target_at)
-      VALUES(?,?,?,?,?,?,?,?)`).bind(planId,id,context.userId,now,input.parts[0].amountCents,
-        input.parts[1].amountCents,input.parts[0].targetAt??null,input.parts[1].targetAt??null),
-    audit(db,context,requestId,'FEE_INSTALLMENT_AUTHORIZED','annual_fee_installment_plan',planId,now)
+      (id,obligation_id,status,replaces_plan_id,correction_reason,authorized_by,authorized_at)
+      VALUES(?,?,'DRAFT',?,?,?,?)`).bind(planId,id,current?.id??null,input.reason?.trim()??null,context.userId,now),
+    ...input.parts.map((part,index)=>db.prepare(`INSERT INTO annual_fee_installment_part
+      (plan_id,ordinal,planned_cents,target_at) VALUES(?,?,?,?)`)
+      .bind(planId,index+1,part.amountCents,part.targetAt??null)),
+    ...(current?[db.prepare("UPDATE annual_fee_installment_plan SET status='SUPERSEDED' WHERE id=? AND status='ACTIVE'")
+      .bind(current.id)]:[]),
+    db.prepare("UPDATE annual_fee_installment_plan SET status='ACTIVE' WHERE id=? AND status='DRAFT'").bind(planId),
+    audit(db,context,requestId,current?'FEE_INSTALLMENT_SUPERSEDED':'FEE_INSTALLMENT_AUTHORIZED',
+      'annual_fee_installment_plan',planId,now)
   ]);
   return {id:planId};
 }
 
 export async function searchFeeParticipants(db,context,requestId,roundId,search='') {
   await roundById(db,roundId);
-  const decision=await requirePermission(db,context,requestId,'finance.fee.manage',{mode:'list',resourceType:'participant'});
+  await globalPermission(db,context,requestId,'finance.family.manage','annual_fee_family_group');
   if (typeof search!=='string' || search.length<2 || search.length>80) fail('invalid_fee_filter');
-  const scope=decision.sections===null?'':` AND p.current_section_id IN (${decision.sections.map(()=>'?').join(',')})`;
   const rows=(await db.prepare(`SELECT p.id,p.display_name,p.current_section_id,s.code AS section_code
     FROM participant p JOIN section s ON s.id=p.current_section_id
-    WHERE p.status='ACTIVE' AND p.display_name LIKE ? ESCAPE '\\'${scope} ORDER BY p.display_name,p.id LIMIT 31`)
-    .bind('%'+search.trim().replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%',...(decision.sections??[])).all()).results;
+    WHERE p.status='ACTIVE' AND p.display_name LIKE ? ESCAPE '\\' ORDER BY p.display_name,p.id LIMIT 31`)
+    .bind('%'+search.trim().replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_')+'%').all()).results;
   // Search results are capped, never silently: the caller refines the query when truncated.
   return {participants:rows.slice(0,30),truncated:rows.length>30};
 }
 export async function listFamilyGroups(db,context,requestId,roundId,params=null) {
-  await globalPermission(db,context,requestId,'finance.fee.read','annual_fee_family_group');
+  await globalPermission(db,context,requestId,'finance.family.read','annual_fee_family_group');
   await roundById(db,roundId);
   const page=pageRequest(params,['string','number']);
   const rows=(await db.prepare(`SELECT g.id,g.reference,m.participant_id,m.sibling_ordinal,p.display_name
@@ -793,7 +810,7 @@ export async function feeObligationDetail(db,context,requestId,id) {
   const allocations=(await db.prepare(`SELECT a.id,a.payment_id,a.amount_cents,p.review_status,p.verified_amount_cents
     FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id WHERE a.obligation_id=?
     ORDER BY a.created_at,a.id`).bind(id).all()).results;
-  const plan=await db.prepare('SELECT id,authorized_by,authorized_at FROM annual_fee_installment_plan WHERE obligation_id=?')
+  const plan=await db.prepare("SELECT id,authorized_by,authorized_at FROM annual_fee_installment_plan WHERE obligation_id=? AND status='ACTIVE'")
     .bind(id).first();
   const parts=plan?(await db.prepare('SELECT ordinal,planned_cents,target_at FROM annual_fee_installment_part WHERE plan_id=? ORDER BY ordinal')
     .bind(plan.id).all()).results:[];

@@ -70,13 +70,29 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     for(const row of allocations){const line=document.createElement('p');line.textContent=`Transferència ${row.payment_id} · ${euros(row.amount_cents)} · ${row.review_status}`;box.append(line);}
     for(const row of amountRevisions){const line=document.createElement('p');line.textContent=`Canvi de quota ${new Date(row.changed_at).toLocaleString('ca-ES')}: ${euros(row.previous_amount_cents)} → ${euros(row.new_amount_cents)}.`;box.append(line);}
     if(installmentPlan){const line=document.createElement('p');line.textContent='Fraccionament autoritzat: '+installmentPlan.parts.map(part=>`${euros(part.planned_cents)}${part.target_at?' · '+new Date(part.target_at).toLocaleDateString('ca-ES'):''}`).join(' + ');box.append(line);}
-    else {
-      const first=input('number','Primer pagament en cèntims'),second=input('number','Segon pagament en cèntims');
-      const date1=input('date','Data opcional'),date2=input('date','Data opcional');
-      box.append(first,second,date1,date2,button('Autoritza fraccionament',()=>act(()=>send(`/api/fees/obligations/${id}/installments`,'POST',
-        {parts:[{amountCents:Number(first.value),targetAt:date1.value?Date.parse(date1.value):null},
-          {amountCents:Number(second.value),targetAt:date2.value?Date.parse(date2.value):null}]}))));
-    }
+    const schedule=document.createElement('div'),fields=[];
+    const addPart=(amountCents='',targetAt=null)=>{
+      const row=document.createElement('div'),amount=input('number','Import en cèntims'),date=input('date','Data prevista');
+      amount.min='1';amount.step='1';amount.value=amountCents;
+      date.value=targetAt?new Date(targetAt).toISOString().slice(0,10):'';
+      const amountLabel=document.createElement('label'),dateLabel=document.createElement('label');
+      amountLabel.textContent=`Termini ${fields.length+1}: `;amountLabel.append(amount);
+      dateLabel.textContent=' Data prevista: ';dateLabel.append(date);
+      row.append(amountLabel,dateLabel);schedule.append(row);fields.push({amount,date,row});
+    };
+    if(installmentPlan)installmentPlan.parts.forEach(part=>addPart(part.planned_cents,part.target_at));
+    else {addPart();addPart();}
+    const reason=installmentPlan?input('text','Motiu de la correcció'):null;
+    const controls=document.createElement('div');
+    controls.append(button('Afig termini',()=>{if(fields.length<100)addPart();}),
+      button('Lleva últim termini',()=>{if(fields.length>2){fields.pop().row.remove();}}));
+    box.append(schedule,controls);
+    if(reason){const label=document.createElement('label');label.textContent='Motiu de la correcció: ';label.append(reason);box.append(label);}
+    box.append(button(installmentPlan?'Corregeix fraccionament':'Autoritza fraccionament',()=>act(()=>send(
+      `/api/fees/obligations/${id}/installments`,'POST',{
+        parts:fields.map(({amount,date})=>({amountCents:Number(amount.value),targetAt:date.value?Date.parse(date.value):null})),
+        ...(installmentPlan?{replacesPlanId:installmentPlan.id,reason:reason.value.trim()}:{}),
+      }))));
     const amount=input('number','Nou import degut en cèntims');
     box.append(amount,button('Canvia import degut',()=>act(()=>send(`/api/fees/obligations/${id}`,'PATCH',{amountDueCents:Number(amount.value)}))));
     box.append(button('Obri incidència',()=>act(()=>send('/api/fees/issues','POST',{obligationId:id,code:'DISCREPANCY'}))));
