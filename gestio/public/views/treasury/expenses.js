@@ -1,7 +1,8 @@
 // Tresoreria · Despeses (3.5G.2A, docs/design/screens/TREASURY_EXPENSES.md): list with server-side
 // filters, detail (lines with budget paths, settlements, history), manual creation and recognition.
 import { confirmDialog, h, icon, toast } from '../../ui.js';
-import { openExpenseForm, receiptPayload } from './expense-form.js';
+import { openExpenseForm, openExpenseEdit, receiptPayload } from './expense-form.js';
+import { field, openDrawer } from './forms.js';
 import { fact, infoRow, markRefocus, restoreFocus, statusBadge } from './movements.js';
 import {
   ALLOCATION_KIND, COUNTERPARTY_KIND, EXPENSE_STATUS_CHOICES, EXPENSE_PAYMENT_CHOICES, PAYMENT_METHOD, SETTLEMENT_STATE, budgetPath, budgetTree, canManageExpenses,
@@ -92,6 +93,9 @@ export async function renderExpenseDetail(root, ctx, id) {
   const e = data.expense, status = expenseStatus(e.status);
   const reload = () => { void ctx.refreshSummary(); return renderExpenseDetail(root, ctx, id); };
   const actions = [];
+  if (['PROPOSED', 'RECOGNISED'].includes(e.status) && canManageExpenses(ctx.caps()))
+    actions.push(h('button', { className: 'btn btn-secondary', text: e.status === 'PROPOSED' ? 'Edita' : 'Corregeix despesa',
+      attrs: { type: 'button' }, on: { click: () => void openExpenseEdit({ ctx, data, onDone: reload }) } }));
   if (e.status === 'PROPOSED' && data.evidence.some(item => !item.purged) && canManageExpenses(ctx.caps())) actions.push(h('button', { className: 'btn btn-primary', text: 'Reconeix la despesa', attrs: { type: 'button' }, on: { click: async event => {
     const trigger = event.currentTarget;
     if (!await confirmDialog({ title: 'Reconéixer la despesa?', body: `A partir d’ara ${formatEur(e.totalCents)} comptaran com a despesa de la ronda, una sola vegada.`, confirm: 'Reconeix' })) return;
@@ -99,6 +103,8 @@ export async function renderExpenseDetail(root, ctx, id) {
     try { await ctx.call(`/api/finance/expenses/${e.id}/recognise`, { method: 'POST', body: JSON.stringify({ expectedVersion: e.version }) }); toast('Despesa reconeguda'); await reload(); }
     catch (error) { trigger.removeAttribute('aria-busy'); toast(errorCopy(error), { tone: 'danger', timeout: 6000 }); }
   } } }));
+  if (e.status === 'RECOGNISED' && canManageExpenses(ctx.caps())) actions.push(h('button', { className: 'btn btn-secondary',
+    text: 'Anul·la despesa', attrs: { type: 'button' }, on: { click: () => openExpenseCancellation(e, ctx, reload) } }));
   const linesTotal = data.lines.reduce((sum, line) => sum + line.amountCents, 0);
   root.replaceChildren(back,
     h('header', { className: 'detail-header treasury-detail-header' },
@@ -125,10 +131,12 @@ export async function renderExpenseDetail(root, ctx, id) {
           h('span', { className: 'allocation-amount', text: formatEur(item.amountCents) }))))
           : h('p', { className: 'empty-detail', text: 'Cap moviment vinculat.' })),
       h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Justificants' }),
-        data.evidence.some(item => !item.purged) ? h('ul', { className: 'allocation-list', attrs: { role: 'list' } }, data.evidence.filter(item => !item.purged).map(item =>
+        data.evidence.some(item => !item.purged && !item.supersededAt) ? h('ul', { className: 'allocation-list', attrs: { role: 'list' } }, data.evidence.filter(item => !item.purged && !item.supersededAt).map(item =>
           h('li', { className: 'allocation-item' }, h('span', { className: 'allocation-target', text: `${item.mime === 'application/pdf' ? 'PDF' : 'Imatge'} · ${formatInstant(item.createdAt)}` }),
             h('a', { className: 'link-button', text: 'Veure', attrs: { href: `/api/finance/expense-evidence/${item.id}?mode=view`, target: '_blank', rel: 'noopener' } }),
-            h('a', { className: 'link-button', text: 'Descarrega', attrs: { href: `/api/finance/expense-evidence/${item.id}?mode=download` } }))))
+            h('a', { className: 'link-button', text: 'Descarrega', attrs: { href: `/api/finance/expense-evidence/${item.id}?mode=download` } }),
+            canManageExpenses(ctx.caps()) && ['PROPOSED','RECOGNISED'].includes(e.status) ? h('button', { className: 'link-button',
+              text: 'Substitueix justificant', attrs: { type: 'button' }, on: { click: () => openEvidenceReplacement(e, item, ctx, reload) } }) : null)))
           : h('p', { className: 'empty-detail', text: 'Sense justificant adjunt. Cal adjuntar-lo abans de reconéixer la despesa.' }),
         ['PROPOSED', 'RECOGNISED'].includes(e.status) && canManageExpenses(ctx.caps()) ? h('label', { className: 'field-label' }, 'Afig justificant',
           h('input', { attrs: { type: 'file', accept: '.pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp' },
@@ -147,8 +155,40 @@ export async function renderExpenseDetail(root, ctx, id) {
           infoRow('Creada', formatInstant(e.createdAt)),
           e.recognizedAt ? infoRow('Reconeguda', formatInstant(e.recognizedAt)) : null,
           e.rejectedAt ? infoRow('Rebutjada', formatInstant(e.rejectedAt)) : null,
-          e.voidedAt ? infoRow('Anul·lada', formatInstant(e.voidedAt)) : null,
-          ...data.revisions.map(rev => infoRow(`Revisió ${formatInstant(rev.changedAt)}`,
-            [rev.previousConcept ? `Concepte anterior: ${rev.previousConcept}` : null, `Total anterior: ${formatEur(rev.previousTotalCents)}`, `Data anterior: ${formatDay(rev.previousExpenseDate)}`].filter(Boolean).join(' · ')))))));
+          e.voidedAt ? infoRow('Anul·lada', formatInstant(e.voidedAt)) : null),
+        data.revisions.length || data.evidenceHistory?.length ? h('details', {},
+          h('summary', { text: 'Mostra correccions i justificants anteriors' }),
+          h('dl', { className: 'info-list' }, ...data.revisions.map(rev => infoRow(`Canvi ${formatInstant(rev.changedAt)}`,
+            [rev.reason ? `Motiu: ${rev.reason}` : null, rev.previousConcept ? `Concepte anterior: ${rev.previousConcept}` : null,
+              `Total anterior: ${formatEur(rev.previousTotalCents)}`, `Data anterior: ${formatDay(rev.previousExpenseDate)}`].filter(Boolean).join(' · ')))),
+          ...(data.evidenceHistory ?? []).map(item => h('p', {},
+            h('a', { className: 'link-button', text: `Justificant anterior · ${formatInstant(item.createdAt)}`,
+              attrs: { href: `/api/finance/expense-evidence/${item.id}?mode=view`, target: '_blank', rel: 'noopener' } })))) : null)));
   root.querySelector('.detail-title')?.focus({ preventScroll: true });
+}
+
+function openExpenseCancellation(expense, ctx, onDone) {
+  const reason = h('textarea', { attrs: { rows: 3, maxlength: 240, placeholder: 'Ex.: Despesa duplicada' } });
+  const drawer = openDrawer({ title: 'Anul·la despesa', tone: 'danger', primary: 'Continua', content: [
+    h('p', { className: 'form-notice', text: 'La despesa deixarà de comptar en la ronda. Es conservaran els justificants i l’historial.' }),
+    field('reason', 'Motiu de l’anul·lació', reason, { required: true })], onSubmit: async () => {
+    if (reason.value.trim().length < 3) { drawer.showError('Escriu un motiu breu.'); return false; }
+    if (!await confirmDialog({ title: 'Anul·lar aquesta despesa?', body: 'Deixarà de comptar en les xifres de la ronda. Aquesta acció quedarà a l’historial.',
+      confirm: 'Anul·la despesa', tone: 'danger' })) return false;
+    await ctx.call(`/api/finance/expenses/${expense.id}/void`, { method: 'POST', body: JSON.stringify({
+      expectedVersion: expense.version, reason: reason.value.trim() }) });
+    toast('Despesa anul·lada'); await onDone(); return true;
+  } });
+}
+
+function openEvidenceReplacement(expense, current, ctx, onDone) {
+  const input = h('input', { attrs: { type: 'file', accept: '.pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp' } });
+  const drawer = openDrawer({ title: 'Substitueix justificant', primary: 'Substitueix', content: [
+    h('p', { className: 'form-notice', text: 'El justificant anterior es conservarà en l’historial privat. El nou serà el vigent.' }),
+    field('evidence', 'Justificant nou', input, { required: true })], onSubmit: async () => {
+    if (!input.files?.[0]) { drawer.showError('Tria un PDF o una imatge.'); return false; }
+    await ctx.call(`/api/finance/expenses/${expense.id}/evidence/${current.id}/replace`, { method: 'POST',
+      body: JSON.stringify(await receiptPayload(input.files[0])) });
+    toast('Justificant substituït'); await onDone(); return true;
+  } });
 }

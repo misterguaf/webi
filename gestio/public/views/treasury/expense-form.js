@@ -90,3 +90,58 @@ export async function openExpenseForm({ ctx, movement = null, onDone }) {
     toast('Despesa creada'); await onDone?.(created); return true;
   } });
 }
+
+/** Draft edits stay ordinary; recognised edits use the same fields with a required short reason. */
+export async function openExpenseEdit({ ctx, data, onDone }) {
+  if (!canManageExpenses(ctx.caps())) { toast('No tens permís per fer aquesta acció.', { tone: 'danger' }); return; }
+  const expense = data.expense;
+  if (!['PROPOSED', 'RECOGNISED'].includes(expense.status)) return;
+  let lines, counterparties;
+  try {
+    [lines, counterparties] = await Promise.all([
+      ctx.call(`/api/finance/rounds/${expense.roundId}/assignable-lines?nature=EXPENSE`).then(result => result.lines),
+      ctx.call('/api/finance/counterparties').then(result => result.counterparties)]);
+  } catch (error) { toast(errorCopy(error), { tone: 'danger' }); return; }
+  const concept = h('input', { attrs: { type: 'text', maxlength: 120, value: expense.concept ?? '', autocomplete: 'off' } });
+  const date = h('input', { attrs: { type: 'date', value: expense.expenseDate } });
+  const totalMoney = moneyInput(centsInput(expense.totalCents), { 'aria-label': 'Import total' });
+  const total = totalMoney.querySelector('input');
+  const split = lineSplit({ lines, total: () => parseEuros(total.value) ?? 0,
+    initial: data.lines.map(line => ({ budgetLineId: line.budgetLineId, amount: centsInput(line.amountCents), label: line.budgetLine })) });
+  total.addEventListener('input', () => split.refresh());
+  const method = h('select', {}, [
+    h('option', { text: 'El grup · compte o targeta de dèbit', attrs: { value: 'BANK', selected: expense.paymentMethod === 'BANK' } }),
+    h('option', { text: 'Un scouter amb els seus diners', attrs: { value: 'ADVANCED', selected: expense.paymentMethod === 'ADVANCED' } }),
+    ...(['CARD', 'CASH'].includes(expense.paymentMethod) ? [h('option', { text: 'Mitjà històric', attrs: { value: expense.paymentMethod, selected: true } })] : [])]);
+  const advanced = counterpartyChooser({ call: ctx.call, counterparties, value: expense.advancedById, allowCreate: true,
+    kind: 'PERSON', label: 'Qui ha avançat els diners', optional: false, name: 'advancedById' });
+  const counterparty = counterpartyChooser({ call: ctx.call, counterparties, value: expense.counterpartyId,
+    allowCreate: true, label: 'Proveïdor o tercer' });
+  const reason = expense.status === 'RECOGNISED' ? h('textarea', { attrs: { rows: 3, maxlength: 240,
+    placeholder: 'Explica breument què s’ha corregit' } }) : null;
+  const syncMethod = () => { advanced.node.hidden = method.value !== 'ADVANCED'; };
+  method.addEventListener('change', syncMethod); syncMethod();
+  const content = [
+    expense.status === 'RECOGNISED' ? h('p', { className: 'form-notice', text: 'La correcció guardarà els valors anteriors a l’historial. Si hi ha un reemborsament conciliat, corregeix primer eixa conciliació.' }) : null,
+    field('concept', 'Concepte', concept, { required: true }),
+    h('div', { className: 'field-row' }, field('expenseDate', 'Data', date, { required: true }),
+      field('total', 'Import total', totalMoney, { required: true })),
+    field('paymentMethod', 'Qui ho ha pagat?', method, { required: true }), advanced.node, counterparty.node,
+    h('div', { className: 'form-field', dataset: { field: 'lines' } }, h('span', { className: 'field-label', text: 'Repartiment entre línies del pressupost' }),
+      split.node, h('p', { className: 'field-error', attrs: { hidden: true } })),
+    reason ? field('reason', 'Motiu de la correcció', reason, { required: true }) : null];
+  const drawer = openDrawer({ title: expense.status === 'PROPOSED' ? 'Edita la proposta' : 'Corregeix la despesa', content,
+    primary: 'Guarda', onSubmit: async () => {
+      const values = { concept: concept.value, expenseDate: date.value, total: total.value, lines: split.values(),
+        counterpartyId: counterparty.value, paymentMethod: method.value, advancedById: advanced.value };
+      const result = validateExpense(values, { roundId: expense.roundId, manual: true });
+      if (reason && reason.value.trim().length < 3) result.errors.reason = 'Explica breument el motiu de la correcció.';
+      if (!showErrors(drawer.submit.form, result.errors)) { drawer.showError('Revisa els camps marcats.'); return false; }
+      await ctx.call(`/api/finance/expenses/${expense.id}`, { method: 'PATCH', body: JSON.stringify({ ...result.body,
+        expectedVersion: expense.version, counterpartyId: counterparty.value,
+        advancedById: method.value === 'ADVANCED' ? advanced.value : null,
+        ...(reason ? { reason: reason.value.trim() } : {}) }) });
+      toast(expense.status === 'PROPOSED' ? 'Proposta actualitzada' : 'Despesa corregida');
+      await onDone?.(); return true;
+    } });
+}

@@ -129,13 +129,17 @@ test('wiring: each action label reaches its endpoint; reveal is on demand, never
   const wired = [
     [movements, "'Classifica'", '/allocations'], [movements, 'Corregeix classificació', '/allocations'], [movements, 'Mostra descripció original', '/description'],
     [movements, 'Confirma que és duplicat', '/void-duplicate'], [movements, 'És un moviment vàlid', '/clear-review'], [movements, 'INTERNAL_TRANSFER', '/api/finance/internal-transfers'],
-    [form, 'Crea i classifica', '/expense`'], [form, 'Crea la despesa', "'/api/finance/expenses'"], [expenses, 'Reconeix la despesa', '/recognise']];
+    [form, 'Crea i classifica', '/expense`'], [form, 'Crea la despesa', "'/api/finance/expenses'"], [expenses, 'Reconeix la despesa', '/recognise'],
+    [form, 'Corregeix la despesa', "method: 'PATCH'"], [expenses, 'Anul·la despesa', '/void'],
+    [expenses, 'Substitueix justificant', '/replace'], [movements, 'Reassigna reemborsaments', '/allocations']];
   for (const [text, label, endpoint] of wired) { assert.ok(text.includes(label), label); assert.ok(text.includes(endpoint), endpoint); }
   assert.ok(source('views/treasury/model.js').includes('És un traspàs intern'));
   assert.ok(expenses.includes('Sense justificant adjunt'), 'missing receipt is explained before recognition');
   assert.match(expenses + form, /type: 'file'/);
   assert.ok(expenses.includes('/api/finance/expense-evidence/'), 'private receipt can be viewed and downloaded');
   assert.ok(movements.includes('REIMBURSEMENT_SETTLEMENT'), 'bank reimbursement reconciliation is offered');
+  for (const code of ['expense_correction_reason_required','allocation_correction_reason_required','reimbursement_settlement_locked',
+    'evidence_already_replaced']) assert.doesNotMatch(model.errorCopy({ code }), /_|[A-Z]{4,}/, code);
   assert.doesNotMatch(movements, /localStorage|sessionStorage/, 'the original description is never stored');
   for (const toastText of ['Despesa creada', 'Classificació actualitzada', 'Moviment marcat com a duplicat']) assert.ok((movements + form).includes(toastText), toastText);
   assert.ok(PAGES.includes('tresoreria'));

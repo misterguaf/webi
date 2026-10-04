@@ -125,6 +125,10 @@ export async function renderMovementDetail(root, ctx, id) {
     actions.push(h('button', { className: 'btn btn-primary', text: 'Classifica', attrs: { type: 'button' }, on: { click: () => openClassify(data, ctx, reload) } }));
   if (canClassify(caps) && !privateReimbursements && m.state === 'ACTIVE' && data.allocations.length)
     actions.push(h('button', { className: 'btn btn-secondary', text: 'Corregeix classificació', attrs: { type: 'button' }, on: { click: () => openCorrection(data, ctx, reload) } }));
+  if (canClassify(caps) && caps.treasury?.readExpenses && m.state === 'ACTIVE' && m.positionKind === 'BANK' &&
+      data.allocations.some(item => item.kind === 'REIMBURSEMENT_SETTLEMENT'))
+    actions.push(h('button', { className: 'btn btn-secondary', text: 'Reassigna reemborsaments', attrs: { type: 'button' },
+      on: { click: () => void openReimbursementReassignment(data, ctx, reload) } }));
   root.replaceChildren(...[
     backLink(ctx),
     h('header', { className: 'detail-header treasury-detail-header' },
@@ -366,6 +370,7 @@ export function openClassify(data, ctx, onDone) {
 /** Corregeix classificació: keep, change or remove the current parts. The previous set stays in history. */
 function openCorrection(data, ctx, onDone) {
   const m = data.movement;
+  const reason = h('textarea', { attrs: { rows: 3, maxlength: 240, placeholder: 'Ex.: Reemborsament vinculat a la despesa errònia' } });
   const rows = data.allocations.map(item => {
     const keep = h('input', { attrs: { type: 'checkbox', checked: true, 'aria-label': `Manté: ${allocationLabel(item)}` } });
     const money = moneyInput(centsInput(item.amountCents), { 'aria-label': `Import: ${allocationLabel(item)}`, ...(item.kind === 'INTERNAL_TRANSFER' ? { readonly: true } : {}) });
@@ -376,8 +381,10 @@ function openCorrection(data, ctx, onDone) {
   const content = [
     h('p', { className: 'form-notice', text: 'La classificació anterior es conserva a l’historial. Desmarca una part per a llevar-la o canvia’n l’import; després podràs tornar a classificar el que quede pendent.' }),
     h('div', { className: 'correction-rows' }, rows.map(row => row.node)),
-    data.allocations.some(item => item.kind === 'INTERNAL_TRANSFER') ? h('p', { className: 'field-hint', text: 'Si lleves un traspàs intern, revisa també el moviment parella.' }) : null];
+    data.allocations.some(item => item.kind === 'INTERNAL_TRANSFER') ? h('p', { className: 'field-hint', text: 'Si lleves un traspàs intern, revisa també el moviment parella.' }) : null,
+    field('reason', 'Motiu de la correcció', reason, { required: true })];
   const drawer = openDrawer({ title: 'Corregeix la classificació', content, primary: 'Guarda la correcció', onSubmit: async () => {
+    if (reason.value.trim().length < 3) { drawer.showError('Explica breument el motiu de la correcció.'); return false; }
     const kept = [];
     for (const row of rows) {
       if (!row.keep.checked) continue;
@@ -387,8 +394,63 @@ function openCorrection(data, ctx, onDone) {
       kept.push({ ...allocationPayload([row.item])[0], amountCents: row.item.kind === 'INTERNAL_TRANSFER' ? row.item.amountCents : result.allocation.amountCents });
     }
     if (kept.reduce((sum, item) => sum + item.amountCents, 0) > Math.abs(m.amountCents)) { drawer.showError('L’import assignat supera l’import disponible del moviment.'); return false; }
-    await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({ expectedVersion: m.allocationVersion, allocations: kept }) });
+    await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({
+      expectedVersion: m.allocationVersion, allocations: kept, reason: reason.value.trim() }) });
     toast('Classificació actualitzada'); await onDone?.(); return true;
+  } });
+}
+
+/** Replace the reimbursement part of one BANK allocation set in one versioned operation. */
+async function openReimbursementReassignment(data, ctx, onDone) {
+  const round = ctx.summary()?.round;
+  if (!round) { toast('No hi ha cap ronda econòmica oberta.', { tone: 'danger' }); return; }
+  let reimbursements;
+  try { reimbursements = (await ctx.call(`/api/finance/reimbursements?roundId=${round.id}`)).reimbursements
+    .filter(row => row.status === 'APPROVED' && !row.cancelledAt); }
+  catch (error) { toast(errorCopy(error), { tone: 'danger' }); return; }
+  const current = new Map(data.allocations.filter(item => item.kind === 'REIMBURSEMENT_SETTLEMENT')
+    .map(item => [item.reimbursementId, item.amountCents]));
+  const available = reimbursements.filter(row => row.outstandingCents + (current.get(row.id) ?? 0) > 0);
+  const recipients = [...new Map(available.map(row => [row.recipientId, row.recipientName])).entries()];
+  if (!recipients.length) { toast('No hi ha reemborsaments aprovats per assignar.', { tone: 'danger' }); return; }
+  const first = available.find(row => current.has(row.id))?.recipientId ?? recipients[0][0];
+  const recipient = h('select', {}, recipients.map(([id, name]) => h('option', { text: name,
+    attrs: { value: id, selected: id === first } })));
+  const list = h('div', { className: 'candidate-list' });
+  const reason = h('textarea', { attrs: { rows: 3, maxlength: 240,
+    placeholder: 'Ex.: Les despeses vinculades eren incorrectes' } });
+  const paint = () => {
+    list.replaceChildren(...available.filter(row => row.recipientId === recipient.value).map(row => {
+      const amount = current.get(row.id) ?? 0;
+      const limit = row.outstandingCents + amount;
+      return h('label', { className: 'candidate' },
+        h('input', { attrs: { type: 'checkbox', name: 'reimbursement', value: row.id, checked: amount > 0 }, dataset: { limit: String(limit) } }),
+        h('span', { className: 'candidate-name', text: `${row.concept ?? 'Despesa'} · màxim ${formatEur(limit)}` }),
+        h('input', { attrs: { type: 'text', inputmode: 'decimal', value: centsInput(amount || limit),
+          'aria-label': `Import de ${row.concept ?? 'despesa'}` }, dataset: { amount: row.id } }));
+    }));
+  };
+  recipient.addEventListener('change', paint); paint();
+  const drawer = openDrawer({ title: 'Reassigna reemborsaments', primary: 'Guarda la correcció', content: [
+    h('p', { className: 'form-notice', text: 'Tria les despeses pagades amb aquesta transferència. La classificació anterior quedarà a l’historial.' }),
+    field('recipient', 'Scouter beneficiari', recipient), list,
+    field('reason', 'Motiu de la correcció', reason, { required: true })], onSubmit: async () => {
+    if (reason.value.trim().length < 3) { drawer.showError('Explica breument el motiu de la correcció.'); return false; }
+    const selected = [...list.querySelectorAll('input[name="reimbursement"]:checked')].map(input => ({
+      kind: 'REIMBURSEMENT_SETTLEMENT', reimbursementId: input.value,
+      amountCents: parseEuros(list.querySelector(`[data-amount="${input.value}"]`)?.value), limit: Number(input.dataset.limit) }));
+    if (!selected.length) { drawer.showError('Tria almenys una despesa. Per retirar totes les assignacions, usa «Corregeix classificació».'); return false; }
+    if (selected.some(row => !row.amountCents || row.amountCents < 1 || row.amountCents > row.limit)) {
+      drawer.showError('Revisa els imports: no poden superar el pendent de cada despesa.'); return false;
+    }
+    const kept = allocationPayload(data.allocations.filter(item => item.kind !== 'REIMBURSEMENT_SETTLEMENT'));
+    if ([...kept, ...selected].reduce((sum, row) => sum + row.amountCents, 0) > Math.abs(data.movement.amountCents)) {
+      drawer.showError('La suma supera l’import del moviment.'); return false;
+    }
+    await ctx.call(`/api/finance/movements/${data.movement.id}/allocations`, { method: 'POST', body: JSON.stringify({
+      expectedVersion: data.movement.allocationVersion,
+      allocations: [...kept, ...selected.map(({ limit, ...row }) => row)], reason: reason.value.trim() }) });
+    toast('Reemborsaments corregits'); await onDone(); return true;
   } });
 }
 
