@@ -293,3 +293,10 @@ SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VAL
   ('00000000-0000-4000-8000-000000000500','00000000-0000-4000-8000-000000000105','finance.family.read'),
   ('00000000-0000-4000-8000-000000000501','00000000-0000-4000-8000-000000000105','finance.family.manage'))
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.family.read');
+
+-- G.3 synthetic plan authorisers (production migration grants current holders).
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT column1,column2,'finance.activity.installment.authorize',1700000000000,NULL,'Fixture sintético' FROM (VALUES
+  ('00000000-0000-4000-8000-000000000510','00000000-0000-4000-8000-000000000101'),
+  ('00000000-0000-4000-8000-000000000511','00000000-0000-4000-8000-000000000104'))
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.activity.installment.authorize');

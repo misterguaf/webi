@@ -31,6 +31,7 @@ export const ACTIONS = new Set([
   'BANK_IMPORT_CREATED','MOVEMENT_IMPORTED','MOVEMENT_CREATED_MANUAL','MOVEMENT_VOIDED_DUPLICATE','MOVEMENT_NEAR_MATCH_CLEARED',
   'MOVEMENT_CLASSIFIED','MOVEMENT_RECLASSIFIED','FINANCE_ALLOCATION_CORRECTED','BANK_DESCRIPTION_REVEALED',
   'FEE_RECEIPT_RECONCILED','ACTIVITY_RECEIPT_RECONCILED',
+  'ACTIVITY_INSTALLMENT_PLAN_AUTHORIZED','ACTIVITY_INSTALLMENT_PLAN_CORRECTED',
   'COUNTERPARTY_CREATED','COUNTERPARTY_REVISED','COUNTERPARTY_USER_LINKED','COUNTERPARTY_USER_UNLINKED',
   'EXPENSE_PROPOSED','EXPENSE_RECOGNISED','EXPENSE_REVISED','EXPENSE_REJECTED','EXPENSE_VOIDED',
   'EXPENSE_DRAFT_EDITED','EXPENSE_CORRECTED','EXPENSE_CANCELLED',
@@ -42,7 +43,7 @@ export const ACTIONS = new Set([
   'BUDGET_LINE_DEACTIVATED','BUDGET_REVISION_PROPOSED','BUDGET_REVISION_APPROVED','BUDGET_REVISION_REJECTED'
 ]);
 const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
-  'activity','activity_registration','payment_evidence','delegated_permission','notification_outbox',
+  'activity','activity_registration','activity_installment_plan','payment_evidence','delegated_permission','notification_outbox',
   'annual_fee_round','annual_fee_family_group','annual_fee_obligation','annual_fee_payment',
   'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',
   'annual_fee_evidence','annual_fee_notification_outbox','annual_fee_issue_outbox',

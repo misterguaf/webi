@@ -15,6 +15,7 @@ import { versionCas } from '../concurrency.js';
 import { AppError, requirePermission, requireUuid } from './common.js';
 import { evidenceKey, readEvidence, storeEvidence, validateSyntheticEvidence } from './evidence-service.js';
 import { queueStatement } from './notification-service.js';
+import { activityPrice } from './activity-pricing.js';
 
 export function matchKey(value) {
   return value.normalize('NFKD').replace(/\p{M}/gu,'').toLocaleLowerCase('ca-ES')
@@ -113,15 +114,14 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
   if (baseAmount<0 || baseAmount>1000000) throw new AppError(400,'invalid_registration');
   const key=matchKey(input.participantName);
   const matched=await findMatch(db,key,input.birthDate,sectionId,sections);
-  const activityDay=new Date(activity.starts_at).toISOString().slice(0,10);
-  const managedRound=baseAmount>0?await db.prepare(`SELECT id,annual_fee_round_id FROM finance_round WHERE period_start<=? AND period_end>=? LIMIT 1`)
-    .bind(activityDay,activityDay).first():null;
-  const family=managedRound?.annual_fee_round_id && matched.participant ? await db.prepare(`SELECT group_id,sibling_ordinal
-    FROM annual_fee_family_member WHERE round_id=? AND participant_id=?`)
-    .bind(managedRound.annual_fee_round_id,matched.participant.id).first():null;
-  const siblingOrdinal=family?.sibling_ordinal??1;
-  const discount=siblingOrdinal>=3?Math.floor(baseAmount/2):0;
-  const amount=baseAmount-discount;
+  const price=await activityPrice(db,{baseCents:baseAmount,startsAt:activity.starts_at,
+    participantId:matched.participant?.id??null});
+  const amount=price.amountCents;
+  const approvedPlan=amount>0 && matched.participant ? await db.prepare(`SELECT id,total_cents,transport_code
+    FROM activity_installment_plan WHERE activity_id=? AND participant_id=? AND status='ACTIVE' AND registration_id IS NULL`)
+    .bind(activity.id,matched.participant.id).first():null;
+  if (approvedPlan && (approvedPlan.total_cents!==amount || approvedPlan.transport_code!==(input.transportCode??null)))
+    throw new AppError(409,'registration_unavailable');
   if (amount>0 && !input.evidence) throw new AppError(400,'evidence_required');
   if (amount===0 && input.evidence) throw new AppError(400,'evidence_not_required');
   const evidence=amount>0?await validateSyntheticEvidence(input.evidence):null;
@@ -165,10 +165,12 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
         idempotency_key,payload_sha256,created_at,updated_at,review_level,escalation_reason,escalated_at)
         VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,activity.id,matched.participant?.id??null,input.participantName.trim(),key,
         sectionId,sectionId,input.receiptEmail.toLowerCase(),input.submittedByName.trim(),input.contactPhone?.trim()||null,
-        matched.status==='CLEAR'?null:input.birthDate,input.transportCode??null,amount,managedRound?.id??null,
-        baseAmount,discount,siblingOrdinal,family?.group_id??null,matched.status,status,'DEPRECATED',
+        matched.status==='CLEAR'?null:input.birthDate,input.transportCode??null,amount,price.financeRoundId,
+        baseAmount,price.discountCents,price.siblingOrdinal,price.familyGroupId,matched.status,status,'DEPRECATED',
         input.participationTermsVersion,now,input.privacyNoticeVersion,now,input.idempotencyKey,payloadHash,now,now,
         escalate?'GLOBAL':'SECTION',escalate?'POSSIBLE_OTHER_SECTION':null,escalate?now:null),
+      ...(approvedPlan?[db.prepare(`UPDATE activity_installment_plan SET registration_id=? WHERE id=? AND status='ACTIVE'
+        AND registration_id IS NULL`).bind(id,approvedPlan.id)]:[]),
       ...(evidence?[db.prepare(`INSERT INTO payment_evidence(id,registration_id,object_key,sha256,size_bytes,detected_mime,review_status,created_at)
         VALUES(?,?,?,?,?,?,'PENDING_REVIEW',?)`).bind(evidenceId,id,objectKey,evidence.sha256,evidence.bytes.length,evidence.mime,now)]:[]),
       statement(db,{requestId,action:'REGISTRATION_RECEIVED',resourceType:'activity_registration',resourceId:id,occurredAt:now}),

@@ -521,6 +521,13 @@ test('G.3: submitted activity fixes the third sibling price from the round famil
       VALUES(?,?,?,'PUBLISHED','GENERAL',?,?,?,?,?,?,?,?)`)
       .run(activity, 'G3-SIBLING-PAID', 'Campament de prova (fictici)', 'Lloc fictici',
         Date.parse('2027-06-01'), Date.parse('2027-06-05'), Date.parse('2027-05-01'), 18000, id(104), 1, 1);
+    assert.equal((await s.call(102, '/api/finance/activity-installment-plans', 'POST', {
+      activityId: activity, participantId: id(503), parts: [3000, 3000, 3000].map(amountCents => ({ amountCents }))
+    })).status, 403);
+    const approved = await s.call(104, '/api/finance/activity-installment-plans', 'POST', {
+      activityId: activity, participantId: id(503), parts: [3000, 3000, 3000].map(amountCents => ({ amountCents }))
+    });
+    assert.equal(approved.status, 201, JSON.stringify(approved.data));
     const proof = { filename: 'justificant-synthetic.pdf', mime: 'application/pdf',
       dataBase64: Buffer.from('%PDF-1.4\n%synthetic local fixture\n%%EOF').toString('base64') };
     assert.deepEqual(await submitRegistration(s.f.db, s.f.storage, {
@@ -529,10 +536,23 @@ test('G.3: submitted activity fixes the third sibling price from the round famil
       idempotencyKey: crypto.randomUUID().replaceAll('-', ''), participationTermsVersion: 'DEMO-3A-PARTICIPATION-V1',
       privacyNoticeVersion: 'DEMO-3A-PRIVACY-NOTICE-V1', evidence: proof
     }, crypto.randomUUID(), Date.parse('2027-04-01')), { ok: true });
-    const row = s.f.sql.prepare(`SELECT expected_amount_cents,price_base_cents,price_discount_cents,
+    const row = s.f.sql.prepare(`SELECT id,version,expected_amount_cents,price_base_cents,price_discount_cents,
       price_sibling_ordinal,price_family_group_id FROM activity_registration WHERE activity_id=?`).get(activity);
-    assert.deepEqual({ ...row }, { expected_amount_cents: 9000, price_base_cents: 18000,
-      price_discount_cents: 9000, price_sibling_ordinal: 3, price_family_group_id: group });
+    assert.deepEqual({ ...row, id: null, version: null }, { id: null, version: null, expected_amount_cents: 9000,
+      price_base_cents: 18000, price_discount_cents: 9000, price_sibling_ordinal: 3, price_family_group_id: group });
+    assert.equal(s.f.sql.prepare('SELECT registration_id FROM activity_installment_plan WHERE id=?').get(approved.data.id)
+      .registration_id, row.id);
+    const evidenceId = s.f.sql.prepare('SELECT id FROM payment_evidence WHERE registration_id=?').get(row.id).id;
+    assert.equal((await s.call(104, `/api/payments/${evidenceId}/review`, 'POST',
+      { decision: 'VERIFIED', amountCents: 3000, expectedVersion: row.version })).data.paymentState, 'PARTIAL');
+    const revised = await s.call(104, `/api/finance/activity-installment-plans/${approved.data.id}/revisions`, 'POST', {
+      expectedRevision: 1, reason: 'Calendari revisat amb el primer termini ja verificat',
+      parts: [3000, 4000, 2000].map(amountCents => ({ amountCents }))
+    });
+    assert.equal(revised.status, 201, JSON.stringify(revised.data));
+    assert.equal((await s.call(104, `/api/finance/activity-installment-plans/${approved.data.id}`)).data.plan.currentRevision, 2);
+    assert.throws(() => s.f.sql.prepare(`UPDATE activity_installment_part SET planned_cents=1 WHERE plan_id=? AND revision=1`)
+      .run(approved.data.id), /activity_installment_immutable/);
     assert.throws(() => s.f.sql.prepare(`UPDATE activity_registration SET expected_amount_cents=18000 WHERE activity_id=?`)
       .run(activity), /activity_price_correction_required/);
   } finally { s.f.close(); }

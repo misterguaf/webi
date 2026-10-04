@@ -21,6 +21,7 @@ const TABLES=[
   'audit_event','security_incident','incident_resource','incident_audit_hold','retention_policy',
   'activity','activity_section','activity_transport_option','participant_contact','delegated_permission',
   'activity_registration','activity_price_correction_gate','activity_price_revision',
+  'activity_installment_plan','activity_installment_revision','activity_installment_part',
   'payment_evidence','notification_outbox','notification_capture',
   'annual_fee_round','annual_fee_round_revision','annual_fee_family_group','annual_fee_family_member',
   'annual_fee_family_revision','annual_fee_family_revision_member','annual_fee_family_correction_gate',
@@ -116,6 +117,11 @@ const REQUIRED_OBJECTS=[
   'trigger:activity_registration_price_insert_guard','trigger:activity_registration_price_update_guard',
   'index:activity_price_revision_registration_idx','trigger:activity_price_revision_no_update',
   'trigger:activity_price_revision_no_delete',
+  'trigger:activity_installment_plan_insert_guard','trigger:activity_installment_revision_insert_guard',
+  'trigger:activity_installment_part_insert_guard','trigger:activity_installment_revision_no_update',
+  'trigger:activity_installment_revision_no_delete','trigger:activity_installment_part_no_update',
+  'trigger:activity_installment_part_no_delete','trigger:activity_installment_plan_no_delete',
+  'trigger:activity_installment_plan_transition','trigger:activity_installment_plan_activation',
   'index:finance_allocation_fee_payment_idx','index:finance_allocation_activity_payment_idx',
   'trigger:finance_allocation_transfer_guard','trigger:finance_allocation_no_update','trigger:finance_allocation_no_delete',
   'trigger:finance_expense_insert_guard','trigger:finance_expense_update_guard','trigger:finance_expense_line_guard',
@@ -390,6 +396,7 @@ function verifyRestoredState(info,state,manifest) {
     "(SELECT count(*) FROM annual_fee_payment p WHERE (SELECT COALESCE(SUM(a.amount_cents),0) FROM annual_fee_allocation a WHERE a.payment_id=p.id)>COALESCE(p.verified_amount_cents,0)) AS overallocated_fee,"+
     "(SELECT count(*) FROM annual_fee_obligation WHERE amount_due_cents<1) AS bad_fee_due,"+
     "(SELECT count(*) FROM annual_fee_installment_plan p JOIN annual_fee_obligation o ON o.id=p.obligation_id WHERE p.status='ACTIVE' AND ((SELECT count(*) FROM annual_fee_installment_part i WHERE i.plan_id=p.id)<2 OR (SELECT count(*) FROM annual_fee_installment_part i WHERE i.plan_id=p.id)!=(SELECT max(ordinal) FROM annual_fee_installment_part i WHERE i.plan_id=p.id) OR (SELECT sum(planned_cents) FROM annual_fee_installment_part i WHERE i.plan_id=p.id)!=o.amount_due_cents)) AS bad_fee_installment,"+
+    "(SELECT count(*) FROM activity_installment_plan p WHERE p.status='ACTIVE' AND ((SELECT count(*) FROM activity_installment_part i WHERE i.plan_id=p.id AND i.revision=p.current_revision)<2 OR (SELECT count(*) FROM activity_installment_part i WHERE i.plan_id=p.id AND i.revision=p.current_revision)!=(SELECT max(ordinal) FROM activity_installment_part i WHERE i.plan_id=p.id AND i.revision=p.current_revision) OR (SELECT sum(planned_cents) FROM activity_installment_part i WHERE i.plan_id=p.id AND i.revision=p.current_revision)!=p.total_cents OR (p.registration_id IS NOT NULL AND p.total_cents!=(SELECT expected_amount_cents FROM activity_registration WHERE id=p.registration_id)))) AS bad_activity_installment,"+
     "(SELECT count(*) FROM annual_fee_obligation o WHERE o.discount_cents!=CASE WHEN o.sibling_ordinal>=3 THEN CAST(o.base_cents/2 AS INTEGER) ELSE 0 END OR NOT EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id AND m.group_id=o.family_group_id AND m.sibling_ordinal=o.sibling_ordinal) AND o.family_group_id IS NOT NULL OR o.family_group_id IS NULL AND (o.sibling_ordinal!=1 OR EXISTS(SELECT 1 FROM annual_fee_family_member m WHERE m.round_id=o.round_id AND m.participant_id=o.participant_id))) AS bad_fee_family,"+
     "(SELECT count(*) FROM annual_fee_family_correction_gate) AS open_family_gate,"+
     "(SELECT count(*) FROM participant p WHERE p.status='ACTIVE' AND NOT EXISTS(SELECT 1 FROM participant_section_membership m WHERE m.participant_id=p.id AND m.ended_at IS NULL AND m.section_id=p.current_section_id)) AS membership_projection_gap,"+

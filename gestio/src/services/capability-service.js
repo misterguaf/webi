@@ -78,6 +78,7 @@ export async function capabilities(db, context, now = Date.now()) {
       read: global('finance.treasury.read'),
       manageRounds: global('finance.round.manage'),
       closeRounds: global('finance.round.close'),
+      authorizeActivityInstallments: global('finance.activity.installment.authorize'),
       managePositions: global('finance.position.manage'),
       readMovements: global('finance.movement.read'),
       importMovements: global('finance.movement.import'),

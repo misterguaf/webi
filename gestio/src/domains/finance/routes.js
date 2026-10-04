@@ -7,6 +7,7 @@ import * as budget from './budget.js';
 import * as incomes from './incomes.js';
 import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
+import * as activityInstallments from './activity-installments.js';
 
 const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024, EVIDENCE_BODY_MAX_BYTES = 6 * 1024 * 1024;
 
@@ -15,6 +16,12 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
   const body = () => readJson(request, BODY_MAX_BYTES);
   const ok = (data, status = 200) => json({ ...data, requestId }, status);
   let match;
+  if (path === '/api/finance/activity-installment-plans' && method === 'POST')
+    return ok(await activityInstallments.authorizeActivityPlan(db, context, requestId, await body()), 201);
+  if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)$/)) && method === 'GET')
+    return ok(await activityInstallments.activityPlanDetail(db, context, requestId, match[1]));
+  if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)\/revisions$/)) && method === 'POST')
+    return ok(await activityInstallments.reviseActivityPlan(db, context, requestId, match[1], await body()), 201);
   // Tresoreria home (3.5G.2A): only the blocks the person may read.
   if (path === '/api/finance/summary' && method === 'GET') return ok(await movements.treasurySummary(db, context, requestId));
   // Rounds, opening balances, reserves.
