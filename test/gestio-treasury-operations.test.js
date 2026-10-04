@@ -156,7 +156,7 @@ test('classification: enabled kinds only, partial, over-allocation, stale versio
   const s = await setup();
   try {
     const movement = await s.manual(s.bank, 20000);
-    const allocate = (expectedVersion, allocations) => s.call(104, `/api/finance/movements/${movement}/allocations`, 'POST', { expectedVersion, allocations });
+    const allocate = (expectedVersion, allocations, reason) => s.call(104, `/api/finance/movements/${movement}/allocations`, 'POST', { expectedVersion, allocations, ...(reason ? { reason } : {}) });
     assert.equal((await allocate(0, [{ kind: 'FEE_PAYMENT', amountCents: 1000, budgetLineId: s.lines.quotes }])).data.error, 'allocation_kind_not_enabled');
     assert.equal((await allocate(0, [{ kind: 'INCOME', amountCents: 25000, budgetLineId: s.lines.quotes }])).data.error, 'allocation_exceeds_movement');
     assert.equal((await allocate(0, [{ kind: 'INCOME', amountCents: 5000, budgetLineId: s.lines.income }])).data.error, 'invalid_income_allocation', 'not a heading');
@@ -171,7 +171,7 @@ test('classification: enabled kinds only, partial, over-allocation, stale versio
     assert.equal((await allocate(1, [...kept, { kind: 'INCOME', amountCents: 8000, budgetLineId: s.lines.quotes }])).status, 200);
     detail = await s.detail(movement);
     assert.equal(detail.movement.status, 'CLASSIFIED');
-    assert.equal((await allocate(2, [{ kind: 'INCOME', amountCents: 20000, budgetLineId: s.lines.quotes }])).status, 200);
+    assert.equal((await allocate(2, [{ kind: 'INCOME', amountCents: 20000, budgetLineId: s.lines.quotes }], 'Unificada la classificació')).status, 200);
     detail = await s.detail(movement);
     assert.equal(detail.allocations.length, 1);
     assert.equal(detail.history.length, 2, 'both earlier sets are kept');
@@ -287,8 +287,10 @@ test('expenses: list filters and enriched rows, manual proposal not counted, rec
     assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}/recognise`, 'POST', { expectedVersion: 2 })).data.error, 'invalid_transition');
     economics = await s.economics();
     assert.deepEqual([economics.expenseGrossCents, economics.proposedExpenseCents], [14500, 0]);
-    assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}`, 'PATCH', { concept: 'Material de manualitats (revisat)', expectedVersion: 2 })).status, 200);
-    assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}`, 'PATCH', { concept: 'Una altra', expectedVersion: 2 })).data.error, 'stale_expense');
+    assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}`, 'PATCH', { concept: 'Material de manualitats (revisat)', expectedVersion: 2,
+      reason: 'Concepte escrit amb un error' })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/expenses/${proposal.data.id}`, 'PATCH', { concept: 'Una altra', expectedVersion: 2,
+      reason: 'Segona correcció de prova' })).data.error, 'stale_expense');
     const revised = (await s.call(104, `/api/finance/expenses/${proposal.data.id}`)).data;
     assert.equal(revised.expense.concept, 'Material de manualitats (revisat)');
     assert.deepEqual(revised.revisions.map(r => r.previousConcept), ['Material de manualitats']);

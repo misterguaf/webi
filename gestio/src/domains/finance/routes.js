@@ -97,6 +97,9 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await expenses.decideExpense(db, storage, context, requestId, match[1], match[2], await body()));
   if ((match = path.match(/^\/api\/finance\/expenses\/([^/]+)\/evidence$/)) && method === 'POST')
     return ok(await evidence.uploadExpenseEvidence(db, storage, context, requestId, match[1], await readJson(request, EVIDENCE_BODY_MAX_BYTES)), 201);
+  if ((match = path.match(/^\/api\/finance\/expenses\/([^/]+)\/evidence\/([^/]+)\/replace$/)) && method === 'POST')
+    return ok(await evidence.replaceExpenseEvidence(db, storage, context, requestId, match[1], match[2],
+      await readJson(request, EVIDENCE_BODY_MAX_BYTES)), 201);
   if ((match = path.match(/^\/api\/finance\/expense-evidence\/([^/]+)$/)) && method === 'GET')
     return evidence.expenseEvidenceRead(db, storage, context, requestId, match[1], url.searchParams.get('mode') ?? 'download');
   if (path === '/api/finance/reimbursements' && method === 'GET')

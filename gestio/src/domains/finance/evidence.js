@@ -3,7 +3,7 @@
 import { append } from '../audit/repository.js';
 import { validateSyntheticEvidence, evidenceKey, storeEvidence, readEvidence } from '../../services/evidence-service.js';
 import { AppError, requireUuid, validUuid } from '../../services/common.js';
-import { allow, audit, commit, fail, notFound, uuid } from './shared.js';
+import { allow, audit, commit, fail, keysOnly, notFound, uuid } from './shared.js';
 
 const EXTENSIONS = { 'application/pdf': 'pdf', 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' };
 
@@ -41,6 +41,31 @@ export async function uploadExpenseEvidence(db, storage, context, requestId, exp
   return { id: item.id, mime: item.mime, sizeBytes: item.bytes.length };
 }
 
+/** One private R2 object replaces one current receipt. D1 swaps metadata in a single batch. */
+export async function replaceExpenseEvidence(db, storage, context, requestId, expenseId, evidenceId, input, now = Date.now()) {
+  await allow(db, context, requestId, 'finance.expense.manage', 'finance_expense', validUuid(expenseId) ? expenseId : null);
+  const id = requireUuid(expenseId), oldId = requireUuid(evidenceId);
+  if (!keysOnly(input, ['filename', 'mime', 'dataBase64'])) fail('invalid_evidence');
+  const expense = await db.prepare('SELECT status FROM finance_expense WHERE id=?').bind(id).first();
+  if (!expense) throw notFound();
+  if (!['PROPOSED', 'RECOGNISED'].includes(expense.status)) throw new AppError(409, 'invalid_transition');
+  const old = await db.prepare(`SELECT id FROM finance_expense_evidence WHERE id=? AND expense_id=?
+    AND superseded_at IS NULL AND object_purged_at IS NULL`).bind(oldId, id).first();
+  if (!old) throw new AppError(409, 'evidence_already_replaced');
+  const item = await prepareExpenseEvidence(input);
+  await commitWithEvidence(db, storage, item, [
+    // The NOT NULL expense_id is a compare-and-set: a concurrent replacement makes this batch fail.
+    db.prepare(`INSERT INTO finance_expense_evidence(id,expense_id,object_key,sha256,size_bytes,detected_mime,uploaded_by,created_at)
+      VALUES(?,(SELECT expense_id FROM finance_expense_evidence WHERE id=? AND expense_id=?
+        AND superseded_at IS NULL AND object_purged_at IS NULL),?,?,?,?,?,?)`)
+      .bind(item.id, oldId, id, item.objectKey, item.sha256, item.bytes.length, item.mime, context.userId, now),
+    db.prepare(`UPDATE finance_expense_evidence SET superseded_at=?,superseded_by_id=? WHERE id=? AND expense_id=?
+      AND superseded_at IS NULL AND object_purged_at IS NULL`).bind(now, item.id, oldId, id),
+    audit(db, context, requestId, 'EXPENSE_EVIDENCE_REPLACED', 'finance_expense_evidence', item.id, now)
+  ], 'evidence_already_replaced');
+  return { id: item.id, mime: item.mime, sizeBytes: item.bytes.length };
+}
+
 export async function expenseEvidenceRead(db, storage, context, requestId, evidenceId, mode = 'download') {
   if (!['view', 'download'].includes(mode)) fail('invalid_filter');
   await allow(db, context, requestId, 'finance.expense.read', 'finance_expense_evidence', validUuid(evidenceId) ? evidenceId : null);
@@ -60,7 +85,7 @@ export async function expenseEvidenceRead(db, storage, context, requestId, evide
 
 export async function verifiedEvidenceExists(db, storage, expenseId) {
   const rows = (await db.prepare(`SELECT object_key FROM finance_expense_evidence
-    WHERE expense_id=? AND object_purged_at IS NULL ORDER BY created_at DESC`).bind(expenseId).all()).results;
+    WHERE expense_id=? AND object_purged_at IS NULL AND superseded_at IS NULL ORDER BY created_at DESC`).bind(expenseId).all()).results;
   if (!rows.length) return false;
   if (!storage?.head && !storage?.get) throw new AppError(503, 'evidence_storage_unavailable');
   for (const row of rows) if (await (storage.head ? storage.head(row.object_key) : storage.get(row.object_key))) return true;

@@ -324,27 +324,44 @@ async function allocationRows(db, context, movementId, setVersion, list, now) {
 /** Replace the current allocation set of a movement (an empty list clears it). History is kept. */
 export async function allocateMovement(db, context, requestId, id, input, now = Date.now()) {
   await allow(db, context, requestId, 'finance.movement.classify', 'finance_movement', validUuid(id) ? id : null);
-  if (!keysOnly(input, ['expectedVersion', 'allocations']) || !version(input.expectedVersion)) fail('invalid_allocation');
+  if (!keysOnly(input, ['expectedVersion', 'allocations', 'reason']) || !version(input.expectedVersion)) fail('invalid_allocation');
   validAllocations(input.allocations);
   const movement = await db.prepare(`SELECT m.state,m.amount_cents,m.allocation_version,p.kind AS position_kind FROM finance_movement m
     JOIN finance_position p ON p.id=m.position_id WHERE m.id=?`).bind(requireUuid(id)).first();
   if (!movement) throw notFound();
   if (movement.state !== 'ACTIVE') throw new AppError(409, 'movement_voided');
+  if (movement.allocation_version !== input.expectedVersion) throw new AppError(409, 'stale_movement');
+  const prior = movement.allocation_version > 0 ? (await db.prepare(`SELECT kind,amount_cents AS amountCents,
+    budget_line_id AS budgetLineId,expense_id AS expenseId,paired_movement_id AS pairedMovementId,
+    income_id AS incomeId,reimbursement_id AS reimbursementId,activity_id AS activityId,section_id AS sectionId
+    FROM finance_allocation_current WHERE movement_id=?`).bind(id).all()).results : [];
+  const identity = item => JSON.stringify([item.kind,item.amountCents,item.incomeId ? null : item.budgetLineId,
+    item.expenseId,item.pairedMovementId,item.incomeId,item.reimbursementId,item.activityId,item.sectionId]);
+  const remaining = input.allocations.map(identity);
+  const changesPrior = prior.some(item => { const index = remaining.indexOf(identity(item));
+    if (index < 0) return true;
+    remaining.splice(index, 1); return false;
+  });
   const reimbursements = input.allocations.filter(item => item.kind === 'REIMBURSEMENT_SETTLEMENT');
   const priorReimbursements = movement.allocation_version > 0 ? (await db.prepare(`SELECT DISTINCT reimbursement_id AS id
     FROM finance_allocation_current WHERE movement_id=? AND kind='REIMBURSEMENT_SETTLEMENT'`).bind(id).all()).results.map(row => row.id) : [];
   if (reimbursements.length || priorReimbursements.length)
     await allow(db, context, requestId, 'finance.expense.read', 'finance_reimbursement');
+  if (changesPrior && (typeof input.reason !== 'string' || input.reason.trim().length < 3 || input.reason.trim().length > 240))
+    throw new AppError(400, 'allocation_correction_reason_required');
+  if (input.reason !== undefined && (typeof input.reason !== 'string' || input.reason.trim().length < 3 || input.reason.trim().length > 240))
+    fail('invalid_allocation');
   if (reimbursements.length) {
     if (movement.amount_cents >= 0 || movement.position_kind !== 'BANK') throw new AppError(409, 'invalid_reimbursement_settlement');
     const ids = [...new Set(reimbursements.map(item => item.reimbursementId))];
     const rows = (await db.prepare(`SELECT r.id,r.recipient_id,r.amount_cents,r.status,e.status AS expense_status,e.payment_method,
-      e.advanced_by_id,EXISTS(SELECT 1 FROM finance_expense_evidence d WHERE d.expense_id=e.id AND d.object_purged_at IS NULL) AS has_evidence,
+      e.advanced_by_id,r.cancelled_at,EXISTS(SELECT 1 FROM finance_expense_evidence d WHERE d.expense_id=e.id
+        AND d.object_purged_at IS NULL AND d.superseded_at IS NULL) AS has_evidence,
       COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.reimbursement_id=r.id AND a.movement_id!=?),0) AS settled_elsewhere
       FROM finance_reimbursement r JOIN finance_expense e ON e.id=r.expense_id WHERE r.id IN (${ids.map(() => '?').join(',')})`)
       .bind(id, ...ids).all()).results;
     if (rows.length !== ids.length || new Set(rows.map(row => row.recipient_id)).size !== 1 || rows.some(row =>
-      row.status !== 'APPROVED' || row.expense_status !== 'RECOGNISED' || row.payment_method !== 'ADVANCED' ||
+      row.status !== 'APPROVED' || row.cancelled_at != null || row.expense_status !== 'RECOGNISED' || row.payment_method !== 'ADVANCED' ||
       row.advanced_by_id !== row.recipient_id || !row.has_evidence ||
       row.settled_elsewhere + reimbursements.filter(item => item.reimbursementId === row.id)
         .reduce((sum, item) => sum + item.amountCents, 0) > row.amount_cents))
@@ -352,9 +369,12 @@ export async function allocateMovement(db, context, requestId, id, input, now = 
   }
   const next = input.expectedVersion + 1;
   await commit(db, [
+    ...(changesPrior ? [db.prepare(`INSERT INTO finance_allocation_correction(movement_id,set_version,reason,changed_by,changed_at)
+      VALUES(?,?,?,?,?)`).bind(id, next, input.reason.trim(), context.userId, now)] : []),
     db.prepare(`UPDATE finance_movement SET ${versionCas('allocation_version')} WHERE id=?`).bind(input.expectedVersion, id),
     ...await allocationRows(db, context, id, next, input.allocations, now),
     audit(db, context, requestId, input.expectedVersion === 0 ? 'MOVEMENT_CLASSIFIED' : 'MOVEMENT_RECLASSIFIED', 'finance_movement', id, now),
+    ...(changesPrior ? [audit(db, context, requestId, 'FINANCE_ALLOCATION_CORRECTED', 'finance_movement', id, now)] : []),
     ...[...new Set([...priorReimbursements, ...idsForAudit(input.allocations, 'REIMBURSEMENT_SETTLEMENT')])].map(reimbursementId =>
       audit(db, context, requestId, input.expectedVersion === 0 ? 'REIMBURSEMENT_SETTLED' : 'REIMBURSEMENT_SETTLEMENT_REVISED',
         'finance_reimbursement', reimbursementId, now, { metadata: { amountCents: reimbursements.filter(item =>
