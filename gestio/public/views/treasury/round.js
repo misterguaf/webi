@@ -57,6 +57,11 @@ export async function renderRound(root, ctx) {
         h('h3', { text: 'Tancament oficial' }),
         line('Resultat oficial', official.resultCents), line('Resultat final oficial', official.resultAfterReservesCents),
         line('Reserva general final', official.reservesFinalCents)) : null,
+      detail.postClose?.adjustments.length ? h('div', { className: 'treasury-block-plain' },
+        h('h3', { text: 'Després del tancament' }),
+        line('Ajustos posteriors', detail.postClose.resultDeltaCents),
+        line('Resultat actual ajustat', detail.postClose.adjustedResultAfterReservesCents),
+        ...detail.postClose.adjustments.map(item => line(item.kind === 'LATE_INCOME' ? 'Ingrés tardà' : 'Correcció', item.amountCents))) : null,
       caps.manageRounds && ['OPEN', 'CLOSING'].includes(round.status) ? reserveForm : null,
       actions.length ? h('div', { className: 'form-actions' }, actions) : null,
       message));

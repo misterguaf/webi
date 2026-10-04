@@ -506,6 +506,42 @@ test('G.3: one bank receipt splits across a verified fee and activity without do
   } finally { s.f.close(); }
 });
 
+test('G.4: late fee receipt stays in its closed round without changing the official close', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const fee = s.f.sql.prepare(`SELECT p.id,sum(a.amount_cents) AS cents FROM annual_fee_payment p
+      JOIN annual_fee_allocation a ON a.payment_id=p.id WHERE p.review_status='VERIFIED'
+      GROUP BY p.id HAVING cents>=2 ORDER BY p.id LIMIT 1`).get();
+    assert.ok(fee);
+    const firstCents = Math.floor(fee.cents / 2), lateCents = fee.cents - firstCents;
+    const first = await s.manual(s.bank, firstCents);
+    assert.equal((await s.call(104, `/api/finance/movements/${first}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FEE_PAYMENT', feePaymentId: fee.id, amountCents: firstCents }]
+    })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/closing`, 'POST', { expectedVersion: 2 })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/close`, 'POST', { expectedVersion: 3 })).status, 200);
+    const official = (await s.call(104, `/api/finance/rounds/${s.round}`)).data.officialClose;
+    assert.equal(official.incomeCents, firstCents);
+    const late = await s.manual(s.bank, lateCents, '2027-11-02');
+    assert.equal((await s.call(104, `/api/finance/movements/${late}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FEE_PAYMENT', feePaymentId: fee.id, amountCents: lateCents }]
+    })).status, 200);
+    let detail = (await s.call(104, `/api/finance/rounds/${s.round}`)).data;
+    assert.equal(detail.officialClose.incomeCents, firstCents);
+    assert.equal(detail.economics.incomeCents, fee.cents);
+    assert.equal(detail.postClose.resultDeltaCents, lateCents);
+    assert.deepEqual(detail.postClose.adjustments.map(row => row.amountCents), [lateCents]);
+    assert.equal((await s.call(104, `/api/finance/movements/${late}/allocations`, 'POST', {
+      expectedVersion: 1, allocations: [], reason: 'Transferència assignada erròniament'
+    })).status, 200);
+    detail = (await s.call(104, `/api/finance/rounds/${s.round}`)).data;
+    assert.equal(detail.officialClose.incomeCents, firstCents);
+    assert.equal(detail.postClose.resultDeltaCents, 0);
+    assert.deepEqual(detail.postClose.adjustments.map(row => row.amountCents).sort((a, b) => a - b), [-lateCents, lateCents]);
+  } finally { s.f.close(); }
+});
+
 test('financial delegation reaches the new capabilities explicitly and group-wide only', async () => {
   const s = await setup();
   try {

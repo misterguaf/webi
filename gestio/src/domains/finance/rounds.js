@@ -33,6 +33,8 @@ export async function roundDetail(db, context, requestId, id) {
     reserves_final_cents AS reservesFinalCents,reserve_contribution_cents AS reserveContributionCents,
     reserve_application_cents AS reserveApplicationCents,result_after_reserves_cents AS resultAfterReservesCents,
     closed_at AS closedAt FROM finance_round_close WHERE round_id=?`).bind(id).first();
+  const adjustments = close ? (await db.prepare(`SELECT id,kind,amount_cents AS amountCents,created_at AS createdAt
+    FROM finance_post_close_adjustment WHERE closed_round_id=? ORDER BY created_at,id`).bind(id).all()).results : [];
   const reserveOperations = (await db.prepare(`SELECT id,kind,amount_cents AS amountCents,created_at AS createdAt
     FROM finance_reserve_operation WHERE round_id=? ORDER BY created_at,id`).bind(id).all()).results;
   const contributionCents = reserveOperations.filter(row => row.kind === 'CONTRIBUTION')
@@ -45,7 +47,10 @@ export async function roundDetail(db, context, requestId, id) {
       resultBeforeReservesCents, reserveContributionCents: contributionCents,
       reserveApplicationCents: applicationCents,
       resultAfterReservesCents: resultBeforeReservesCents + applicationCents - contributionCents },
-    reserveOperations, budget: budget ?? null, officialClose: close ?? null };
+    reserveOperations, budget: budget ?? null, officialClose: close ?? null,
+    postClose: close ? { adjustments, resultDeltaCents: resultBeforeReservesCents - close.resultCents,
+      adjustedResultCents: resultBeforeReservesCents,
+      adjustedResultAfterReservesCents: resultBeforeReservesCents + applicationCents - contributionCents } : null };
 }
 function validRound(input, creating) {
   if (!keysOnly(input, creating ? ['code', 'periodStart', 'periodEnd', 'annualFeeRoundId']
