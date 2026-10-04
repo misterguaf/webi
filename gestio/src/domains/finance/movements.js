@@ -161,13 +161,16 @@ const STATUS_FILTERS = {
   voided: 'm.state=\'VOID_DUPLICATE\''
 };
 /** Current allocations of several movements, summarised for a list row. */
-async function classificationSummaries(db, rows, reimbursementDetails) {
+async function classificationSummaries(db, context, rows, reimbursementDetails) {
   const active = rows.filter(row => row.allocationVersion > 0 && row.state === 'ACTIVE');
   if (!active.length) return new Map();
   const allocations = (await db.prepare(`SELECT a.movement_id AS movementId,a.kind,a.amount_cents AS amountCents,a.budget_line_id AS budgetLineId,
-    a.expense_id AS expenseId,a.paired_movement_id AS pairedMovementId,a.income_id AS incomeId,a.reimbursement_id AS reimbursementId FROM finance_allocation_current a
+    a.expense_id AS expenseId,a.paired_movement_id AS pairedMovementId,a.income_id AS incomeId,
+    a.reimbursement_id AS reimbursementId,a.fee_payment_id AS feePaymentId,
+    a.activity_allocation_id AS activityAllocationId FROM finance_allocation_current a
     WHERE a.movement_id IN (${active.map(() => '?').join(',')}) ORDER BY a.created_at,a.id`).bind(...active.map(row => row.id)).all()).results;
-  const described = await describeAllocations(db, allocations, { reimbursementDetails });
+  const receiptDetails = (await authorize(db, context, { permission: 'finance.treasury.read' })).allow;
+  const described = await describeAllocations(db, allocations, { reimbursementDetails, receiptDetails });
   const byMovement = new Map();
   allocations.forEach((row, index) => {
     if (!byMovement.has(row.movementId)) byMovement.set(row.movementId, []);
@@ -200,12 +203,14 @@ export async function listMovements(db, context, requestId, params) {
     ORDER BY m.operation_date DESC,m.id DESC LIMIT ?`).bind(...binds, page.limit + 1).all()).results;
   const result = pageResult(rows, page.limit, row => [row.operationDate, row.id]);
   const reimbursementDetails = (await authorize(db, context, { permission: 'finance.expense.read' })).allow;
-  const summaries = await classificationSummaries(db, result.items, reimbursementDetails);
+  const summaries = await classificationSummaries(db, context, result.items, reimbursementDetails);
   return { movements: result.items.map(row => ({ ...row, status: movementStatus(row), classification: summaries.get(row.id) ?? [] })),
     nextCursor: result.nextCursor };
 }
 const ALLOCATION_FIELDS = `id,kind,amount_cents AS amountCents,round_id AS roundId,budget_line_id AS budgetLineId,expense_id AS expenseId,
-  paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,activity_id AS activityId,section_id AS sectionId,set_version AS setVersion,created_at AS createdAt`;
+  paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,
+  fee_payment_id AS feePaymentId,activity_allocation_id AS activityAllocationId,
+  activity_id AS activityId,section_id AS sectionId,set_version AS setVersion,created_at AS createdAt`;
 const brief = row => ({ id: row.id, operationDate: row.operationDate, amountCents: row.amountCents, label: row.label, positionName: row.positionName,
   positionKind: row.positionKind, status: movementStatus(row), allocationVersion: row.allocationVersion, reviewVersion: row.reviewVersion });
 export async function movementDetail(db, context, requestId, id) {
@@ -215,7 +220,8 @@ export async function movementDetail(db, context, requestId, id) {
   const sets = (await db.prepare(`SELECT ${ALLOCATION_FIELDS} FROM finance_allocation WHERE movement_id=? ORDER BY set_version,created_at,id`)
     .bind(id).all()).results;
   const reimbursementDetails = (await authorize(db, context, { permission: 'finance.expense.read' })).allow;
-  const described = await describeAllocations(db, sets, { reimbursementDetails });
+  const receiptDetails = (await authorize(db, context, { permission: 'finance.treasury.read' })).allow;
+  const described = await describeAllocations(db, sets, { reimbursementDetails, receiptDetails });
   const current = described.filter((_, index) => sets[index].setVersion === movement.allocationVersion);
   // Classification history: every earlier set, newest first (kept, never rewritten).
   const history = [];
@@ -238,6 +244,42 @@ export async function movementDetail(db, context, requestId, id) {
   const hasDescription = !!await db.prepare('SELECT 1 FROM finance_movement_description WHERE movement_id=?').bind(id).first();
   return { movement: { ...movement, status: movementStatus(movement), origin: movement.origin, importedAt: batch?.importedAt ?? null, hasDescription },
     allocations: current, history, duplicateOf: duplicateOf ? brief(duplicateOf) : null, duplicateCandidates, transferCandidates };
+}
+
+/** Suggestions are only candidates. Treasury must select the target and amount explicitly. */
+export async function receiptCandidates(db, context, requestId, id) {
+  await allow(db, context, requestId, 'finance.treasury.read', 'finance_movement', validUuid(id) ? id : null);
+  await allow(db, context, requestId, 'finance.movement.classify', 'finance_movement', validUuid(id) ? id : null);
+  const movement = await db.prepare(`SELECT m.amount_cents,m.operation_date,p.kind,b.unallocated_cents
+    FROM finance_movement m JOIN finance_position p ON p.id=m.position_id
+    JOIN finance_movement_allocation_balance b ON b.movement_id=m.id
+    WHERE m.id=? AND m.state='ACTIVE'`).bind(requireUuid(id)).first();
+  if (!movement) throw notFound();
+  if (movement.kind !== 'BANK' || movement.amount_cents <= 0) return { fees: [], activities: [] };
+  const fees = (await db.prepare(`SELECT p.id,r.code AS roundCode,
+    (SELECT count(*) FROM annual_fee_allocation a WHERE a.payment_id=p.id) AS obligations,
+    (SELECT COALESCE(sum(a.amount_cents),0) FROM annual_fee_allocation a WHERE a.payment_id=p.id)
+      -COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a
+        WHERE a.kind='FEE_PAYMENT' AND a.fee_payment_id=p.id),0) AS outstandingCents,
+    p.reviewed_at AS reviewedAt
+    FROM annual_fee_payment p JOIN annual_fee_round r ON r.id=p.round_id
+    JOIN finance_round fr ON fr.annual_fee_round_id=p.round_id
+    WHERE p.review_status='VERIFIED' AND p.verified_amount_cents IS NOT NULL
+      AND NOT EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=p.id AND i.status='OPEN')
+    ORDER BY abs(outstandingCents-?),abs(julianday(date(p.reviewed_at/1000,'unixepoch'))-julianday(?)),p.id LIMIT 30`)
+    .bind(movement.unallocated_cents,movement.operation_date).all()).results.filter(row => row.outstandingCents > 0);
+  const activities = (await db.prepare(`SELECT pa.id,a.name AS activityName,
+    COALESCE(p.display_name,'Inscripció pendent de vincular') AS participantName,
+    pa.amount_cents-COALESCE((SELECT sum(x.amount_cents) FROM finance_allocation_current x
+      WHERE x.kind='ACTIVITY_PAYMENT' AND x.activity_allocation_id=pa.id),0) AS outstandingCents,
+    pa.created_at AS verifiedAt
+    FROM activity_payment_allocation pa JOIN activity_registration ar ON ar.id=pa.registration_id
+    JOIN activity a ON a.id=ar.activity_id LEFT JOIN participant p ON p.id=ar.participant_id
+    LEFT JOIN payment_evidence e ON e.id=pa.evidence_id
+    WHERE ar.finance_round_id IS NOT NULL AND (pa.evidence_id IS NULL OR e.review_status='VERIFIED')
+    ORDER BY abs(outstandingCents-?),abs(julianday(date(pa.created_at/1000,'unixepoch'))-julianday(?)),pa.id LIMIT 30`)
+    .bind(movement.unallocated_cents,movement.operation_date).all()).results.filter(row => row.outstandingCents > 0);
+  return { fees, activities, suggestionOnly: true };
 }
 // The protected original description: explicit permission, audited without the value (LEGAL DECISION REQUIRED).
 export async function revealDescription(db, context, requestId, id) {
@@ -280,21 +322,26 @@ export async function clearReviewFlag(db, context, requestId, id, input, now = D
 /** Existing set rows → payload that keeps them (an income link carries its own line). */
 const keptAllocations = rows => rows.map(row => Object.fromEntries(Object.entries(row)
   .filter(([key, value]) => value !== null && !(key === 'budgetLineId' && row.incomeId))));
-const ENABLED = new Set(['INCOME', 'EXPENSE_SETTLEMENT', 'EXPENSE_REFUND', 'INTERNAL_TRANSFER', 'REIMBURSEMENT_SETTLEMENT']);
+const ENABLED = new Set(['INCOME', 'EXPENSE_SETTLEMENT', 'EXPENSE_REFUND', 'INTERNAL_TRANSFER',
+  'REIMBURSEMENT_SETTLEMENT', 'FEE_PAYMENT', 'ACTIVITY_PAYMENT']);
 function validAllocations(list) {
   if (!Array.isArray(list) || list.length > 20) fail('invalid_allocation');
   for (const item of list) {
-    if (!keysOnly(item, ['kind', 'amountCents', 'budgetLineId', 'expenseId', 'pairedMovementId', 'incomeId', 'reimbursementId', 'activityId', 'sectionId']) ||
+    if (!keysOnly(item, ['kind', 'amountCents', 'budgetLineId', 'expenseId', 'pairedMovementId', 'incomeId',
+      'reimbursementId', 'feePaymentId', 'activityAllocationId', 'activityId', 'sectionId']) ||
         typeof item.kind !== 'string' || !cents(item.amountCents) || !optionalId(item.budgetLineId) || !optionalId(item.expenseId) ||
         !optionalId(item.pairedMovementId) || !optionalId(item.incomeId) || !optionalId(item.reimbursementId) ||
+        !optionalId(item.feePaymentId) || !optionalId(item.activityAllocationId) ||
         !optionalId(item.activityId) || !optionalId(item.sectionId)) fail('invalid_allocation');
     // An income allocation names a budget line, or an income (which brings its own line).
     if (item.incomeId != null && (item.kind !== 'INCOME' || item.budgetLineId != null)) fail('invalid_allocation');
     if (!ENABLED.has(item.kind)) throw new AppError(409, 'allocation_kind_not_enabled');
     const targets = { INCOME: 'budgetLineId', EXPENSE_SETTLEMENT: 'expenseId', EXPENSE_REFUND: 'expenseId',
-      INTERNAL_TRANSFER: 'pairedMovementId', REIMBURSEMENT_SETTLEMENT: 'reimbursementId' };
+      INTERNAL_TRANSFER: 'pairedMovementId', REIMBURSEMENT_SETTLEMENT: 'reimbursementId',
+      FEE_PAYMENT: 'feePaymentId', ACTIVITY_PAYMENT: 'activityAllocationId' };
     const target = item.incomeId != null ? { ...item, budgetLineId: 'income' } : item;
-    if (['budgetLineId', 'expenseId', 'pairedMovementId', 'reimbursementId'].some(key => (key === targets[item.kind]) !== (target[key] != null))) fail('invalid_allocation');
+    if (['budgetLineId', 'expenseId', 'pairedMovementId', 'reimbursementId', 'feePaymentId', 'activityAllocationId']
+      .some(key => (key === targets[item.kind]) !== (target[key] != null))) fail('invalid_allocation');
     if (item.kind !== 'INCOME' && (item.activityId != null || item.sectionId != null)) fail('invalid_allocation');
   }
 }
@@ -314,9 +361,11 @@ async function allocationRows(db, context, movementId, setVersion, list, now) {
       roundId = line.round_id;
     }
     statements.push(db.prepare(`INSERT INTO finance_allocation(id,movement_id,set_version,kind,amount_cents,round_id,budget_line_id,expense_id,
-      paired_movement_id,income_id,reimbursement_id,activity_id,section_id,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+      paired_movement_id,income_id,reimbursement_id,fee_payment_id,activity_allocation_id,
+      activity_id,section_id,created_by,created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
       .bind(uuid(), movementId, setVersion, item.kind, item.amountCents, roundId, budgetLineId, item.expenseId ?? null,
         item.pairedMovementId ?? null, item.incomeId ?? null, item.reimbursementId ?? null,
+        item.feePaymentId ?? null, item.activityAllocationId ?? null,
         item.activityId ?? null, item.sectionId ?? null, context.userId, now));
   }
   return statements;
@@ -326,6 +375,10 @@ export async function allocateMovement(db, context, requestId, id, input, now = 
   await allow(db, context, requestId, 'finance.movement.classify', 'finance_movement', validUuid(id) ? id : null);
   if (!keysOnly(input, ['expectedVersion', 'allocations', 'reason']) || !version(input.expectedVersion)) fail('invalid_allocation');
   validAllocations(input.allocations);
+  if (input.allocations.some(item => item.kind === 'FEE_PAYMENT'))
+    await allow(db, context, requestId, 'finance.treasury.read', 'finance_movement', id);
+  if (input.allocations.some(item => item.kind === 'ACTIVITY_PAYMENT'))
+    await allow(db, context, requestId, 'finance.treasury.read', 'finance_movement', id);
   const movement = await db.prepare(`SELECT m.state,m.amount_cents,m.allocation_version,p.kind AS position_kind FROM finance_movement m
     JOIN finance_position p ON p.id=m.position_id WHERE m.id=?`).bind(requireUuid(id)).first();
   if (!movement) throw notFound();
@@ -333,10 +386,14 @@ export async function allocateMovement(db, context, requestId, id, input, now = 
   if (movement.allocation_version !== input.expectedVersion) throw new AppError(409, 'stale_movement');
   const prior = movement.allocation_version > 0 ? (await db.prepare(`SELECT kind,amount_cents AS amountCents,
     budget_line_id AS budgetLineId,expense_id AS expenseId,paired_movement_id AS pairedMovementId,
-    income_id AS incomeId,reimbursement_id AS reimbursementId,activity_id AS activityId,section_id AS sectionId
+    income_id AS incomeId,reimbursement_id AS reimbursementId,fee_payment_id AS feePaymentId,
+    activity_allocation_id AS activityAllocationId,activity_id AS activityId,section_id AS sectionId
     FROM finance_allocation_current WHERE movement_id=?`).bind(id).all()).results : [];
+  if (prior.some(item => ['FEE_PAYMENT', 'ACTIVITY_PAYMENT'].includes(item.kind)))
+    await allow(db, context, requestId, 'finance.treasury.read', 'finance_movement', id);
   const identity = item => JSON.stringify([item.kind,item.amountCents,item.incomeId ? null : item.budgetLineId,
-    item.expenseId,item.pairedMovementId,item.incomeId,item.reimbursementId,item.activityId,item.sectionId]);
+    item.expenseId,item.pairedMovementId,item.incomeId,item.reimbursementId,item.feePaymentId,
+    item.activityAllocationId,item.activityId,item.sectionId]);
   const remaining = input.allocations.map(identity);
   const changesPrior = prior.some(item => { const index = remaining.indexOf(identity(item));
     if (index < 0) return true;
@@ -380,7 +437,11 @@ export async function allocateMovement(db, context, requestId, id, input, now = 
         'finance_reimbursement', reimbursementId, now, { metadata: { amountCents: reimbursements.filter(item =>
           item.reimbursementId === reimbursementId).reduce((sum, item) => sum + item.amountCents, 0) } })),
     ...[...new Set(input.allocations.map(item => item.incomeId).filter(Boolean))]
-      .map(incomeId => audit(db, context, requestId, 'INCOME_RECONCILED', 'finance_income', incomeId, now))
+      .map(incomeId => audit(db, context, requestId, 'INCOME_RECONCILED', 'finance_income', incomeId, now)),
+    ...[...new Set([...prior, ...input.allocations].map(item => item.feePaymentId).filter(Boolean))]
+      .map(paymentId => audit(db, context, requestId, 'FEE_RECEIPT_RECONCILED', 'annual_fee_payment', paymentId, now)),
+    ...[...new Set([...prior, ...input.allocations].map(item => item.activityAllocationId).filter(Boolean))]
+      .map(allocationId => audit(db, context, requestId, 'ACTIVITY_RECEIPT_RECONCILED', 'activity_payment_allocation', allocationId, now))
   ], 'stale_movement');
   return { id, allocationVersion: next };
 }
@@ -429,7 +490,9 @@ export async function expenseFromMovement(db, storage, context, requestId, id, i
   if (movement.amount_cents >= 0) throw new AppError(409, 'invalid_allocation_direction');
   const total = input.lines.reduce((sum, line) => sum + line.amountCents, 0);
   const existing = (await db.prepare(`SELECT kind,amount_cents AS amountCents,budget_line_id AS budgetLineId,expense_id AS expenseId,
-    paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,activity_id AS activityId,section_id AS sectionId FROM finance_allocation WHERE movement_id=? AND set_version=?
+    paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,
+    fee_payment_id AS feePaymentId,activity_allocation_id AS activityAllocationId,
+    activity_id AS activityId,section_id AS sectionId FROM finance_allocation WHERE movement_id=? AND set_version=?
     ORDER BY created_at,id`).bind(id, movement.allocation_version).all()).results;
   if (movement.allocation_version !== input.expectedVersion) throw new AppError(409, 'stale_movement');
   const expenseId = uuid(), next = input.expectedVersion + 1;
@@ -468,7 +531,9 @@ export async function incomeFromMovement(db, context, requestId, id, input, now 
   if (movement.amount_cents <= 0) throw new AppError(409, 'invalid_allocation_direction');
   if (movement.allocation_version !== input.expectedVersion) throw new AppError(409, 'stale_movement');
   const existing = (await db.prepare(`SELECT kind,amount_cents AS amountCents,budget_line_id AS budgetLineId,expense_id AS expenseId,
-    paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,activity_id AS activityId,section_id AS sectionId FROM finance_allocation
+    paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,
+    fee_payment_id AS feePaymentId,activity_allocation_id AS activityAllocationId,
+    activity_id AS activityId,section_id AS sectionId FROM finance_allocation
     WHERE movement_id=? AND set_version=? ORDER BY created_at,id`).bind(id, movement.allocation_version).all()).results;
   const incomeId = uuid(), next = input.expectedVersion + 1;
   await commit(db, [

@@ -219,7 +219,8 @@ test('allocations: typed destinations, remaining amount, no over-allocation even
     assert.equal((await allocate(income, 0, [{ kind: 'INCOME', amountCents: 100, budgetLineId: quotes }])).data.error, 'stale_movement');
     assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: kitchen }], 'Corregir classificació')).data.error, 'invalid_income_allocation',
       'income needs an income line');
-    assert.equal((await allocate(income, 1, [{ kind: 'FEE_PAYMENT', amountCents: 100 }])).data.error, 'allocation_kind_not_enabled');
+    assert.equal((await allocate(income, 1, [{ kind: 'FAMILY_OVERPAYMENT', amountCents: 100 }])).data.error, 'allocation_kind_not_enabled');
+    assert.equal((await allocate(income, 1, [{ kind: 'FEE_PAYMENT', amountCents: 100 }])).data.error, 'invalid_allocation');
     assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: quotes, expenseId: id(1) }])).status, 400);
     // Two concurrent reclassifications with the same expected version: exactly one wins.
     const results = await Promise.all([
@@ -457,6 +458,51 @@ test('G.4: current budget warns about a real overrun and supplier refund reduces
       allocations: [{ kind: 'EXPENSE_REFUND', amountCents: 4000, expenseId }] })).status, 200);
     assert.deepEqual([(await budgetLine()).actualCents, (await budgetLine()).overrunCents], [50000, 0]);
     assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.expenseNetCents, 50000);
+  } finally { s.f.close(); }
+});
+
+test('G.3: one bank receipt splits across a verified fee and activity without double counting', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    s.f.sql.prepare(`UPDATE activity_registration SET finance_round_id=? WHERE finance_round_id IS NULL
+      AND expected_amount_cents>0 AND activity_id IN (SELECT id FROM activity
+        WHERE date(starts_at/1000,'unixepoch') BETWEEN '2026-10-01' AND '2027-09-30')`).run(s.round);
+    const fee = s.f.sql.prepare(`SELECT p.id,sum(a.amount_cents) AS cents FROM annual_fee_payment p
+      JOIN annual_fee_allocation a ON a.payment_id=p.id WHERE p.review_status='VERIFIED'
+      GROUP BY p.id ORDER BY p.id LIMIT 1`).get();
+    const activity = s.f.sql.prepare(`SELECT pa.id,pa.amount_cents AS cents FROM activity_payment_allocation pa
+      JOIN activity_registration ar ON ar.id=pa.registration_id
+      LEFT JOIN payment_evidence e ON e.id=pa.evidence_id
+      WHERE ar.finance_round_id=? AND (pa.evidence_id IS NULL OR e.review_status='VERIFIED')
+      ORDER BY pa.id LIMIT 1`).get(s.round);
+    assert.ok(fee?.cents > 0 && activity?.cents > 0);
+    const movement = await s.manual(s.bank, fee.cents + activity.cents);
+    const candidates = await s.call(104, `/api/finance/movements/${movement}/receipt-candidates`);
+    assert.equal(candidates.status, 200, JSON.stringify(candidates.data));
+    assert.equal(candidates.data.suggestionOnly, true);
+    assert.ok(candidates.data.fees.some(row => row.id === fee.id));
+    assert.ok(candidates.data.activities.some(row => row.id === activity.id));
+    assert.equal((await s.call(105, `/api/finance/movements/${movement}/receipt-candidates`)).status, 403);
+    assert.equal((await s.call(104, `/api/finance/movements/${movement}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [
+        { kind: 'FEE_PAYMENT', feePaymentId: fee.id, amountCents: fee.cents },
+        { kind: 'ACTIVITY_PAYMENT', activityAllocationId: activity.id, amountCents: activity.cents }
+      ] })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents,
+      fee.cents + activity.cents);
+    assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM finance_income').get().n, 0);
+    const duplicate = await s.manual(s.bank, 100);
+    assert.equal((await s.call(104, `/api/finance/movements/${duplicate}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FEE_PAYMENT', feePaymentId: fee.id, amountCents: 100 }]
+    })).data.error, 'invalid_fee_receipt');
+    assert.equal((await s.call(104, `/api/finance/movements/${duplicate}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'ACTIVITY_PAYMENT', activityAllocationId: activity.id, amountCents: 100 }]
+    })).data.error, 'invalid_activity_receipt');
+    assert.throws(() => s.f.sql.prepare(`UPDATE annual_fee_payment SET review_status='ISSUE' WHERE id=?`).run(fee.id),
+      /reconciled_fee_payment_locked/);
+    assert.throws(() => s.f.sql.prepare(`DELETE FROM annual_fee_allocation WHERE payment_id=?`).run(fee.id),
+      /reconciled_fee_payment_locked/);
   } finally { s.f.close(); }
 });
 

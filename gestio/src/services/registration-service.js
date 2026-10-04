@@ -111,6 +111,9 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
   if (options.length && !transport) throw new AppError(400,'invalid_registration');
   const amount=activity.price_cents+(transport?.price_adjustment_cents??0);
   if (amount<0 || amount>1000000) throw new AppError(400,'invalid_registration');
+  const activityDay=new Date(activity.starts_at).toISOString().slice(0,10);
+  const managedRound=amount>0?await db.prepare(`SELECT id FROM finance_round WHERE period_start<=? AND period_end>=? LIMIT 1`)
+    .bind(activityDay,activityDay).first():null;
   if (amount>0 && !input.evidence) throw new AppError(400,'evidence_required');
   if (amount===0 && input.evidence) throw new AppError(400,'evidence_not_required');
   const evidence=amount>0?await validateSyntheticEvidence(input.evidence):null;
@@ -150,12 +153,12 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
     await db.batch([
       db.prepare(`INSERT INTO activity_registration(id,activity_id,participant_id,submitted_name,match_key,submitted_section_id,
         registration_section_id,receipt_email,submitted_by_name,contact_phone,submitted_birth_date,
-        transport_code,expected_amount_cents,match_status,status,consent_version,
+        transport_code,expected_amount_cents,finance_round_id,match_status,status,consent_version,
         participation_terms_version,participation_authorized_at,privacy_notice_version,privacy_notice_acknowledged_at,
         idempotency_key,payload_sha256,created_at,updated_at,review_level,escalation_reason,escalated_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,activity.id,matched.participant?.id??null,input.participantName.trim(),key,
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,activity.id,matched.participant?.id??null,input.participantName.trim(),key,
         sectionId,sectionId,input.receiptEmail.toLowerCase(),input.submittedByName.trim(),input.contactPhone?.trim()||null,
-        matched.status==='CLEAR'?null:input.birthDate,input.transportCode??null,amount,matched.status,status,'DEPRECATED',
+        matched.status==='CLEAR'?null:input.birthDate,input.transportCode??null,amount,managedRound?.id??null,matched.status,status,'DEPRECATED',
         input.participationTermsVersion,now,input.privacyNoticeVersion,now,input.idempotencyKey,payloadHash,now,now,
         escalate?'GLOBAL':'SECTION',escalate?'POSSIBLE_OTHER_SECTION':null,escalate?now:null),
       ...(evidence?[db.prepare(`INSERT INTO payment_evidence(id,registration_id,object_key,sha256,size_bytes,detected_mime,review_status,created_at)

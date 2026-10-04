@@ -62,6 +62,8 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
   if (path === '/api/finance/movements' && method === 'POST') return ok(await movements.createManualMovement(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)$/)) && method === 'GET')
     return ok(await movements.movementDetail(db, context, requestId, match[1]));
+  if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/receipt-candidates$/)) && method === 'GET')
+    return ok(await movements.receiptCandidates(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/description$/)) && method === 'GET')
     return ok(await movements.revealDescription(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/allocations$/)) && method === 'POST')

@@ -274,6 +274,22 @@ export function openClassify(data, ctx, onDone) {
             h('span', { className: 'candidate-meta', text: `${formatDay(income.incomeDate)} · ${income.state === 'PARTIAL' ? 'Conciliat en part' : 'Pendent de conciliar'}${income.counterpartyName ? ` · ${income.counterpartyName}` : ''}` })))),
           amountField);
         state.amount.value = centsInput(Math.min(incomes[0].pendingCents, m.unallocatedCents));
+      } else if (choice === 'FEE_PAYMENT' || choice === 'ACTIVITY_PAYMENT') {
+        const candidates = await ctx.call(`/api/finance/movements/${m.id}/receipt-candidates`);
+        const rows = choice === 'FEE_PAYMENT' ? candidates.fees : candidates.activities;
+        if (!rows.length) { panel.replaceChildren(h('p', { className: 'form-notice',
+          text: 'No hi ha pagaments revisats pendents de conciliar. Comprova Quotes o Activitats abans de continuar.' })); return; }
+        const choices = rows.map((row, index) => h('label', { className: 'candidate' },
+          h('input', { attrs: { type: 'radio', name: 'receipt', value: row.id, checked: index === 0 },
+            dataset: { outstanding: String(row.outstandingCents) },
+            on: { change: () => { state.amount.value = centsInput(Math.min(row.outstandingCents, m.unallocatedCents)); } } }),
+          h('span', { className: 'candidate-name', text: choice === 'FEE_PAYMENT'
+            ? `Quota ${row.roundCode} · ${row.obligations} educand(s)` : `${row.activityName} · ${row.participantName}` }),
+          h('span', { className: 'candidate-meta', text: `Pendent de conciliar ${formatEur(row.outstandingCents)}` })));
+        panel.replaceChildren(h('p', { className: 'form-notice', text: 'Estos són candidats per import i data. Confirma amb el banc i el justificant abans de vincular.' }),
+          h('fieldset', { className: 'form-field candidate-list' }, h('legend', { className: 'field-label',
+            text: choice === 'FEE_PAYMENT' ? 'Quota revisada' : 'Pagament verificat' }), choices), amountWrap());
+        state.amount.value = centsInput(Math.min(rows[0].outstandingCents, m.unallocatedCents));
       } else if (choice === 'INCOME') {
         const lines = (await ctx.call(`/api/finance/rounds/${round.id}/assignable-lines?nature=INCOME`)).lines;
         const picker = budgetLineButton({ lines, emptyText: 'Tria una línia d’ingressos' });
@@ -357,8 +373,13 @@ export function openClassify(data, ctx, onDone) {
           reimbursementId: row.id, amountCents: row.amountCents }))] }) });
     } else {
       const picked = drawer.submit.form.querySelector('input[name="income"]:checked');
-      const limit = choice === 'LINK_INCOME' && picked ? Math.min(m.unallocatedCents, Number(picked.dataset.pending)) : m.unallocatedCents;
-      const result = newAllocation({ kind: choice, amount: state.amount?.value, budgetLineId: state.line?.value, expenseId: state.expense?.value, incomeId: picked?.value }, limit);
+      const receipt = drawer.submit.form.querySelector('input[name="receipt"]:checked');
+      const limit = choice === 'LINK_INCOME' && picked ? Math.min(m.unallocatedCents, Number(picked.dataset.pending))
+        : receipt ? Math.min(m.unallocatedCents, Number(receipt.dataset.outstanding)) : m.unallocatedCents;
+      const result = newAllocation({ kind: choice, amount: state.amount?.value, budgetLineId: state.line?.value,
+        expenseId: state.expense?.value, incomeId: picked?.value,
+        feePaymentId: choice === 'FEE_PAYMENT' ? receipt?.value : null,
+        activityAllocationId: choice === 'ACTIVITY_PAYMENT' ? receipt?.value : null }, limit);
       if (result.error) { drawer.showError(result.error); return false; }
       await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({ expectedVersion: m.allocationVersion,
         allocations: [...allocationPayload(data.allocations), result.allocation] }) });
@@ -389,7 +410,8 @@ function openCorrection(data, ctx, onDone) {
     for (const row of rows) {
       if (!row.keep.checked) continue;
       const result = newAllocation({ kind: row.item.kind, amount: row.amount.value, budgetLineId: row.item.budgetLineId,
-        expenseId: row.item.expenseId, incomeId: row.item.incomeId, reimbursementId: row.item.reimbursementId }, Math.abs(m.amountCents));
+        expenseId: row.item.expenseId, incomeId: row.item.incomeId, reimbursementId: row.item.reimbursementId,
+        feePaymentId: row.item.feePaymentId, activityAllocationId: row.item.activityAllocationId }, Math.abs(m.amountCents));
       if (result.error && row.item.kind !== 'INTERNAL_TRANSFER') { drawer.showError(result.error); return false; }
       kept.push({ ...allocationPayload([row.item])[0], amountCents: row.item.kind === 'INTERNAL_TRANSFER' ? row.item.amountCents : result.allocation.amountCents });
     }

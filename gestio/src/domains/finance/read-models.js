@@ -31,7 +31,7 @@ export async function expenseSummaries(db, ids) {
 }
 
 /** Allocations with what they point to, ready for the screen. */
-export async function describeAllocations(db, rows, { reimbursementDetails = true } = {}) {
+export async function describeAllocations(db, rows, { reimbursementDetails = true, receiptDetails = false } = {}) {
   const lines = await budgetLineLabels(db, rows.map(row => row.budgetLineId));
   const expenses = await expenseSummaries(db, rows.map(row => row.expenseId));
   const incomeIds = [...new Set(rows.map(row => row.incomeId).filter(Boolean))];
@@ -51,6 +51,8 @@ export async function describeAllocations(db, rows, { reimbursementDetails = tru
   return rows.map(row => ({ id: row.id, kind: row.kind, amountCents: row.amountCents, sectionId: row.sectionId ?? null, activityId: row.activityId ?? null,
     budgetLineId: row.budgetLineId ?? null, expenseId: row.expenseId ?? null, pairedMovementId: row.pairedMovementId ?? null,
     incomeId: row.incomeId ?? null, reimbursementId: reimbursementDetails ? row.reimbursementId ?? null : null,
+    feePaymentId: receiptDetails ? row.feePaymentId ?? null : null,
+    activityAllocationId: receiptDetails ? row.activityAllocationId ?? null : null,
     reimbursement: reimbursementDetails && row.reimbursementId ? reimbursements.get(row.reimbursementId) ?? null : null,
     income: row.incomeId ? incomes.get(row.incomeId) ?? null : null,
     budgetLine: row.budgetLineId ? lines.get(row.budgetLineId) ?? null : null,
