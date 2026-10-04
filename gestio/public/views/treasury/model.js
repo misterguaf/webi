@@ -33,7 +33,7 @@ export const today = (now = new Date()) => now.toISOString().slice(0, 10);
 // ---------------------------------------------------------------- labels
 
 export const POSITION_KIND = { BANK: 'Compte bancari', CARD: 'Targeta', CASH: 'Caixa' };
-export const PAYMENT_METHOD = { BANK: 'Banc', CARD: 'Targeta', CASH: 'Efectiu', ADVANCED: 'Avançada per una persona' };
+export const PAYMENT_METHOD = { BANK: 'Compte / targeta de dèbit del grup', CARD: 'Targeta preparada', CASH: 'Caixa preparada', ADVANCED: 'Avançada per un scouter' };
 export const ORIGIN = { IMPORT: 'Importació', MANUAL: 'Registre manual' };
 export const MOVEMENT_STATUS = {
   PENDING: { label: 'Pendent de classificar', tone: 'attention' },
@@ -50,7 +50,7 @@ export const EXPENSE_STATUS = {
 };
 export const SETTLEMENT_STATE = { UNSETTLED: 'Sense pagament vinculat', PARTIAL: 'Pagada en part', SETTLED: 'Pagada' };
 export const ALLOCATION_KIND = { INCOME: 'Ingrés', EXPENSE_SETTLEMENT: 'Pagament de despesa', EXPENSE_REFUND: 'Devolució de despesa',
-  INTERNAL_TRANSFER: 'Traspàs intern' };
+  INTERNAL_TRANSFER: 'Traspàs intern', REIMBURSEMENT_SETTLEMENT: 'Reemborsament a scouter' };
 export const BATCH_STATUS = { IMPORTED: 'Importada', PARTIALLY_FLAGGED: 'Amb possibles duplicats' };
 export const BATCH_FORMAT = { SYNTHETIC_CSV_V1: 'CSV sintètic' };
 export const COUNTERPARTY_KIND = { PERSON: 'Persona', ORGANIZATION: 'Entitat' };
@@ -62,6 +62,7 @@ export function allocationLabel(allocation) {
   if (allocation.kind === 'INCOME') return `Ingrés · ${allocation.income?.concept ?? allocation.budgetLine?.name ?? 'línia de pressupost'}`;
   if (allocation.kind === 'EXPENSE_SETTLEMENT') return `Despesa · ${allocation.expense?.concept ?? 'despesa'}`;
   if (allocation.kind === 'EXPENSE_REFUND') return `Devolució de despesa · ${allocation.expense?.concept ?? 'despesa'}`;
+  if (allocation.kind === 'REIMBURSEMENT_SETTLEMENT') return `Reemborsament · ${allocation.reimbursement?.recipientName ?? 'scouter'} · ${allocation.reimbursement?.concept ?? 'despesa'}`;
   if (allocation.kind === 'INTERNAL_TRANSFER') {
     const pair = allocation.pairedMovement;
     return `Traspàs intern${pair ? ` · ${pair.positionName}` : ''}`;
@@ -107,6 +108,8 @@ export function classificationOptions(movement, caps) {
   ];
   return [
     ...(canManageExpenses(caps) ? [{ id: 'NEW_EXPENSE', label: 'És una despesa', hint: 'Crea la despesa i la reparteix entre línies del pressupost.' }] : []),
+    ...(movement.positionKind === 'BANK' && t(caps).readExpenses ? [{ id: 'REIMBURSEMENT_SETTLEMENT',
+      label: 'Reemborsament a scouter', hint: 'Concilia una transferència bancària amb una o diverses despeses avançades per la mateixa persona.' }] : []),
     { id: 'EXPENSE_SETTLEMENT', label: 'Paga una despesa existent', hint: 'Vincula el moviment a una despesa ja reconeguda.' },
     { id: 'INTERNAL_TRANSFER', label: 'És un traspàs intern', hint: 'Diners que passen d’una posició del grup a una altra.' }
   ];
@@ -145,11 +148,14 @@ export function movementApiQuery(filters) {
 }
 
 const EXPENSE_STATUS_FILTERS = { propostes: 'PROPOSED', reconegudes: 'RECOGNISED', rebutjades: 'REJECTED', anullades: 'VOID' };
+export const EXPENSE_PAYMENT_CHOICES = [{ value: '', label: 'Totes' }, { value: 'grup', label: 'Pagades pel grup' },
+  { value: 'reemborsaments', label: 'Reemborsaments' }, { value: 'pendents', label: 'Pendents de reemborsar' }];
 export const EXPENSE_STATUS_CHOICES = [{ value: '', label: 'Totes' }, { value: 'reconegudes', label: 'Reconegudes' },
   { value: 'propostes', label: 'Propostes' }, { value: 'rebutjades', label: 'Rebutjades' }, { value: 'anullades', label: 'Anul·lades' }];
 export function parseExpenseFilters(query = {}) {
   return {
     estat: EXPENSE_STATUS_FILTERS[query.estat] ? query.estat : '',
+    pagament: EXPENSE_PAYMENT_CHOICES.some(choice => choice.value === query.pagament) ? query.pagament : '',
     des: DATE.test(query.des ?? '') ? query.des : '',
     fins: DATE.test(query.fins ?? '') ? query.fins : '',
     linia: UUID.test(query.linia ?? '') ? query.linia : '',
@@ -160,6 +166,9 @@ export const expenseFiltersToQuery = movementFiltersToQuery;
 export function expenseApiQuery(roundId, filters) {
   const params = new URLSearchParams({ roundId });
   if (filters.estat) params.set('status', EXPENSE_STATUS_FILTERS[filters.estat]);
+  if (filters.pagament === 'grup') params.set('method', 'BANK');
+  if (filters.pagament === 'reemborsaments' || filters.pagament === 'pendents') params.set('method', 'ADVANCED');
+  if (filters.pagament === 'pendents') params.set('outstanding', '1');
   if (filters.des) params.set('from', filters.des);
   if (filters.fins) params.set('to', filters.fins);
   if (filters.linia) params.set('budgetLineId', filters.linia);
@@ -176,7 +185,13 @@ const ERRORS = {
   stale_counterparty: 'Aquesta informació ha canviat. Torna a carregar-la.',
   stale_resource: 'Aquesta informació ha canviat. Torna a carregar-la.',
   forbidden: 'No tens permís per fer aquesta acció.',
-  self_approval: 'No pots aprovar una despesa avançada per tu mateix.',
+  self_approval: 'Per a aprovar un reemborsament propi cal l’autorització específica de Tresoreria.',
+  expense_evidence_required: 'Adjunta un justificant abans de reconéixer la despesa.',
+  invalid_evidence: 'El justificant ha de ser un PDF o una imatge vàlida.',
+  evidence_too_large: 'El justificant supera el límit de 4 MB.',
+  synthetic_evidence_required: 'Este entorn només accepta justificants sintètics de prova.',
+  invalid_reimbursement_settlement: 'No es pot conciliar este reemborsament: revisa la persona, el pendent i el moviment bancari.',
+  reimbursement_expense_locked: 'Esta despesa ja té un reemborsament aprovat i no es pot alterar l’import ni la persona.',
   not_found: 'Aquest element ja no existeix o no hi tens accés.',
   movement_voided: 'Aquest moviment està anul·lat com a duplicat i no es pot classificar.',
   invalid_allocation_direction: 'Aquest tipus de classificació no correspon al sentit del moviment.',
@@ -290,10 +305,11 @@ export function validateExpense(values, { fixedTotalCents = null, roundId, manua
 export function allocationPayload(allocations) {
   return allocations.map(item => Object.fromEntries(Object.entries({ kind: item.kind, amountCents: item.amountCents,
     budgetLineId: item.incomeId ? null : item.budgetLineId, expenseId: item.expenseId, pairedMovementId: item.pairedMovementId,
-    incomeId: item.incomeId, activityId: item.activityId, sectionId: item.sectionId }).filter(([, value]) => value != null)));
+    incomeId: item.incomeId, reimbursementId: item.reimbursementId,
+    activityId: item.activityId, sectionId: item.sectionId }).filter(([, value]) => value != null)));
 }
 /** One new part for a movement, validated against what is still unallocated. */
-export function newAllocation({ kind, amount, budgetLineId, expenseId, incomeId }, unallocatedCents) {
+export function newAllocation({ kind, amount, budgetLineId, expenseId, incomeId, reimbursementId }, unallocatedCents) {
   const cents = parseEuros(amount);
   if (!cents || cents <= 0) return { error: 'Indica un import positiu.' };
   if (cents > unallocatedCents) return { error: 'L’import assignat supera l’import disponible del moviment.' };
@@ -301,6 +317,8 @@ export function newAllocation({ kind, amount, budgetLineId, expenseId, incomeId 
   if (kind === 'INCOME' && incomeId) return { allocation: { kind: 'INCOME', amountCents: cents, incomeId } };
   if (kind === 'INCOME' && !budgetLineId) return { error: 'Tria una línia d’ingressos.' };
   if ((kind === 'EXPENSE_SETTLEMENT' || kind === 'EXPENSE_REFUND') && !expenseId) return { error: 'Tria la despesa.' };
+  if (kind === 'REIMBURSEMENT_SETTLEMENT') return reimbursementId ? { allocation: { kind, amountCents: cents, reimbursementId } }
+    : { error: 'Tria el reemborsament.' };
   return { allocation: { kind, amountCents: cents, ...(kind === 'INCOME' ? { budgetLineId } : { expenseId }) } };
 }
 /** Expenses a movement can settle (same method, still unpaid) or refund (recognised). */

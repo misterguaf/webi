@@ -47,6 +47,12 @@ test('classification offers only the enabled kinds, by direction and permission'
   assert.match(refund.label, /despesa \(proveïdor\)/); assert.match(refund.hint, /No és un ingrés/); assert.doesNotMatch(refund.label + refund.hint, /famíl/i, 'supplier refund, never a family refund');
   assert.equal(model.allocationLabel({ kind: 'EXPENSE_REFUND', expense: { concept: 'Bus' } }), 'Devolució de despesa · Bus');
   assert.deepEqual(model.classificationOptions(out, caps({ classifyMovements: true })).map(o => o.id), ['EXPENSE_SETTLEMENT', 'INTERNAL_TRANSFER'], 'no expense creation without expense.manage');
+  const bankChoices = model.classificationOptions({ ...out, positionKind: 'BANK' }, caps({ ...full.treasury, readExpenses: true })).map(o => o.id);
+  assert.ok(bankChoices.includes('REIMBURSEMENT_SETTLEMENT'), 'an outgoing bank movement offers reimbursement reconciliation');
+  assert.ok(!model.classificationOptions({ ...out, positionKind: 'BANK' }, full).some(o => o.id === 'REIMBURSEMENT_SETTLEMENT'),
+    'classification without expense read cannot expose private liabilities');
+  assert.ok(!model.classificationOptions({ ...out, positionKind: 'CARD' }, caps({ ...full.treasury, readExpenses: true }))
+    .some(o => o.id === 'REIMBURSEMENT_SETTLEMENT'), 'prepared credit card position is not the debit-card reimbursement path');
   assert.deepEqual(model.classificationOptions(out, caps({ readMovements: true })), []);
   assert.deepEqual(model.classificationOptions({ ...out, state: 'VOID_DUPLICATE' }, full), []);
   const offered = [...model.classificationOptions(out, full), ...model.classificationOptions(inn, full)].map(o => o.id).join();
@@ -69,7 +75,7 @@ test('error copy: the agreed human messages; codes never reach the screen', () =
   assert.equal(model.errorCopy({ code: 'stale_expense' }), 'Aquesta informació ha canviat. Torna a carregar-la.');
   assert.equal(model.errorCopy({ status: 403, code: 'forbidden' }), 'No tens permís per fer aquesta acció.');
   assert.equal(model.errorCopy({ status: 403 }), 'No tens permís per fer aquesta acció.');
-  assert.equal(model.errorCopy({ status: 403, code: 'self_approval' }), 'No pots aprovar una despesa avançada per tu mateix.');
+  assert.equal(model.errorCopy({ status: 403, code: 'self_approval' }), 'Per a aprovar un reemborsament propi cal l’autorització específica de Tresoreria.');
   assert.equal(model.errorCopy({ status: 409, code: 'weird_code' }), 'No s’ha pogut completar l’acció. Torna-ho a provar.');
   for (const code of ['invalid_expense_line', 'expense_lines_total_mismatch', 'invalid_allocation_direction', 'allocation_kind_not_enabled',
     'invalid_internal_transfer', 'invalid_expense_allocation', 'movement_voided', 'invalid_duplicate_void', 'invalid_counterparty'])
@@ -126,8 +132,10 @@ test('wiring: each action label reaches its endpoint; reveal is on demand, never
     [form, 'Crea i classifica', '/expense`'], [form, 'Crea la despesa', "'/api/finance/expenses'"], [expenses, 'Reconeix la despesa', '/recognise']];
   for (const [text, label, endpoint] of wired) { assert.ok(text.includes(label), label); assert.ok(text.includes(endpoint), endpoint); }
   assert.ok(source('views/treasury/model.js').includes('És un traspàs intern'));
-  assert.ok(expenses.includes('Sense justificant adjunt'), 'no evidence → explicit text and no upload button');
-  assert.doesNotMatch(expenses + form, /type: 'file'|upload/i);
+  assert.ok(expenses.includes('Sense justificant adjunt'), 'missing receipt is explained before recognition');
+  assert.match(expenses + form, /type: 'file'/);
+  assert.ok(expenses.includes('/api/finance/expense-evidence/'), 'private receipt can be viewed and downloaded');
+  assert.ok(movements.includes('REIMBURSEMENT_SETTLEMENT'), 'bank reimbursement reconciliation is offered');
   assert.doesNotMatch(movements, /localStorage|sessionStorage/, 'the original description is never stored');
   for (const toastText of ['Despesa creada', 'Classificació actualitzada', 'Moviment marcat com a duplicat']) assert.ok((movements + form).includes(toastText), toastText);
   assert.ok(PAGES.includes('tresoreria'));

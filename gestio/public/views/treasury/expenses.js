@@ -1,10 +1,10 @@
 // Tresoreria · Despeses (3.5G.2A, docs/design/screens/TREASURY_EXPENSES.md): list with server-side
 // filters, detail (lines with budget paths, settlements, history), manual creation and recognition.
 import { confirmDialog, h, icon, toast } from '../../ui.js';
-import { openExpenseForm } from './expense-form.js';
+import { openExpenseForm, receiptPayload } from './expense-form.js';
 import { fact, infoRow, markRefocus, restoreFocus, statusBadge } from './movements.js';
 import {
-  ALLOCATION_KIND, COUNTERPARTY_KIND, EXPENSE_STATUS_CHOICES, PAYMENT_METHOD, SETTLEMENT_STATE, budgetPath, budgetTree, canManageExpenses,
+  ALLOCATION_KIND, COUNTERPARTY_KIND, EXPENSE_STATUS_CHOICES, EXPENSE_PAYMENT_CHOICES, PAYMENT_METHOD, SETTLEMENT_STATE, budgetPath, budgetTree, canManageExpenses,
   errorCopy, expenseApiQuery, expenseFiltersToQuery, expenseStatus, formatDay, formatEur, formatShortDay, formatInstant, parseExpenseFilters
 } from './model.js';
 
@@ -25,6 +25,9 @@ export async function renderExpenseList(root, ctx, query) {
       h('div', { className: 'filter-chips', attrs: { role: 'group', 'aria-label': 'Estat' } }, EXPENSE_STATUS_CHOICES.map(choice =>
         h('button', { className: 'filter-chip', dataset: choice.value === filters.estat ? { filter: 'estat' } : {}, text: choice.label, attrs: { type: 'button', 'aria-pressed': String(choice.value === filters.estat) },
           on: { click: () => setFilter('estat', choice.value) } }))), create),
+    h('div', { className: 'filter-chips', attrs: { role: 'group', 'aria-label': 'Qui ha pagat' } }, EXPENSE_PAYMENT_CHOICES.map(choice =>
+      h('button', { className: 'filter-chip', text: choice.label, attrs: { type: 'button', 'aria-pressed': String(choice.value === filters.pagament) },
+        on: { click: () => setFilter('pagament', choice.value) } }))),
     h('div', { className: 'activity-filters' },
       h('label', { className: 'select-field' }, lineSelect), h('label', { className: 'select-field' }, partySelect), date('des', 'Des de'), date('fins', 'Fins a')));
   const listNode = h('div', { className: 'activity-surface tx-surface' }, h('div', { className: 'tab-loading', attrs: { 'aria-busy': 'true' } }, h('span', { className: 'skeleton-line' })));
@@ -45,7 +48,17 @@ export async function renderExpenseList(root, ctx, query) {
         filtered ? h('button', { className: 'btn btn-secondary', text: 'Neteja els filtres', attrs: { type: 'button' }, on: { click: () => ctx.go({ path: ['despeses'] }, { replace: true }) } }) : null));
       return;
     }
+    const owing = new Map();
+    for (const row of expenses) if (row.reimbursementStatus === 'APPROVED' && row.outstandingCents > 0) {
+      const item = owing.get(row.advancedById) ?? { name: row.advancedByName, count: 0, cents: 0 };
+      item.count++; item.cents += row.outstandingCents; owing.set(row.advancedById, item);
+    }
     listNode.replaceChildren(
+      ...(owing.size ? [h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Pendents de reemborsar' }),
+        h('ul', { className: 'allocation-list', attrs: { role: 'list' } }, [...owing.values()].map(item => h('li', { className: 'allocation-item' },
+          h('span', { className: 'allocation-target', text: item.name ?? 'Scouter' }),
+          h('span', { className: 'tx-sub', text: `${item.count} despeses` }),
+          h('strong', { className: 'allocation-amount', text: formatEur(item.cents) })))))] : []),
       h('div', { className: 'tx-head ex-head', attrs: { 'aria-hidden': 'true' } }, ['Data', 'Concepte', 'Línia', 'Import', 'Estat'].map(text => h('span', { text }))),
       h('ul', { className: 'tx-list', attrs: { role: 'list', 'aria-label': 'Despeses' } }, expenses.map(row => expenseRow(row, ctx))));
   } catch (error) {
@@ -56,7 +69,10 @@ export async function renderExpenseList(root, ctx, query) {
 function expenseRow(row, ctx) {
   const status = expenseStatus(row.status);
   const line = row.mainLine ? `${budgetPath(row.mainLine)}${row.lineCount > 1 ? ` i ${row.lineCount - 1} més` : ''}` : 'Sense línies';
-  const settlement = row.status === 'RECOGNISED' ? (row.settledCents >= row.totalCents ? 'Pagada' : row.settledCents > 0 ? `Pagada en part · ${formatEur(row.settledCents)}` : 'Sense pagament vinculat') : null;
+  const settlement = row.reimbursementId ? (row.outstandingCents === 0 ? 'Reemborsada' : row.reimbursedCents > 0
+    ? `Reemborsada en part · pendent ${formatEur(row.outstandingCents)}` : `Pendent de reemborsar · ${formatEur(row.outstandingCents)}`)
+    : row.status === 'RECOGNISED' ? (row.settledCents >= row.totalCents ? 'Pagada' : row.settledCents > 0
+      ? `Pagada en part · ${formatEur(row.settledCents)}` : 'Sense pagament vinculat') : null;
   return h('li', { className: 'tx-row ex-row' },
     h('span', { className: 'tx-date', text: formatShortDay(row.expenseDate) }),
     h('a', { className: 'tx-label', attrs: { href: `#/tresoreria/despeses/${row.id}` }, on: { click: event => { event.preventDefault(); ctx.go({ path: ['despeses', row.id] }); } } },
@@ -76,7 +92,7 @@ export async function renderExpenseDetail(root, ctx, id) {
   const e = data.expense, status = expenseStatus(e.status);
   const reload = () => { void ctx.refreshSummary(); return renderExpenseDetail(root, ctx, id); };
   const actions = [];
-  if (e.status === 'PROPOSED' && canManageExpenses(ctx.caps())) actions.push(h('button', { className: 'btn btn-primary', text: 'Reconeix la despesa', attrs: { type: 'button' }, on: { click: async event => {
+  if (e.status === 'PROPOSED' && data.evidence.some(item => !item.purged) && canManageExpenses(ctx.caps())) actions.push(h('button', { className: 'btn btn-primary', text: 'Reconeix la despesa', attrs: { type: 'button' }, on: { click: async event => {
     const trigger = event.currentTarget;
     if (!await confirmDialog({ title: 'Reconéixer la despesa?', body: `A partir d’ara ${formatEur(e.totalCents)} comptaran com a despesa de la ronda, una sola vegada.`, confirm: 'Reconeix' })) return;
     trigger.setAttribute('aria-busy', 'true');
@@ -92,7 +108,9 @@ export async function renderExpenseDetail(root, ctx, id) {
       actions.length ? h('div', { className: 'detail-actions' }, actions) : null),
     h('div', { className: 'summary-strip' },
       fact('Total', formatEur(e.totalCents)), fact('Data', formatDay(e.expenseDate)), fact('Mitjà', PAYMENT_METHOD[e.paymentMethod] ?? ''),
-      e.status === 'RECOGNISED' ? fact('Pagament', SETTLEMENT_STATE[e.settlementState] ?? '') : fact('Estat', status.label)),
+      e.status === 'RECOGNISED' ? fact(e.paymentMethod === 'ADVANCED' ? 'Reemborsament' : 'Pagament',
+        data.reimbursement ? data.reimbursement.paymentState === 'PAID' ? 'Reemborsat' : data.reimbursement.paymentState === 'PARTIAL'
+          ? 'Reemborsat en part' : 'Pendent de reemborsar' : SETTLEMENT_STATE[e.settlementState] ?? '') : fact('Estat', status.label)),
     h('div', { className: 'activity-surface info-surface' },
       h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Línies del pressupost' }),
         h('ul', { className: 'allocation-list', attrs: { role: 'list' } }, data.lines.map(line => h('li', { className: 'allocation-item' },
@@ -106,8 +124,24 @@ export async function renderExpenseDetail(root, ctx, id) {
             on: { click: event => { event.preventDefault(); ctx.go({ path: ['moviments', item.movementId] }); } } }),
           h('span', { className: 'allocation-amount', text: formatEur(item.amountCents) }))))
           : h('p', { className: 'empty-detail', text: 'Cap moviment vinculat.' })),
-      h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Justificant' }),
-        h('p', { className: 'empty-detail', text: data.evidence.length ? `${data.evidence.length} justificant(s) registrat(s).` : 'Sense justificant adjunt' })),
+      h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Justificants' }),
+        data.evidence.some(item => !item.purged) ? h('ul', { className: 'allocation-list', attrs: { role: 'list' } }, data.evidence.filter(item => !item.purged).map(item =>
+          h('li', { className: 'allocation-item' }, h('span', { className: 'allocation-target', text: `${item.mime === 'application/pdf' ? 'PDF' : 'Imatge'} · ${formatInstant(item.createdAt)}` }),
+            h('a', { className: 'link-button', text: 'Veure', attrs: { href: `/api/finance/expense-evidence/${item.id}?mode=view`, target: '_blank', rel: 'noopener' } }),
+            h('a', { className: 'link-button', text: 'Descarrega', attrs: { href: `/api/finance/expense-evidence/${item.id}?mode=download` } }))))
+          : h('p', { className: 'empty-detail', text: 'Sense justificant adjunt. Cal adjuntar-lo abans de reconéixer la despesa.' }),
+        ['PROPOSED', 'RECOGNISED'].includes(e.status) && canManageExpenses(ctx.caps()) ? h('label', { className: 'field-label' }, 'Afig justificant',
+          h('input', { attrs: { type: 'file', accept: '.pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp' },
+            on: { change: async event => {
+              const file = event.currentTarget.files?.[0]; if (!file) return;
+              try { await ctx.call(`/api/finance/expenses/${e.id}/evidence`, { method: 'POST', body: JSON.stringify(await receiptPayload(file)) });
+                toast('Justificant adjunt'); await reload(); }
+              catch (error) { toast(error instanceof Error && !error.code && !error.status ? error.message : errorCopy(error), { tone: 'danger' }); }
+            } } })) : null),
+      data.reimbursement ? h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Reemborsament' }),
+        h('dl', { className: 'info-list' }, infoRow('Beneficiari', e.advancedByName ?? 'Scouter'),
+          infoRow('Aprovat', formatEur(data.reimbursement.amountCents)), infoRow('Reemborsat', formatEur(data.reimbursement.settledCents)),
+          infoRow('Pendent', formatEur(data.reimbursement.outstandingCents)))) : null,
       h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Historial' }),
         h('dl', { className: 'info-list' },
           infoRow('Creada', formatInstant(e.createdAt)),

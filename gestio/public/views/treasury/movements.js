@@ -8,7 +8,7 @@ import { openIncomeForm } from './income-form.js';
 import {
   ALLOCATION_KIND, BATCH_FORMAT, BATCH_STATUS, DIRECTION_CHOICES, MOVEMENT_STATUS_CHOICES, ORIGIN, POSITION_KIND, allocationLabel, allocationPayload,
   budgetPath, canClassify, canReveal, centsInput, classificationLine, classificationOptions, errorCopy, formatDay, formatEur, formatShortDay, formatInstant,
-  movementApiQuery, movementFiltersToQuery, movementStatus, newAllocation, parseMovementFilters, settleableExpenses
+  movementApiQuery, movementFiltersToQuery, movementStatus, newAllocation, parseEuros, parseMovementFilters, settleableExpenses
 } from './model.js';
 
 export const statusBadge = ({ label, tone }) => h('span', { className: `badge tone-${tone}`, text: label });
@@ -120,9 +120,10 @@ export async function renderMovementDetail(root, ctx, id) {
   const m = data.movement, status = movementStatus(m.status), caps = ctx.caps();
   const actions = [];
   const unallocated = m.state === 'ACTIVE' && m.unallocatedCents > 0;
-  if (canClassify(caps) && m.state === 'ACTIVE' && unallocated && !m.reviewFlag)
+  const privateReimbursements = data.allocations.some(item => item.kind === 'REIMBURSEMENT_SETTLEMENT') && !caps.treasury?.readExpenses;
+  if (canClassify(caps) && !privateReimbursements && m.state === 'ACTIVE' && unallocated && !m.reviewFlag)
     actions.push(h('button', { className: 'btn btn-primary', text: 'Classifica', attrs: { type: 'button' }, on: { click: () => openClassify(data, ctx, reload) } }));
-  if (canClassify(caps) && m.state === 'ACTIVE' && data.allocations.length)
+  if (canClassify(caps) && !privateReimbursements && m.state === 'ACTIVE' && data.allocations.length)
     actions.push(h('button', { className: 'btn btn-secondary', text: 'Corregeix classificació', attrs: { type: 'button' }, on: { click: () => openCorrection(data, ctx, reload) } }));
   root.replaceChildren(...[
     backLink(ctx),
@@ -163,6 +164,7 @@ function allocationList(allocations, ctx) {
         : item.budgetLine ? budgetPath(item.budgetLine) : null,
       item.expense ? h('a', { attrs: { href: `#/tresoreria/despeses/${item.expense.id}` }, text: `${item.expense.concept} · ${formatDay(item.expense.expenseDate)}`,
         on: { click: event => { event.preventDefault(); ctx.go({ path: ['despeses', item.expense.id] }); } } }) : null,
+      item.reimbursement ? h('span', { text: `${item.reimbursement.recipientName} · ${item.reimbursement.concept ?? 'Despesa'}` }) : null,
       item.pairedMovement ? h('a', { attrs: { href: `#/tresoreria/moviments/${item.pairedMovement.id}` },
         text: `${item.pairedMovement.positionName} · ${formatDay(item.pairedMovement.operationDate)} · ${formatEur(item.pairedMovement.amountCents, { signed: true })}`,
         on: { click: event => { event.preventDefault(); ctx.go({ path: ['moviments', item.pairedMovement.id] }); } } }) : null),
@@ -281,6 +283,36 @@ export function openClassify(data, ctx, onDone) {
           text: `${e.concept ?? e.counterpartyName ?? 'Despesa'} · ${formatDay(e.expenseDate)} · ${formatEur(e.totalCents)}${choice === 'EXPENSE_SETTLEMENT' ? ` (pendent ${formatEur(e.totalCents - e.settledCents)})` : ''}` })));
         state.expense = select;
         panel.replaceChildren(field('expenseId', 'Despesa', select), amountWrap());
+      } else if (choice === 'REIMBURSEMENT_SETTLEMENT') {
+        const reimbursements = (await ctx.call(`/api/finance/reimbursements?roundId=${round.id}&outstanding=1`)).reimbursements;
+        if (!reimbursements.length) { panel.replaceChildren(h('p', { className: 'form-notice', text: 'No hi ha reemborsaments aprovats pendents.' })); return; }
+        const recipients = [...new Map(reimbursements.map(row => [row.recipientId, row.recipientName])).entries()];
+        const recipient = h('select', { attrs: { 'aria-label': 'Scouter beneficiari' } }, recipients.map(([id, name]) =>
+          h('option', { text: name, attrs: { value: id } })));
+        const pendingList = h('fieldset', { className: 'form-field candidate-list' }, h('legend', { className: 'field-label', text: 'Despeses aprovades pendents' }));
+        const total = h('p', { className: 'form-notice', attrs: { 'aria-live': 'polite' } });
+        const paintRecipient = () => {
+          const rows = reimbursements.filter(row => row.recipientId === recipient.value);
+          pendingList.replaceChildren(h('legend', { className: 'field-label', text: 'Despeses aprovades pendents' }),
+            ...rows.map(row => h('label', { className: 'candidate' },
+              h('input', { attrs: { type: 'checkbox', name: 'reimbursement', value: row.id }, dataset: { outstanding: String(row.outstandingCents) },
+                on: { change: () => updateTotal() } }),
+              h('span', { className: 'candidate-name', text: `${row.concept ?? 'Despesa'} · ${formatEur(row.outstandingCents)}` }),
+              h('span', { className: 'candidate-meta', text: formatDay(row.expenseDate) }),
+              h('input', { attrs: { type: 'text', inputmode: 'decimal', value: centsInput(row.outstandingCents),
+                'aria-label': `Import a reemborsar de ${row.concept ?? 'despesa'}` }, dataset: { amount: row.id },
+              on: { input: () => updateTotal() } }))));
+          updateTotal();
+        };
+        const updateTotal = () => { const selected = [...pendingList.querySelectorAll('input:checked')];
+          const sum = selected.reduce((value, input) => value + (parseEuros(pendingList.querySelector(`[data-amount="${input.value}"]`)?.value) ?? 0), 0);
+          total.textContent = `Seleccionat ${formatEur(sum)} · pendent del moviment ${formatEur(m.unallocatedCents)}. Pots conciliar una part de cada despesa després de seleccionar-la.`;
+        };
+        recipient.addEventListener('change', paintRecipient);
+        state.reimbursementList = pendingList;
+        panel.replaceChildren(h('p', { className: 'form-notice', text: 'Confirma que aquesta transferència real correspon al scouter seleccionat. Gestió no verifica automàticament el destinatari bancari.' }),
+          field('recipientId', 'Scouter', recipient), pendingList, total);
+        paintRecipient();
       } else if (choice === 'INTERNAL_TRANSFER') {
         if (m.allocatedCents > 0) { panel.replaceChildren(h('p', { className: 'form-notice', text: 'Un traspàs intern ha d’ocupar el moviment sencer. Corregeix primer la classificació actual.' })); return; }
         if (!data.transferCandidates.length) { panel.replaceChildren(h('p', { className: 'form-notice', text: 'No hi ha cap moviment d’una altra posició amb el mateix import i signe contrari pendent de classificar.' })); return; }
@@ -306,6 +338,19 @@ export function openClassify(data, ctx, onDone) {
       const [from, to] = m.amountCents < 0 ? [mine, other] : [other, mine];
       await ctx.call('/api/finance/internal-transfers', { method: 'POST', body: JSON.stringify({ fromMovementId: from.id, toMovementId: to.id,
         fromExpectedVersion: from.version, toExpectedVersion: to.version }) });
+    } else if (choice === 'REIMBURSEMENT_SETTLEMENT') {
+      const checked = [...(state.reimbursementList?.querySelectorAll('input[name="reimbursement"]:checked') ?? [])];
+      if (!checked.length) { drawer.showError('Tria almenys una despesa pendent.'); return false; }
+      const fields = checked.map(input => ({ id: input.value, outstandingCents: Number(input.dataset.outstanding),
+        amountCents: parseEuros(state.reimbursementList.querySelector(`[data-amount="${input.value}"]`)?.value) }));
+      if (fields.some(row => !row.amountCents || row.amountCents <= 0 || row.amountCents > row.outstandingCents)) {
+        drawer.showError('Revisa els imports: han de ser positius i no superar el pendent de cada despesa.'); return false;
+      }
+      const sum = fields.reduce((value, row) => value + row.amountCents, 0);
+      if (sum > m.unallocatedCents) { drawer.showError('La selecció supera el pendent del moviment. Tria menys despeses o concilia-les per parts.'); return false; }
+      await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({ expectedVersion: m.allocationVersion,
+        allocations: [...allocationPayload(data.allocations), ...fields.map(row => ({ kind: 'REIMBURSEMENT_SETTLEMENT',
+          reimbursementId: row.id, amountCents: row.amountCents }))] }) });
     } else {
       const picked = drawer.submit.form.querySelector('input[name="income"]:checked');
       const limit = choice === 'LINK_INCOME' && picked ? Math.min(m.unallocatedCents, Number(picked.dataset.pending)) : m.unallocatedCents;
@@ -336,7 +381,8 @@ function openCorrection(data, ctx, onDone) {
     const kept = [];
     for (const row of rows) {
       if (!row.keep.checked) continue;
-      const result = newAllocation({ kind: row.item.kind, amount: row.amount.value, budgetLineId: row.item.budgetLineId, expenseId: row.item.expenseId, incomeId: row.item.incomeId }, Math.abs(m.amountCents));
+      const result = newAllocation({ kind: row.item.kind, amount: row.amount.value, budgetLineId: row.item.budgetLineId,
+        expenseId: row.item.expenseId, incomeId: row.item.incomeId, reimbursementId: row.item.reimbursementId }, Math.abs(m.amountCents));
       if (result.error && row.item.kind !== 'INTERNAL_TRANSFER') { drawer.showError(result.error); return false; }
       kept.push({ ...allocationPayload([row.item])[0], amountCents: row.item.kind === 'INTERNAL_TRANSFER' ? row.item.amountCents : result.allocation.amountCents });
     }

@@ -26,12 +26,20 @@ export function renderHome(root, ctx, summary) {
   nodes.push(h('div', { className: 'activity-surface treasury-block', attrs: { role: 'region', 'aria-labelledby': 'treasuryAttention' } },
     h('h2', { className: 'block-title', text: 'Què necessita atenció ara?', attrs: { id: 'treasuryAttention' } }),
     items.length ? h('ul', { className: 'attention-list', attrs: { role: 'list' } }, items) : h('p', { className: 'empty-detail', text: 'Res pendent. Tot està classificat i revisat.' })));
-  if (summary.positions) nodes.push(h('div', { className: 'treasury-block-plain', attrs: { role: 'region', 'aria-labelledby': 'treasuryPositions' } },
-    h('h2', { className: 'block-title', text: 'Posicions', attrs: { id: 'treasuryPositions' } }),
-    h('div', { className: 'position-cards' }, summary.positions.map(position => h('div', { className: 'position-card' },
-      h('span', { className: 'fact-label', text: `${POSITION_KIND[position.kind]} · ${position.name}` }),
-      h('span', { className: 'fact-value', text: position.kind === 'CARD' ? formatEur(Math.max(0, -position.balanceCents)) : formatEur(position.balanceCents) }),
-      h('span', { className: 'fact-extra', text: position.kind === 'CARD' ? 'Pendent de liquidar' : position.hasOpening ? 'Saldo amb el saldo inicial de la ronda' : 'Saldo sense saldo inicial registrat' }))))));
+  if (summary.positions) {
+    const bank = summary.positions.filter(position => position.kind === 'BANK');
+    const dormant = summary.positions.filter(position => position.kind !== 'BANK');
+    nodes.push(h('div', { className: 'treasury-block-plain', attrs: { role: 'region', 'aria-labelledby': 'treasuryPositions' } },
+      h('h2', { className: 'block-title', text: 'Comptes bancaris', attrs: { id: 'treasuryPositions' } }),
+      h('div', { className: 'position-cards' }, bank.map(position => h('div', { className: 'position-card' },
+        h('span', { className: 'fact-label', text: `${POSITION_KIND[position.kind]} · ${position.name}` }),
+        h('span', { className: 'fact-value', text: formatEur(position.balanceCents) }),
+        h('span', { className: 'fact-extra', text: position.hasOpening ? 'Saldo amb el saldo inicial de la ronda' : 'Saldo sense saldo inicial registrat' })))),
+      dormant.length ? h('details', { className: 'treasury-prepared-positions' },
+        h('summary', { text: 'Altres posicions preparades' }),
+        h('p', { className: 'field-hint', text: 'Targeta de crèdit i caixa no formen part del flux operatiu actual.' }),
+        h('ul', { className: 'mini-list' }, dormant.map(position => h('li', { text: `${POSITION_KIND[position.kind]} · ${position.name}` })))) : null));
+  }
   const columns = [];
   if (summary.movements) columns.push(h('div', { className: 'activity-surface treasury-block', attrs: { role: 'region', 'aria-labelledby': 'treasuryRecent' } },
     h('div', { className: 'block-head' }, h('h2', { className: 'block-title', text: 'Moviments recents', attrs: { id: 'treasuryRecent' } }),
