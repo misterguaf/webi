@@ -109,22 +109,28 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
   if ((options.length && !input.transportCode) || (!options.length && input.transportCode)) throw new AppError(400,'invalid_registration');
   const transport=options.find(option=>option.code===input.transportCode);
   if (options.length && !transport) throw new AppError(400,'invalid_registration');
-  const amount=activity.price_cents+(transport?.price_adjustment_cents??0);
-  if (amount<0 || amount>1000000) throw new AppError(400,'invalid_registration');
+  const baseAmount=activity.price_cents+(transport?.price_adjustment_cents??0);
+  if (baseAmount<0 || baseAmount>1000000) throw new AppError(400,'invalid_registration');
+  const key=matchKey(input.participantName);
+  const matched=await findMatch(db,key,input.birthDate,sectionId,sections);
   const activityDay=new Date(activity.starts_at).toISOString().slice(0,10);
-  const managedRound=amount>0?await db.prepare(`SELECT id FROM finance_round WHERE period_start<=? AND period_end>=? LIMIT 1`)
+  const managedRound=baseAmount>0?await db.prepare(`SELECT id,annual_fee_round_id FROM finance_round WHERE period_start<=? AND period_end>=? LIMIT 1`)
     .bind(activityDay,activityDay).first():null;
+  const family=managedRound?.annual_fee_round_id && matched.participant ? await db.prepare(`SELECT group_id,sibling_ordinal
+    FROM annual_fee_family_member WHERE round_id=? AND participant_id=?`)
+    .bind(managedRound.annual_fee_round_id,matched.participant.id).first():null;
+  const siblingOrdinal=family?.sibling_ordinal??1;
+  const discount=siblingOrdinal>=3?Math.floor(baseAmount/2):0;
+  const amount=baseAmount-discount;
   if (amount>0 && !input.evidence) throw new AppError(400,'evidence_required');
   if (amount===0 && input.evidence) throw new AppError(400,'evidence_not_required');
   const evidence=amount>0?await validateSyntheticEvidence(input.evidence):null;
-  const key=matchKey(input.participantName);
   // Submitted birth date is deliberately omitted: once matching is resolved,
   // no persistent fingerprint should retain a derivative of that temporary field.
   const payloadHash=await hash([activity.id,key,input.submittedByName.trim(),input.contactPhone?.trim()??'',
     sectionId,input.transportCode??null,input.receiptEmail.toLowerCase(),input.participationTermsVersion,
     input.privacyNoticeVersion,evidence?.sha256??null]);
   if (await existingIdempotency(db,input.idempotencyKey,payloadHash,input.birthDate)) return {ok:true};
-  const matched=await findMatch(db,key,input.birthDate,sectionId,sections);
   // A rejected or withdrawn registration does not block a new request for the same person.
   const duplicate=matched.participant
     ?await db.prepare("SELECT id FROM activity_registration WHERE activity_id=? AND participant_id=? AND status NOT IN ('REJECTED','WITHDRAWN')")
@@ -153,12 +159,14 @@ export async function submitRegistration(db,storage,input,requestId,now=Date.now
     await db.batch([
       db.prepare(`INSERT INTO activity_registration(id,activity_id,participant_id,submitted_name,match_key,submitted_section_id,
         registration_section_id,receipt_email,submitted_by_name,contact_phone,submitted_birth_date,
-        transport_code,expected_amount_cents,finance_round_id,match_status,status,consent_version,
+        transport_code,expected_amount_cents,finance_round_id,price_base_cents,price_discount_cents,
+        price_sibling_ordinal,price_family_group_id,match_status,status,consent_version,
         participation_terms_version,participation_authorized_at,privacy_notice_version,privacy_notice_acknowledged_at,
         idempotency_key,payload_sha256,created_at,updated_at,review_level,escalation_reason,escalated_at)
-        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,activity.id,matched.participant?.id??null,input.participantName.trim(),key,
+        VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).bind(id,activity.id,matched.participant?.id??null,input.participantName.trim(),key,
         sectionId,sectionId,input.receiptEmail.toLowerCase(),input.submittedByName.trim(),input.contactPhone?.trim()||null,
-        matched.status==='CLEAR'?null:input.birthDate,input.transportCode??null,amount,managedRound?.id??null,matched.status,status,'DEPRECATED',
+        matched.status==='CLEAR'?null:input.birthDate,input.transportCode??null,amount,managedRound?.id??null,
+        baseAmount,discount,siblingOrdinal,family?.group_id??null,matched.status,status,'DEPRECATED',
         input.participationTermsVersion,now,input.privacyNoticeVersion,now,input.idempotencyKey,payloadHash,now,now,
         escalate?'GLOBAL':'SECTION',escalate?'POSSIBLE_OTHER_SECTION':null,escalate?now:null),
       ...(evidence?[db.prepare(`INSERT INTO payment_evidence(id,registration_id,object_key,sha256,size_bytes,detected_mime,review_status,created_at)

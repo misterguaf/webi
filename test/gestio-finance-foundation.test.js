@@ -7,6 +7,7 @@ import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fixture, id, migrations, root } from './helpers/gestio-sqlite.js';
 import { buildDemoData, buildTreasuryDemo } from '../gestio/demo/data.js';
+import { submitRegistration } from '../gestio/src/services/registration-service.js';
 
 const ROUND = { code: '2026/2027', periodStart: '2026-10-01', periodEnd: '2027-09-30', annualFeeRoundId: id(901) };
 const csv = rows => ['# synthetic', 'operation_date,value_date,amount_cents,reference,description,balance_cents', ...rows].join('\n');
@@ -503,6 +504,37 @@ test('G.3: one bank receipt splits across a verified fee and activity without do
       /reconciled_fee_payment_locked/);
     assert.throws(() => s.f.sql.prepare(`DELETE FROM annual_fee_allocation WHERE payment_id=?`).run(fee.id),
       /reconciled_fee_payment_locked/);
+  } finally { s.f.close(); }
+});
+
+test('G.3: submitted activity fixes the third sibling price from the round family, not attendees', async () => {
+  const s = await setup();
+  try {
+    const group = crypto.randomUUID(), activity = crypto.randomUUID();
+    s.f.sql.prepare(`INSERT INTO annual_fee_family_group(id,round_id,reference,created_by,created_at)
+      VALUES(?,?,?,?,?)`).run(group, id(901), 'G3-SIBLING-FAMILY', id(104), 1);
+    for (const [ordinal, participant] of [501, 502, 503].entries()) s.f.sql.prepare(`INSERT INTO annual_fee_family_member
+      (group_id,round_id,participant_id,sibling_ordinal,assigned_by,assigned_at) VALUES(?,?,?,?,?,?)`)
+      .run(group, id(901), id(participant), ordinal + 1, id(104), 1);
+    s.f.sql.prepare(`INSERT INTO activity(id,public_code,name,status,audience,location,starts_at,ends_at,
+      registration_deadline,price_cents,created_by,created_at,updated_at)
+      VALUES(?,?,?,'PUBLISHED','GENERAL',?,?,?,?,?,?,?,?)`)
+      .run(activity, 'G3-SIBLING-PAID', 'Campament de prova (fictici)', 'Lloc fictici',
+        Date.parse('2027-06-01'), Date.parse('2027-06-05'), Date.parse('2027-05-01'), 18000, id(104), 1, 1);
+    const proof = { filename: 'justificant-synthetic.pdf', mime: 'application/pdf',
+      dataBase64: Buffer.from('%PDF-1.4\n%synthetic local fixture\n%%EOF').toString('base64') };
+    assert.deepEqual(await submitRegistration(s.f.db, s.f.storage, {
+      publicCode: 'G3-SIBLING-PAID', participantName: 'Participante Tropa B (ficticio)', birthDate: '2012-11-03',
+      submittedByName: 'Tutor de prova (fictici)', sectionCode: 'TROPA', receiptEmail: 'g3-sibling@example.test',
+      idempotencyKey: crypto.randomUUID().replaceAll('-', ''), participationTermsVersion: 'DEMO-3A-PARTICIPATION-V1',
+      privacyNoticeVersion: 'DEMO-3A-PRIVACY-NOTICE-V1', evidence: proof
+    }, crypto.randomUUID(), Date.parse('2027-04-01')), { ok: true });
+    const row = s.f.sql.prepare(`SELECT expected_amount_cents,price_base_cents,price_discount_cents,
+      price_sibling_ordinal,price_family_group_id FROM activity_registration WHERE activity_id=?`).get(activity);
+    assert.deepEqual({ ...row }, { expected_amount_cents: 9000, price_base_cents: 18000,
+      price_discount_cents: 9000, price_sibling_ordinal: 3, price_family_group_id: group });
+    assert.throws(() => s.f.sql.prepare(`UPDATE activity_registration SET expected_amount_cents=18000 WHERE activity_id=?`)
+      .run(activity), /activity_price_correction_required/);
   } finally { s.f.close(); }
 });
 
