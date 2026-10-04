@@ -313,6 +313,21 @@ export function createBackup(outputPath,configPath=resolve(root,'wrangler.toml')
         fixed=fixed.slice(0,allocationStart)+block+fixed.slice(allocationStart,incomeStart)+fixed.slice(incomeEnd);
       }
     }
+    // Activity registrations now reference finance_round. Wrangler still exports that table
+    // after registrations, so move both finance_round and its annual_fee_round parent first.
+    const beforeRegistration=tableName=>{
+      const declaration=name=>new RegExp('CREATE TABLE (?:IF NOT EXISTS )?"?'+name+'"?(?=\\s|\\()');
+      const start=fixed.search(declaration(tableName));
+      const registration=fixed.search(declaration('activity_registration'));
+      if (start<0 || registration<0) fail('SCHEMA_OBJECT_MISSING');
+      if (start<registration) return;
+      const end=fixed.indexOf('CREATE TABLE ',start+1);
+      if (end<0) fail('SCHEMA_OBJECT_MISSING');
+      const block=fixed.slice(start,end);
+      fixed=fixed.slice(0,registration)+block+fixed.slice(registration,start)+fixed.slice(end);
+    };
+    beforeRegistration('annual_fee_round');
+    beforeRegistration('finance_round');
     writeFileSync(dumpPath,fixed,{mode:0o600});
     chmodSync(join(temp,'dump.sql'),0o600);
     const snapshot=inspectSql(join(temp,'dump.sql'),info);
