@@ -37,7 +37,8 @@ const TABLES=[
   'finance_post_close_adjustment','finance_import_batch','finance_movement','finance_movement_description',
   'finance_counterparty','finance_counterparty_revision','finance_budget','finance_budget_line','finance_budget_line_revision',
   'finance_budget_revision','finance_expense','finance_expense_line','finance_expense_revision','finance_expense_evidence',
-  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_income','finance_income_revision','finance_allocation'
+  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_income','finance_income_revision','finance_allocation',
+  'finance_allocation_correction'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -114,7 +115,11 @@ const REQUIRED_OBJECTS=[
   'index:finance_allocation_reimbursement_idx','trigger:finance_expense_recognition_evidence',
   'trigger:finance_expense_self_exception_insert_guard','trigger:finance_expense_self_exception_guard','trigger:finance_expense_reimbursement_lock',
   'trigger:finance_reimbursement_v1_insert_guard','trigger:finance_reimbursement_transition_guard',
-  'trigger:finance_reimbursement_settlement_guard'
+  'trigger:finance_reimbursement_settlement_guard',
+  'index:finance_expense_evidence_current_idx','index:finance_reimbursement_active_unique',
+  'trigger:finance_expense_evidence_current_guard',
+  'trigger:finance_expense_correction_reason','trigger:finance_expense_reimbursement_sync',
+  'trigger:finance_allocation_correction_immutable','trigger:finance_allocation_correction_no_delete'
 ];
 const sha=value=>createHash('sha256').update(value).digest('hex');
 const fail=code=>{throw new Error(code);};

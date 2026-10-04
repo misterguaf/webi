@@ -3,7 +3,7 @@
 Status: IMPLEMENTED — pending Borja/Atlas functional and visual review
 Version: 0.1
 Project: Grup Scout Parpalló — Gestió
-Phase: 3.5G.2A + G.2B functional extension
+Phase: 3.5G.2A–G.2C functional extension
 Baseline: `phase-3.5g1-complete` (`e1aa9f0`)
 Depends on: TREASURY\_HOME.md, TREASURY\_EXPENSES.md, ../TREASURY.md (§7–§11, §27.2), ../UX\_RULES.md
 
@@ -81,8 +81,13 @@ Never offered: fee, activity, family or card-settlement allocations.
 ## 5. Corregeix classificació (drawer)
 
 Lists the current parts with **Manté** and the amount; unchecking removes a part, the amount can be
-changed. Saving writes a new set; the previous one stays in the history (nothing is deleted). An internal
+changed. A short reason is required to replace an active classification. Saving writes a new set; the previous one stays in the history (nothing is deleted). An internal
 transfer keeps its full amount; a hint reminds to review the paired movement.
+
+For an already allocated BANK reimbursement transfer, **Reassigna reemborsaments** allows a different
+set of approved debts of one beneficiary in one versioned change. The server rechecks available amount,
+recipient consistency and approved current liabilities. Old allocations remain historical; reimbursement
+transfers never add another economic expense.
 
 ## 6. Duplicates
 

@@ -3,7 +3,7 @@
 Status: IMPLEMENTED — pending Borja/Atlas functional and visual review
 Version: 0.1
 Project: Grup Scout Parpalló — Gestió
-Phase: 3.5G.2A + G.2B functional extension
+Phase: 3.5G.2A–G.2C functional extension
 Baseline: `phase-3.5g1-complete` (`e1aa9f0`)
 Depends on: TREASURY\_HOME.md, TREASURY\_MOVEMENTS.md, ../TREASURY.md (§10 expenses, §10.3 counterparties, §14 budget, I20 self-approval)
 
@@ -31,7 +31,7 @@ Header: concept, status, counterparty / advanced by. Facts: total, date, method,
 Sections: budget lines (code, full path, amount; a warning if they do not add up), payments and refunds
 (movement date, position, signed amount, link to the movement, allocated amount), evidence
 (**"Sense justificant adjunt"** until one is uploaded; private view/download controls), history (created, recognised,
-rejected, voided, revisions with the previous concept, total and date).
+rejected, voided; previous values and superseded receipts live in a secondary history disclosure).
 
 **Reconeix la despesa** (PROPOSED + evidence + expense.manage) → confirmation ("comptaran com a
 despesa de la ronda, una sola vegada") → toast "Despesa reconeguda". Own-beneficiary
@@ -72,10 +72,18 @@ expense shows beneficiary and derived outstanding amount; the list groups outsta
 person. Multiple receipts can be uploaded to a proposal or recognised expense, viewed privately or downloaded. The actual bank
 transfer happens outside Gestió and is reconciled in Moviments.
 
-Card statements, cash workflow, budget execution, rejection/void screens and expense editing UI
-remain deferred. The generic CARD/CASH foundation stays in the schema.
+Card statements, cash workflow and budget execution remain deferred. The generic CARD/CASH foundation stays in the schema.
 
-## 5. Responsive
+## 5. G.2C corrections
+
+- **Edita** on a PROPOSED expense edits the current draft with optimistic versioning; no formal revision row is created.
+- **Corregeix despesa** on a RECOGNISED expense requires a short reason. The old state is retained in `finance_expense_revision`; ordinary content shows only current values.
+- **Anul·la despesa** requires a reason and confirmation. VOID expenses leave the default list and round economics; the Anul·lades filter and history retain them.
+- An unpaid ADVANCED liability follows a corrected amount or beneficiary. A BANK-paid correction closes the unpaid liability. An active reimbursement settlement must be corrected first.
+- **Substitueix justificant** uploads the replacement privately before D1 marks the old receipt superseded. Old receipts remain accessible through the authorised history disclosure.
+- The service and D1 guards enforce these rules; UI visibility is advisory.
+
+## 6. Responsive
 
 ≤1179px hides the line column; ≤767px cards; the drawer becomes a full-screen sheet with the primary
 action at the bottom.
