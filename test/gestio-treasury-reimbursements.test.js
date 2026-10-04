@@ -35,7 +35,8 @@ async function setup() {
     recognise: true, ...(receipt ? { evidence: receipt } : {}) });
   const reimbursements = async recipientId => (await call(f, 104,
     `/api/finance/reimbursements?roundId=${round}${recipientId ? `&recipientId=${recipientId}` : ''}`)).data.reimbursements;
-  const allocate = (movementId, expectedVersion, allocations) => call(f, 104, `/api/finance/movements/${movementId}/allocations`, 'POST', { expectedVersion, allocations });
+  const allocate = (movementId, expectedVersion, allocations, reason) => call(f, 104, `/api/finance/movements/${movementId}/allocations`, 'POST', {
+    expectedVersion, allocations, ...(reason ? { reason } : {}) });
   return { f, round, line, bank, card, person, movement, advance, reimbursements, allocate };
 }
 
@@ -117,7 +118,7 @@ test('advanced expenses create approved liabilities; aggregate and partial BANK 
     assert.equal((await s.allocate(bank, 1, [...allocations, { kind: 'REIMBURSEMENT_SETTLEMENT', amountCents: 1,
       reimbursementId: outsider.data.reimbursementId }])).status, 409, 'mixed recipients cannot share one bank payment');
     assert.equal((await s.allocate(bank, 1, allocations)).status, 200, 'revision preserves current payment without overcounting');
-    assert.equal((await s.allocate(bank, 2, [])).status, 200, 'removal reverses operational paid status');
+    assert.equal((await s.allocate(bank, 2, [], 'Conciliació assignada al moviment erroni')).status, 200, 'removal reverses operational paid status');
     const partial = await s.movement(-3000);
     assert.equal((await s.allocate(partial, 0, [{ ...allocations[1], amountCents: 3000 }])).status, 200);
     assert.equal((await s.reimbursements(person)).find(row => row.id === created[1].reimbursementId).paymentState, 'PARTIAL');
@@ -215,7 +216,7 @@ test('D1 rejects unapproved, unrecognised, oversized and revised over-settlement
     assert.throws(() => s.f.sql.prepare('UPDATE finance_reimbursement SET amount_cents=3000 WHERE id=?')
       .run(approved.data.reimbursementId), /invalid_reimbursement/);
     assert.throws(() => s.f.sql.prepare("UPDATE finance_expense SET status='VOID',voided_by=?,voided_at=? WHERE id=?")
-      .run(id(104), 1, approved.data.id), /reimbursement_expense_locked/);
+      .run(id(104), 1, approved.data.id), /expense_correction_reason_required/);
     const first = await s.movement(-1500);
     assert.equal((await s.allocate(first, 0, [{ kind: 'REIMBURSEMENT_SETTLEMENT',
       reimbursementId: approved.data.reimbursementId, amountCents: 1500 }])).status, 200);
@@ -232,7 +233,7 @@ test('D1 rejects unapproved, unrecognised, oversized and revised over-settlement
     assert.equal((await s.allocate(second, 0, [{ kind: 'REIMBURSEMENT_SETTLEMENT',
       reimbursementId: approved.data.reimbursementId, amountCents: 500 }])).status, 200);
     assert.equal((await s.allocate(first, 1, [{ kind: 'REIMBURSEMENT_SETTLEMENT',
-      reimbursementId: approved.data.reimbursementId, amountCents: 1600 }])).status, 409,
+      reimbursementId: approved.data.reimbursementId, amountCents: 1600 }], 'Import incorrecte')).status, 409,
     'a versioned correction cannot over-settle a debt already paid by another movement');
     assert.throws(() => {
       s.f.sql.exec('BEGIN');

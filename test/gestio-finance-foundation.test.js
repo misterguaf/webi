@@ -169,22 +169,25 @@ test('allocations: typed destinations, remaining amount, no over-allocation even
   try {
     const { quotes, kitchen } = await catalogue(s);
     const income = await s.manual(s.bank, 25000);
-    const allocate = (movementId, expectedVersion, allocations) =>
-      s.call(104, `/api/finance/movements/${movementId}/allocations`, 'POST', { expectedVersion, allocations });
+    const allocate = (movementId, expectedVersion, allocations, reason) =>
+      s.call(104, `/api/finance/movements/${movementId}/allocations`, 'POST', { expectedVersion, allocations, ...(reason ? { reason } : {}) });
     // Several imputations of one movement, with the remainder visible.
     assert.equal((await allocate(income, 0, [{ kind: 'INCOME', amountCents: 10000, budgetLineId: quotes },
       { kind: 'INCOME', amountCents: 10000, budgetLineId: quotes, sectionId: id(2) }])).status, 200);
     assert.deepEqual([(await s.movement(income)).allocatedCents, (await s.movement(income)).unallocatedCents], [20000, 5000]);
-    assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 25001, budgetLineId: quotes }])).data.error, 'allocation_exceeds_movement');
+    assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 25001, budgetLineId: quotes }])).data.error,
+      'allocation_correction_reason_required');
+    assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 25001, budgetLineId: quotes }], 'Corregir classificació')).data.error,
+      'allocation_exceeds_movement');
     assert.equal((await allocate(income, 0, [{ kind: 'INCOME', amountCents: 100, budgetLineId: quotes }])).data.error, 'stale_movement');
-    assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: kitchen }])).data.error, 'invalid_income_allocation',
+    assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: kitchen }], 'Corregir classificació')).data.error, 'invalid_income_allocation',
       'income needs an income line');
     assert.equal((await allocate(income, 1, [{ kind: 'FEE_PAYMENT', amountCents: 100 }])).data.error, 'allocation_kind_not_enabled');
     assert.equal((await allocate(income, 1, [{ kind: 'INCOME', amountCents: 100, budgetLineId: quotes, expenseId: id(1) }])).status, 400);
     // Two concurrent reclassifications with the same expected version: exactly one wins.
     const results = await Promise.all([
-      allocate(income, 1, [{ kind: 'INCOME', amountCents: 25000, budgetLineId: quotes }]),
-      allocate(income, 1, [{ kind: 'INCOME', amountCents: 24000, budgetLineId: quotes }])]);
+      allocate(income, 1, [{ kind: 'INCOME', amountCents: 25000, budgetLineId: quotes }], 'Corregir import'),
+      allocate(income, 1, [{ kind: 'INCOME', amountCents: 24000, budgetLineId: quotes }], 'Corregir import')]);
     assert.deepEqual(results.map(row => row.status).sort(), [200, 409]);
     assert.equal((await s.movement(income)).allocatedCents, results[0].status === 200 ? 25000 : 24000);
     assert.equal(s.f.sql.prepare('SELECT count(DISTINCT set_version) AS n FROM finance_allocation WHERE movement_id=?').get(income).n, 2, 'previous set kept');
@@ -231,7 +234,7 @@ test('internal transfers: bank → cash and back are balanced pairs that never c
     assert.equal((await pair(redeposit, cashOther)).data.error, 'invalid_internal_transfer', 'same position');
     assert.equal((await pair(redeposit, bankIn)).status, 201);
     assert.equal((await pair(sameSign, cashIn, 0, 1)).data.error, 'invalid_internal_transfer', 'an allocated pair never joins a third movement');
-    assert.equal((await s.call(104, `/api/finance/movements/${bankIn}/allocations`, 'POST', { expectedVersion: 1,
+    assert.equal((await s.call(104, `/api/finance/movements/${bankIn}/allocations`, 'POST', { expectedVersion: 1, reason: 'Corregir classificació',
       allocations: [{ kind: 'INCOME', amountCents: 7000, budgetLineId: quotes }] })).status, 200, 'a pair can be reclassified');
     assert.deepEqual(await s.economics(), { ...before, incomeCents: 7000, resultBeforeReservesCents: 7000 });
   } finally { s.f.close(); }
@@ -280,7 +283,21 @@ test('expenses: proposed is not counted, recognised counts once whatever settles
       try { s.f.sql.exec(`INSERT INTO finance_expense_line(expense_id,lines_version,line_no,budget_line_id,amount_cents)
         VALUES('${card.data.id}',2,1,'${kitchen}',1); UPDATE finance_expense SET lines_version=2 WHERE id='${card.data.id}'`); }
       finally { s.f.sql.exec('ROLLBACK'); }
-    }, /invalid_expense/, 'a recognised expense never has lines that do not add up');
+    }, /expense_correction_reason_required/, 'direct SQL cannot bypass the correction reason');
+    assert.throws(() => {
+      s.f.sql.exec('BEGIN');
+      try {
+        const old = s.f.sql.prepare('SELECT * FROM finance_expense WHERE id=?').get(card.data.id);
+        s.f.sql.prepare(`INSERT INTO finance_expense_revision(id,expense_id,previous_version,previous_round_id,previous_expense_date,
+          previous_counterparty_id,previous_supplier_label,previous_total_cents,previous_payment_method,previous_advanced_by_id,
+          previous_lines_version,changed_by,changed_at,previous_concept,previous_status,reason) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`)
+          .run(id(9873), old.id, old.version, old.round_id, old.expense_date, old.counterparty_id, old.supplier_label,
+            old.total_cents, old.payment_method, old.advanced_by_id, old.lines_version, id(104), 1, old.concept,
+            old.status, 'Corregir import');
+        s.f.sql.exec(`INSERT INTO finance_expense_line(expense_id,lines_version,line_no,budget_line_id,amount_cents)
+          VALUES('${card.data.id}',2,1,'${kitchen}',1); UPDATE finance_expense SET lines_version=2,version=version+1 WHERE id='${card.data.id}'`);
+      } finally { s.f.sql.exec('ROLLBACK'); }
+    }, /invalid_expense/, 'even a reason cannot permit unbalanced recognised lines');
     // Settled by card purchases, then the card is settled from the bank: still 150 €, not 300 €.
     const purchase = await s.manual(s.card, -15000, '2027-07-28', 'Compra amb targeta');
     const settle = (movementId, expenseId, amountCents, expectedVersion = 0) => s.call(104, `/api/finance/movements/${movementId}/allocations`, 'POST',
@@ -294,17 +311,17 @@ test('expenses: proposed is not counted, recognised counts once whatever settles
     assert.equal(economics.expenseGrossCents, 20000, 'each recognised expense counts once');
     // Revision keeps history; a settled expense cannot shrink below what was paid; voiding needs no settlement.
     assert.equal((await s.call(104, `/api/finance/expenses/${card.data.id}`, 'PATCH', { expectedVersion: 2, totalCents: 14000,
-      lines: [{ budgetLineId: kitchen, amountCents: 14000 }] })).data.error, 'invalid_expense');
+      lines: [{ budgetLineId: kitchen, amountCents: 14000 }], reason: 'Import erroni' })).data.error, 'invalid_expense');
     const revised = await s.call(104, `/api/finance/expenses/${card.data.id}`, 'PATCH', { expectedVersion: 2, expenseDate: '2027-07-27',
-      lines: [{ budgetLineId: kitchen, amountCents: 15000 }] });
+      lines: [{ budgetLineId: kitchen, amountCents: 15000 }], reason: 'Data errònia' });
     assert.equal(revised.status, 200);
     const detail = (await s.call(104, `/api/finance/expenses/${card.data.id}`)).data;
     assert.equal(detail.revisions.length, 1); assert.equal(detail.lines.length, 1); assert.equal(detail.expense.settlementState, 'SETTLED');
     assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM finance_expense_line WHERE expense_id=?').get(card.data.id).n, 3, 'old lines kept');
     assert.equal((await s.call(104, `/api/finance/expenses/${card.data.id}/void`, 'POST', { expectedVersion: 3, reason: 'ERROR' })).data.error, 'invalid_expense');
-    assert.equal((await s.call(104, `/api/finance/expenses/${advanced.data.id}/void`, 'POST', { expectedVersion: 2, reason: 'ERROR' })).data.error,
-      'reimbursement_expense_locked', 'approved debt cannot silently disappear');
-    assert.equal((await s.economics()).expenseGrossCents, 20000);
+    assert.equal((await s.call(104, `/api/finance/expenses/${advanced.data.id}/void`, 'POST', { expectedVersion: 2, reason: 'Despesa duplicada' })).status,
+      200, 'unpaid approved debt is cancelled together with the expense');
+    assert.equal((await s.economics()).expenseGrossCents, 15000);
     // The scouter's user link cannot be reassigned silently while used: audited link changes.
     assert.equal((await s.call(104, `/api/finance/counterparties/${scout}`, 'PATCH', { userId: null, expectedVersion: 1 })).data.error,
       'counterparty_in_use');
