@@ -39,7 +39,8 @@ const TABLES=[
   'finance_post_close_adjustment','finance_import_batch','finance_movement','finance_movement_description',
   'finance_counterparty','finance_counterparty_revision','finance_budget','finance_budget_line','finance_budget_line_revision',
   'finance_budget_revision','finance_expense','finance_expense_line','finance_expense_revision','finance_expense_evidence',
-  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_income','finance_income_revision','finance_allocation',
+  'finance_reimbursement','finance_card_statement','finance_overpayment','finance_family_refund_decision','finance_family_refund',
+  'finance_income','finance_income_revision','finance_allocation',
   'finance_allocation_correction'
 ];
 const REQUIRED_OBJECTS=[
@@ -114,6 +115,13 @@ const REQUIRED_OBJECTS=[
   'index:finance_overpayment_fee_idx','index:finance_overpayment_registration_idx',
   'trigger:finance_overpayment_no_delete','trigger:finance_overpayment_insert_guard',
   'trigger:finance_overpayment_update_guard','trigger:finance_family_overpayment_allocation_guard',
+  'index:finance_family_refund_round_idx','index:finance_family_refund_decision_registration_idx',
+  'trigger:finance_family_refund_insert_guard','trigger:finance_family_refund_no_update','trigger:finance_family_refund_no_delete',
+  'trigger:finance_family_refund_decision_guard','trigger:finance_family_refund_decision_no_update',
+  'trigger:finance_family_refund_decision_no_delete','trigger:finance_rejected_registration_refunds',
+  'trigger:finance_rejected_registration_round_guard',
+  'trigger:finance_family_refund_allocation_guard','trigger:finance_family_refund_movement_exclusive',
+  'trigger:finance_overpayment_refund_settled','trigger:finance_overpayment_refund_reopened',
   'trigger:annual_fee_payment_reconciled_guard','trigger:annual_fee_allocation_reconciled_guard',
   'trigger:payment_evidence_reconciled_guard',
   'trigger:activity_registration_finance_round_insert_guard','trigger:activity_registration_finance_round_immutable',

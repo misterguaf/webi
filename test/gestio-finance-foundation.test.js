@@ -549,6 +549,27 @@ test('G.3: excess fee money stays a separate open family claim and never becomes
       SELECT ?,round_id,fee_payment_id,recipient_email,cause,1,created_by,created_at
       FROM finance_overpayment WHERE id=?`).run(crypto.randomUUID(), claim.data.id), /invalid_family_overpayment/);
     assert.equal(s.audits('FAMILY_OVERPAYMENT_CREATED').length, 1);
+    const refund = await s.call(104, `/api/finance/family-overpayments/${claim.data.id}/refund`, 'POST');
+    assert.equal(refund.status, 201, JSON.stringify(refund.data));
+    const outgoing = await s.manual(s.bank, -2000);
+    const refundCandidates = await s.call(104, `/api/finance/movements/${outgoing}/receipt-candidates`);
+    assert.ok(refundCandidates.data.refunds.some(row => row.id === refund.data.id));
+    assert.equal((await s.call(104, `/api/finance/movements/${outgoing}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FAMILY_REFUND', overpaymentId: claim.data.id, amountCents: 2000 }]
+    })).status, 200);
+    assert.equal(s.f.sql.prepare('SELECT status FROM finance_overpayment WHERE id=?').get(claim.data.id).status, 'RESOLVED');
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, fee.dueCents,
+      'returning money that was never income leaves income unchanged');
+    assert.equal((await s.call(104, '/api/finance/family-refunds')).data.refunds
+      .find(row => row.id === refund.data.id).status, 'SETTLED');
+    assert.equal((await s.call(104, `/api/finance/movements/${outgoing}/allocations`, 'POST', {
+      expectedVersion: 1, allocations: [], reason: 'Corregir la conciliació'
+    })).status, 200);
+    assert.equal(s.f.sql.prepare('SELECT status FROM finance_overpayment WHERE id=?').get(claim.data.id).status, 'OPEN');
+    assert.equal((await s.call(104, `/api/finance/movements/${outgoing}/allocations`, 'POST', {
+      expectedVersion: 2, allocations: [{ kind: 'FAMILY_REFUND', overpaymentId: claim.data.id, amountCents: 2000 }]
+    })).status, 200);
+    assert.equal(s.f.sql.prepare('SELECT status FROM finance_overpayment WHERE id=?').get(claim.data.id).status, 'RESOLVED');
   } finally { s.f.close(); }
 });
 
@@ -556,7 +577,7 @@ test('migration 0039 preserves a populated legacy activity overpayment and every
   const sql = new DatabaseSync(':memory:');
   try {
     sql.exec('PRAGMA foreign_keys=ON');
-    for (const name of readdirSync(migrations).filter(name => name.endsWith('.sql') && !name.startsWith('0039_')).sort())
+    for (const name of readdirSync(migrations).filter(name => name.endsWith('.sql') && name < '0039_').sort())
       sql.exec(readFileSync(join(migrations, name), 'utf8'));
     sql.exec(readFileSync(join(root, 'gestio/seed.sql'), 'utf8'));
     sql.exec(buildDemoData().sql);
@@ -576,6 +597,79 @@ test('migration 0039 preserves a populated legacy activity overpayment and every
     assert.deepEqual(sql.prepare('PRAGMA foreign_key_check').all(), []);
     assert.throws(() => sql.prepare('DELETE FROM finance_overpayment WHERE id=?').run(claimId), /overpayment_immutable/);
   } finally { sql.close(); }
+});
+
+test('G.3: withdrawn activity chooses full, partial or no refund; one bank debit settles two same-recipient dues', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const registrationId = id(12034);
+    s.f.sql.prepare('UPDATE activity_registration SET finance_round_id=? WHERE id=?').run(s.round, registrationId);
+    const sources = s.f.sql.prepare(`SELECT id,amount_cents FROM activity_payment_allocation
+      WHERE registration_id=? ORDER BY created_at,id`).all(registrationId);
+    assert.deepEqual(sources.map(row => row.amount_cents), [1000, 300]);
+    const incoming = await s.manual(s.bank, 1300);
+    assert.equal((await s.call(104, `/api/finance/movements/${incoming}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: sources.map(row => ({ kind: 'ACTIVITY_PAYMENT',
+        activityAllocationId: row.id, amountCents: row.amount_cents }))
+    })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 1300);
+    const reg = s.f.sql.prepare('SELECT version FROM activity_registration WHERE id=?').get(registrationId);
+    const withdrawn = await s.call(101, `/api/registrations/${registrationId}/withdraw`, 'POST',
+      { source: 'FAMILY_COMMUNICATION', expectedVersion: reg.version, notifyFamily: false });
+    assert.equal(withdrawn.status, 200, JSON.stringify(withdrawn.data));
+    assert.equal((await s.call(102, `/api/finance/withdrawn-registrations/${registrationId}/refund-decision`, 'POST',
+      { decision: 'FULL', amountCents: 1300, reason: 'Baixa comunicada' })).status, 403);
+    const decision = await s.call(104, `/api/finance/withdrawn-registrations/${registrationId}/refund-decision`, 'POST',
+      { decision: 'FULL', amountCents: 1300, reason: 'Baixa comunicada' });
+    assert.equal(decision.status, 201, JSON.stringify(decision.data));
+    assert.equal(decision.data.refundIds.length, 2);
+    const outgoing = await s.manual(s.bank, -1300);
+    const candidates = await s.call(104, `/api/finance/movements/${outgoing}/receipt-candidates`);
+    assert.equal(candidates.data.refunds.filter(row => decision.data.refundIds.includes(row.id)).length, 2);
+    const settled = await s.call(104, `/api/finance/movements/${outgoing}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: sources.map(row => ({ kind: 'FAMILY_REFUND',
+        activityAllocationId: row.id, amountCents: row.amount_cents }))
+    });
+    assert.equal(settled.status, 200, JSON.stringify(settled.data));
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 0,
+      'the activity receipt is reversed once by its family refund');
+    const refunds = (await s.call(104, '/api/finance/family-refunds')).data.refunds;
+    assert.ok(decision.data.refundIds.every(refundId => refunds.find(row => row.id === refundId).status === 'SETTLED'));
+    for (const [registration, choice, amount] of [[id(12012), 'PARTIAL', 500], [id(12025), 'NONE', 0]]) {
+      s.f.sql.prepare('UPDATE activity_registration SET finance_round_id=? WHERE id=?').run(s.round, registration);
+      const choiceResult = await s.call(104, `/api/finance/withdrawn-registrations/${registration}/refund-decision`, 'POST',
+        { decision: choice, amountCents: amount, reason: 'Decisió autoritzada' });
+      assert.equal(choiceResult.status, 201, JSON.stringify(choiceResult.data));
+      assert.equal(choiceResult.data.refundIds.length, choice === 'NONE' ? 0 : 1);
+    }
+  } finally { s.f.close(); }
+});
+
+test('G.3: rejecting an unmatched paid registration creates the full family refund due', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const registrationId = id(12016), paymentId = crypto.randomUUID();
+    s.f.sql.prepare('UPDATE activity_registration SET finance_round_id=? WHERE id=?').run(s.round, registrationId);
+    s.f.sql.prepare(`INSERT INTO activity_payment_allocation(id,registration_id,amount_cents,source,created_by,created_at)
+      VALUES(?,?,1500,'VERIFICATION',?,1)`).run(paymentId,registrationId,id(104));
+    const incoming = await s.manual(s.bank, 1500);
+    assert.equal((await s.call(104, `/api/finance/movements/${incoming}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'ACTIVITY_PAYMENT', activityAllocationId: paymentId, amountCents: 1500 }]
+    })).status, 200);
+    const version = s.f.sql.prepare('SELECT version FROM activity_registration WHERE id=?').get(registrationId).version;
+    const rejected = await s.call(101, `/api/registrations/${registrationId}/review`, 'POST',
+      { decision: 'REJECT', expectedVersion: version });
+    assert.equal(rejected.status, 200, JSON.stringify(rejected.data));
+    const refund = s.f.sql.prepare('SELECT * FROM finance_family_refund WHERE activity_allocation_id=?').get(paymentId);
+    assert.deepEqual([refund.cause,refund.amount_cents,refund.round_id], ['ACTIVITY_REJECTION_REFUND',1500,s.round]);
+    const outgoing = await s.manual(s.bank, -1500);
+    assert.equal((await s.call(104, `/api/finance/movements/${outgoing}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FAMILY_REFUND', activityAllocationId: paymentId, amountCents: 1500 }]
+    })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 0);
+  } finally { s.f.close(); }
 });
 
 test('G.3: submitted activity fixes the third sibling price from the round family, not attendees', async () => {

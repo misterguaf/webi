@@ -612,7 +612,8 @@ export async function listPayments(db,context,requestId,params) {
   if (activityId!==null) requireUuid(activityId);
   // Only registrations where payment is still meaningful: awaiting review, withdrawn (money may have
   // arrived) or confirmed (verified history in "totes").
-  const states=vista==='totes'?"('AWAITING_PAYMENT_REVIEW','WITHDRAWN','CONFIRMED')":"('AWAITING_PAYMENT_REVIEW','WITHDRAWN')";
+  const states=vista==='totes'?"('NEEDS_PARTICIPANT_REVIEW','AWAITING_PAYMENT_REVIEW','WITHDRAWN','CONFIRMED')":
+    "('NEEDS_PARTICIPANT_REVIEW','AWAITING_PAYMENT_REVIEW','WITHDRAWN')";
   const rows=await db.prepare(`${PAYMENT_SELECT} WHERE r.status IN ${states} AND ${PAYMENT_VIEWS[vista]}
     ${activityId?'AND r.activity_id=?':''}${sectionFilter(decision,'r.registration_section_id')}
     ${page.after?'AND (r.created_at<? OR (r.created_at=? AND e.id<?))':''} ORDER BY r.created_at DESC,e.id DESC LIMIT ?`)
@@ -662,7 +663,7 @@ export async function reviewPayment(db,context,requestId,id,input,now=Date.now()
   const remaining=row.expected_amount_cents-row.paid_cents;
   // Per attempt: verify while something remains; flag an attempt that is not already flagged (a verified
   // attempt only while something remains). Verifying one attempt never closes another attempt's incidence.
-  if (!['AWAITING_PAYMENT_REVIEW','WITHDRAWN'].includes(row.registration_status) ||
+  if (!['NEEDS_PARTICIPANT_REVIEW','AWAITING_PAYMENT_REVIEW','WITHDRAWN'].includes(row.registration_status) ||
       (input.decision==='VERIFIED' && remaining<=0) ||
       (input.decision==='ISSUE' && (row.review_status==='ISSUE' || (row.review_status==='VERIFIED' && remaining<=0))))
     throw new AppError(409,'invalid_transition');

@@ -9,6 +9,7 @@ import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
 import * as activityInstallments from './activity-installments.js';
 import * as familyOverpayments from './family-overpayments.js';
+import * as familyRefunds from './family-refunds.js';
 
 const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024, EVIDENCE_BODY_MAX_BYTES = 6 * 1024 * 1024;
 
@@ -21,6 +22,12 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await familyOverpayments.createOverpayment(db, context, requestId, await body()), 201);
   if (path === '/api/finance/family-overpayments' && method === 'GET')
     return ok(await familyOverpayments.listOverpayments(db, context, requestId, url.searchParams));
+  if ((match = path.match(/^\/api\/finance\/family-overpayments\/([^/]+)\/refund$/)) && method === 'POST')
+    return ok(await familyRefunds.refundOverpayment(db, context, requestId, match[1]), 201);
+  if ((match = path.match(/^\/api\/finance\/withdrawn-registrations\/([^/]+)\/refund-decision$/)) && method === 'POST')
+    return ok(await familyRefunds.decideWithdrawalRefund(db, context, requestId, match[1], await body()), 201);
+  if (path === '/api/finance/family-refunds' && method === 'GET')
+    return ok(await familyRefunds.listFamilyRefunds(db, context, requestId, url.searchParams));
   if (path === '/api/finance/activity-installment-plans' && method === 'POST')
     return ok(await activityInstallments.authorizeActivityPlan(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)$/)) && method === 'GET')
