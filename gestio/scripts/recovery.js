@@ -128,7 +128,7 @@ const REQUIRED_OBJECTS=[
   'trigger:activity_registration_finance_round_insert_guard','trigger:activity_registration_finance_round_immutable',
   'trigger:activity_registration_price_insert_guard','trigger:activity_registration_price_update_guard',
   'index:activity_price_revision_registration_idx','trigger:activity_price_revision_no_update',
-  'trigger:activity_price_revision_no_delete',
+  'trigger:activity_price_revision_no_delete','trigger:activity_price_paid_amount_guard',
   'trigger:activity_installment_plan_insert_guard','trigger:activity_installment_revision_insert_guard',
   'trigger:activity_installment_part_insert_guard','trigger:activity_installment_revision_no_update',
   'trigger:activity_installment_revision_no_delete','trigger:activity_installment_part_no_update',

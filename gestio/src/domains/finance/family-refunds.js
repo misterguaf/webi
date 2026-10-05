@@ -41,7 +41,8 @@ export async function decideWithdrawalRefund(db, context, requestId, registratio
   const sources = (await db.prepare(`SELECT a.id,a.amount_cents FROM activity_payment_allocation a
     WHERE a.registration_id=? AND NOT EXISTS(SELECT 1 FROM finance_family_refund f WHERE f.activity_allocation_id=a.id)
     ORDER BY a.created_at,a.id`).bind(registrationId).all()).results;
-  const available = sources.reduce((sum, row) => sum + row.amount_cents, 0);
+  const available = Math.min(registration.paid_cents,
+    sources.reduce((sum, row) => sum + row.amount_cents, 0));
   if ((input.decision === 'NONE' && input.amountCents !== 0) ||
       (input.decision === 'FULL' && input.amountCents !== available) ||
       (input.decision === 'PARTIAL' && (!cents(input.amountCents) || input.amountCents >= available)) ||

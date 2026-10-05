@@ -743,6 +743,52 @@ test('G.3: rejecting an unmatched paid registration creates the full family refu
   } finally { s.f.close(); }
 });
 
+test('G.3: activity price correction separates excess and rejection returns each euro once', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const registrationId = id(12016), paymentId = crypto.randomUUID();
+    s.f.sql.prepare('UPDATE activity_registration SET finance_round_id=? WHERE id=?').run(s.round,registrationId);
+    s.f.sql.prepare(`INSERT INTO activity_payment_allocation(id,registration_id,amount_cents,source,created_by,created_at)
+      VALUES(?,?,1500,'VERIFICATION',?,1)`).run(paymentId,registrationId,id(104));
+    const incoming = await s.manual(s.bank,1500);
+    assert.equal((await s.call(104,`/api/finance/movements/${incoming}/allocations`,'POST',{
+      expectedVersion:0,allocations:[{kind:'ACTIVITY_PAYMENT',activityAllocationId:paymentId,amountCents:1500}]
+    })).status,200);
+    const version=s.f.sql.prepare('SELECT version FROM activity_registration WHERE id=?').get(registrationId).version;
+    const corrected=await s.call(104,`/api/finance/registrations/${registrationId}/price`,'PATCH',{
+      amountCents:1000,expectedVersion:version,reason:'Import de campament corregit'
+    });
+    assert.equal(corrected.status,200,JSON.stringify(corrected.data));
+    assert.equal(corrected.data.overpaymentIds.length,1);
+    const claimId=corrected.data.overpaymentIds[0];
+    assert.deepEqual({ ...s.f.sql.prepare('SELECT due_cents,paid_cents FROM activity_payment_balance WHERE registration_id=?')
+      .get(registrationId) },{due_cents:1000,paid_cents:1000});
+    assert.equal((await s.call(104,`/api/finance/rounds/${s.round}`)).data.economics.incomeCents,1000);
+    assert.equal((await s.call(104,`/api/finance/movements/${incoming}/allocations`,'POST',{
+      expectedVersion:1,reason:'Separar import excedent',allocations:[
+        {kind:'ACTIVITY_PAYMENT',activityAllocationId:paymentId,amountCents:1000},
+        {kind:'FAMILY_OVERPAYMENT',overpaymentId:claimId,amountCents:500}]
+    })).status,200);
+    const currentVersion=s.f.sql.prepare('SELECT version FROM activity_registration WHERE id=?').get(registrationId).version;
+    assert.equal((await s.call(101,`/api/registrations/${registrationId}/review`,'POST',{
+      decision:'REJECT',expectedVersion:currentVersion
+    })).status,200);
+    assert.equal(s.f.sql.prepare('SELECT amount_cents AS cents FROM finance_family_refund WHERE activity_allocation_id=?')
+      .get(paymentId).cents,1000);
+    const claimRefund=await s.call(104,`/api/finance/family-overpayments/${claimId}/refund`,'POST',{});
+    assert.equal(claimRefund.status,201,JSON.stringify(claimRefund.data));
+    const outgoing=await s.manual(s.bank,-1500);
+    assert.equal((await s.call(104,`/api/finance/movements/${outgoing}/allocations`,'POST',{
+      expectedVersion:0,allocations:[
+        {kind:'FAMILY_REFUND',activityAllocationId:paymentId,amountCents:1000},
+        {kind:'FAMILY_REFUND',overpaymentId:claimId,amountCents:500}]
+    })).status,200);
+    assert.equal((await s.call(104,`/api/finance/rounds/${s.round}`)).data.economics.incomeCents,0);
+    assert.deepEqual(s.f.sql.prepare('PRAGMA foreign_key_check').all(),[]);
+  } finally {s.f.close();}
+});
+
 test('G.3: submitted activity fixes the third sibling price from the round family, not attendees', async () => {
   const s = await setup();
   try {
@@ -790,7 +836,7 @@ test('G.3: submitted activity fixes the third sibling price from the round famil
     assert.throws(() => s.f.sql.prepare(`UPDATE activity_installment_part SET planned_cents=1 WHERE plan_id=? AND revision=1`)
       .run(approved.data.id), /activity_installment_immutable/);
     assert.throws(() => s.f.sql.prepare(`UPDATE activity_registration SET expected_amount_cents=18000 WHERE activity_id=?`)
-      .run(activity), /activity_price_correction_required/);
+      .run(activity), /activity_price_(correction_required|exceeds_verified_payment)/);
   } finally { s.f.close(); }
 });
 

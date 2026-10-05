@@ -8,6 +8,7 @@ import * as incomes from './incomes.js';
 import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
 import * as activityInstallments from './activity-installments.js';
+import * as activityPrices from './activity-price-corrections.js';
 import * as familyOverpayments from './family-overpayments.js';
 import * as familyRefunds from './family-refunds.js';
 
@@ -30,6 +31,10 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await familyRefunds.listFamilyRefunds(db, context, requestId, url.searchParams));
   if (path === '/api/finance/activity-installment-plans' && method === 'POST')
     return ok(await activityInstallments.authorizeActivityPlan(db, context, requestId, await body()), 201);
+  if ((match = path.match(/^\/api\/finance\/registrations\/([^/]+)\/price$/)) && method === 'PATCH')
+    return ok(await activityPrices.correctActivityPrice(db, context, requestId, match[1], await body()));
+  if ((match = path.match(/^\/api\/finance\/registrations\/([^/]+)\/price-history$/)) && method === 'GET')
+    return ok(await activityPrices.activityPriceHistory(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)$/)) && method === 'GET')
     return ok(await activityInstallments.activityPlanDetail(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)\/revisions$/)) && method === 'POST')

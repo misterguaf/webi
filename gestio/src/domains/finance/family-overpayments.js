@@ -20,8 +20,7 @@ export async function createOverpayment(db, context, requestId, input, now = Dat
       WHERE p.id=? AND p.review_status='VERIFIED'`).bind(input.feePaymentId).first();
   } else {
     source = await db.prepare(`SELECT r.finance_round_id AS round_id,r.receipt_email AS recipient_email,
-      b.paid_cents-b.due_cents-COALESCE((SELECT sum(o.amount_cents) FROM finance_overpayment o
-        WHERE o.registration_id=r.id),0) AS available_cents
+      b.paid_cents-b.due_cents AS available_cents
       FROM activity_registration r JOIN activity_payment_balance b ON b.registration_id=r.id
       WHERE r.id=?`).bind(input.registrationId).first();
   }
