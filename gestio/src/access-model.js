@@ -20,7 +20,8 @@ export const EXPLICIT_ONLY = Object.freeze(new Set(['finance.bank_description.re
   'health.record.read', 'health.grant.manage', 'auth.permission.ratify']));
 const ROLE_EXPLICIT_ONLY = Object.freeze({
   GROUP_COORDINATOR: new Set(['finance.movement.import']),
-  TECH_ADMIN: new Set(['auth.user.manage', 'auth.role.manage', 'auth.permission.manage', 'auth.session.revoke', 'auth.user.suspend']),
+  TECH_ADMIN: new Set(['auth.user.manage', 'auth.role.manage', 'auth.permission.manage', 'auth.session.revoke', 'auth.user.suspend',
+    'admin.incidents.manage']),
   // A section delegate receives admissions only by an explicit grant or delegation.
   SECTION_DELEGATE: new Set(['admissions.read', 'admissions.manage', 'admissions.decide'])
 });
@@ -36,7 +37,7 @@ export const MODULES = Object.freeze([
   { id: 'activities', label: 'Activitats i inscripcions', match: code => code.startsWith('activities.') || code === 'finance.payment.verify' },
   { id: 'fees', label: 'Quotes', match: code => code.startsWith('finance.fee.') || code.startsWith('finance.family.') },
   { id: 'treasury', label: 'Tresoreria', match: code => code.startsWith('finance.') },
-  { id: 'administration', label: 'Administració', match: code => code.startsWith('auth.') || code === 'audit.event.read' || code === 'security.incident.manage' },
+  { id: 'administration', label: 'Administració', match: code => code.startsWith('auth.') || code.startsWith('admin.') || code === 'audit.event.read' || code === 'security.incident.manage' },
   { id: 'health', label: 'Salut', match: code => code.startsWith('health.') }
 ]);
 export const moduleOf = code => MODULES.find(module => module.match(code))?.id ?? 'other';
@@ -64,7 +65,7 @@ const LABELS = {
   'auth.role.manage': 'Assignar rols', 'auth.permission.manage': 'Concedir permisos individuals', 'auth.permission.authorize': 'Autoritzar delegacions',
   'auth.permission.provision': 'Tramitar delegacions', 'auth.permission.ratify': 'Ratificar canvis d’autoritat',
   'auth.session.revoke': 'Tancar sessions d’altres persones', 'health.record.read': 'Consultar dades de salut', 'health.grant.manage': 'Concedir accés a salut',
-  'security.incident.manage': 'Gestionar incidents de seguretat',
+  'security.incident.manage': 'Gestionar incidents de seguretat', 'admin.incidents.manage': 'Gestionar incidències i millores',
   'admissions.read': 'Consultar noves altes', 'admissions.manage': 'Gestionar noves altes', 'admissions.decide': 'Acceptar o rebutjar noves altes'
 };
 export const permissionLabel = code => LABELS[code] ?? code;

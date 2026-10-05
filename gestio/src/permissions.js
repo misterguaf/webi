@@ -86,6 +86,7 @@ export const PERMISSIONS = Object.freeze({
   'auth.session.revoke': { kind: 'GLOBAL', note: 'Revoke another person\'s sessions (3.5H.1); never access to their data.' },
   'health.grant.manage': { kind: 'GLOBAL' },
   'security.incident.manage': { kind: 'GLOBAL' },
+  'admin.incidents.manage': { kind: 'GLOBAL', note: 'Incidències i millores (3.5H.3): see and run every report. Not a security incident.' },
 
   'finance.fee.reconcile': { kind: 'GLOBAL', reserved: true, note: 'Legacy phase 1 fixture; no route uses it.' },
   'crm.contact.read': { kind: 'GLOBAL', reserved: true, note: 'No CRM module exists yet.' },

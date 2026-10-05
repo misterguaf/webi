@@ -239,7 +239,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,45);
+    assert.equal(manifest.schema_version,46);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -256,7 +256,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0035_finance_fee_activity_receipts.sql','0036_finance_post_close_receipts.sql',
       '0037_activity_price_snapshot.sql','0038_activity_installment_plans.sql',
       '0039_finance_family_overpayments.sql','0040_finance_family_refunds.sql',
-      '0041_fee_obligation_corrections.sql','0042_activity_price_corrections.sql','0043_access_administration.sql','0044_admissions.sql','0045_section_label_esculta.sql']);
+      '0041_fee_obligation_corrections.sql','0042_activity_price_corrections.sql','0043_access_administration.sql','0044_admissions.sql','0045_section_label_esculta.sql','0046_work_incidents.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);

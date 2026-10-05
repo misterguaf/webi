@@ -110,6 +110,11 @@ export async function capabilities(db, context, now = Date.now()) {
       revokeSessions: global('auth.session.revoke'),
       manageHealthGrants: global('health.grant.manage'),
       manageIncidents: global('security.incident.manage')
+    },
+    // 3.5H.3: every user reports and reads their own; managing every report needs the explicit capability.
+    incidents: {
+      report: true,
+      manage: global('admin.incidents.manage')
     }
   };
 }

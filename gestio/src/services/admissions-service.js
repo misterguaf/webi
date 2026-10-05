@@ -9,6 +9,12 @@ import { AppError, requirePermission, requireUuid, validUuid } from './common.js
 import { matchKey } from './registration-service.js';
 import { versionCas } from '../concurrency.js';
 import { isAdult } from './participant-service.js';
+import { openSystemIncidentStatements, resolveSystemIncidentStatements } from './work-incident-service.js';
+
+// 3.5H.3: an ambiguous match is a deterministic blocker → exactly one linked SYSTEM incident (reference only).
+const ambiguityKey = id => `ADMISSION_MATCH_AMBIGUOUS:${id}`;
+const resolveAmbiguity = (db, context, requestId, id, resolution, now) =>
+  resolveSystemIncidentStatements(db, context, { key: ambiguityKey(id), resolution, requestId }, now);
 
 // Public section labels of the existing form → existing section codes (no second section truth).
 export const PUBLIC_SECTION_CODES = Object.freeze({ 'Estol (8-11)': 'MANADA', 'Tropa (11-14)': 'TROPA', 'Escoltes (14-17)': 'ESCOLTA', 'Clan (17-21)': 'CLAN' });
@@ -172,7 +178,8 @@ export async function transition(db, context, requestId, id, kind, input, now = 
     db.prepare(`UPDATE admission_request SET ${versionCas('version')},status=?,rejection_category=?,updated_at=? WHERE id=?`)
       .bind(expected, step.to, category, now, id),
     event(db, { requestId: id, action: step.action, from: row.status, to: step.to, actor: context.userId, category }, now),
-    audit(db, context, requestId, step.audit, id, now, category)]);
+    audit(db, context, requestId, step.audit, id, now, category),
+    ...(['REJECTED', 'WITHDRAWN'].includes(step.to) ? await resolveAmbiguity(db, context, requestId, id, 'La sol·licitud s’ha tancat sense alta.', now) : [])]);
   return { id, status: step.to, version: expected + 1 };
 }
 
@@ -211,7 +218,8 @@ export async function resolveMatch(db, context, requestId, id, input, now = Date
     db.prepare(`UPDATE admission_request SET ${versionCas('version')},match_status=?,match_participant_id=?,updated_at=? WHERE id=?`)
       .bind(expected, status, participantId, now, id),
     event(db, { requestId: id, action: 'MATCH_RESOLVED', from: row.status, to: row.status, actor: context.userId, category: status }, now),
-    audit(db, context, requestId, 'ADMISSION_MATCH_RESOLVED', id, now, status)]);
+    audit(db, context, requestId, 'ADMISSION_MATCH_RESOLVED', id, now, status),
+    ...await resolveAmbiguity(db, context, requestId, id, 'Coincidència resolta a Noves altes.', now)]);
   return { id, matchStatus: status, version: expected + 1 };
 }
 
@@ -232,8 +240,11 @@ export async function acceptAdmission(db, context, requestId, id, input, now = D
   else if (row.match_status !== 'RESOLVED_NEW') {
     const found = await matchParticipants(db, row);
     if (found.status === 'AMBIGUOUS') {
-      // Kept inside Admissions as a review flag (no general incidents module yet).
-      if (row.match_status !== 'AMBIGUOUS') await db.prepare("UPDATE admission_request SET match_status='AMBIGUOUS' WHERE id=? AND version=?").bind(id, expected).run();
+      // Review flag on the request plus one SYSTEM incident; repeated attempts reuse it (unique key).
+      await db.batch([
+        ...(row.match_status !== 'AMBIGUOUS' ? [db.prepare("UPDATE admission_request SET match_status='AMBIGUOUS' WHERE id=? AND version=?").bind(id, expected)] : []),
+        ...openSystemIncidentStatements(db, { key: ambiguityKey(id), type: 'DATA', title: 'Coincidència ambigua en una sol·licitud d’alta',
+          module: 'participants', resourceType: 'admission_request', resourceId: id, requestId }, now)]);
       throw new AppError(409, 'admission_match_ambiguous');
     }
     if (found.status === 'CLEAR') target = found.participant;

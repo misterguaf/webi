@@ -18,6 +18,8 @@ import * as capabilityService from './src/services/capability-service.js';
 import * as identityService from './src/services/identity-service.js';
 import * as accessAdmin from './src/services/access-admin-service.js';
 import * as admissions from './src/services/admissions-service.js';
+import * as activityFeed from './src/services/activity-feed-service.js';
+import * as workIncidents from './src/services/work-incident-service.js';
 import { AppError } from './src/services/common.js';
 import { financeRoute } from './src/domains/finance/routes.js';
 import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
@@ -275,6 +277,16 @@ async function api(request,env,url,requestId) {
       :await admissions.transition(db,context,requestId,id,op,body);
     return json({...result,requestId});
   }
+  // 3.5H.3 Activitat (safe projection of the audit, any Gestió user) and Incidències i millores.
+  if (path==='/api/activity' && method==='GET') return json({...await activityFeed.listActivity(db,context,requestId,url.searchParams),requestId});
+  if (path==='/api/activity/actors' && method==='GET') return json({...await activityFeed.activityActors(db),requestId});
+  if (path==='/api/work-incidents' && method==='GET') return json({...await workIncidents.listIncidents(db,context,requestId,url.searchParams),requestId});
+  if (path==='/api/work-incidents' && method==='POST') return json({...await workIncidents.reportIncident(db,context,requestId,await readJson(request,4096)),requestId},201);
+  if (path==='/api/work-incidents/summary' && method==='GET') return json({...await workIncidents.incidentSummary(db,context),requestId});
+  match=path.match(/^\/api\/work-incidents\/([^/]+)$/);
+  if (match && method==='GET') return json({...await workIncidents.incidentDetail(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/work-incidents\/([^/]+)\/(start|resolve|reopen)$/);
+  if (match && method==='POST') return json({...await workIncidents.moveIncident(db,context,requestId,match[1],match[2],await readJson(request)),requestId});
   // 3.5H.1 Administració (docs/decisions/ADMIN_DECISIONS.md).
   if (path==='/api/admin/catalog' && method==='GET') return json({...await accessAdmin.catalog(db,context,requestId),requestId});
   if (path==='/api/admin/users' && method==='POST') return json({...await accessAdmin.provisionUser(db,context,session,requestId,await readJson(request,8192)),requestId},201);

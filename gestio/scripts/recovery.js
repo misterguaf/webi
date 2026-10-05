@@ -43,7 +43,9 @@ const TABLES=[
   'finance_income','finance_income_revision','finance_allocation',
   'finance_allocation_correction',
   // 3.5H.2 Noves altes.
-  'admission_request','admission_request_event'
+  'admission_request','admission_request_event',
+  // 3.5H.3 Incidències i millores.
+  'work_incident'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
@@ -53,6 +55,8 @@ const REQUIRED_OBJECTS=[
   // 3.5H.2 (0044): admission workflow guards and immutable history.
   'trigger:admission_request_insert_guard','trigger:admission_request_transition','trigger:admission_request_no_delete',
   'trigger:admission_request_event_no_update','trigger:admission_request_event_no_delete',
+  // 3.5H.3 (0046): incident workflow guards.
+  'trigger:work_incident_insert_guard','trigger:work_incident_transition','trigger:work_incident_no_delete',
   'trigger:session_user_must_be_active','trigger:revoke_session_on_account_block',
   'trigger:role_recipient_must_be_active','trigger:permission_recipient_must_be_active',
   'trigger:health_recipient_must_be_active','index:activity_registration_member_unique',

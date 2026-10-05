@@ -328,3 +328,11 @@ SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VAL
   ('00000000-0000-4000-8000-000000000540','00000000-0000-4000-8000-000000000103','admissions.manage'),
   ('00000000-0000-4000-8000-000000000541','00000000-0000-4000-8000-000000000103','admissions.decide'))
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='admissions.read');
+
+-- 3.5H.3 Incidències i millores (mirrors migration 0046): Secretaria and Coordinació general manage them.
+-- TECH_ADMIN (seed-107) receives nothing by holding its role.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT column1,column2,'admin.incidents.manage',1700000000000,NULL,'Fixture sintético' FROM (VALUES
+  ('00000000-0000-4000-8000-000000000550','00000000-0000-4000-8000-000000000101'),
+  ('00000000-0000-4000-8000-000000000551','00000000-0000-4000-8000-000000000105'))
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='admin.incidents.manage');

@@ -7,6 +7,7 @@ export const ACTIONS = new Set([
   'USER_ENABLED','USER_SECURITY_SUSPENDED','ROLE_ASSIGNED','ROLE_REMOVED',
   'PERMISSION_GRANTED','PERMISSION_REVOKED','AUTHZ_ALLOW','AUTHZ_DENY',
   'ROLE_RATIFIED','PERMISSION_RATIFIED',
+  'WORK_INCIDENT_REPORTED','WORK_INCIDENT_SYSTEM_OPENED','WORK_INCIDENT_STARTED','WORK_INCIDENT_RESOLVED','WORK_INCIDENT_REOPENED',
   'ADMISSION_RECEIVED','ADMISSION_REVIEW_STARTED','ADMISSION_WAITLISTED','ADMISSION_RETURNED_TO_REVIEW','ADMISSION_SECTION_CONFIRMED',
   'ADMISSION_MATCH_RESOLVED','ADMISSION_ACCEPTED','ADMISSION_REJECTED','ADMISSION_WITHDRAWN',
   'SENSITIVE_DATA_READ','HEALTH_ACCESS_GRANTED','HEALTH_ACCESS_REVOKED',
@@ -47,7 +48,7 @@ export const ACTIONS = new Set([
   'BUDGET_CREATED','BUDGET_PROPOSED','BUDGET_RETURNED_TO_DRAFT','BUDGET_APPROVED','BUDGET_LINE_CREATED','BUDGET_LINE_REVISED',
   'BUDGET_LINE_DEACTIVATED','BUDGET_REVISION_PROPOSED','BUDGET_REVISION_APPROVED','BUDGET_REVISION_REJECTED'
 ]);
-const RESOURCE_TYPES = new Set(['admission_request','app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
+const RESOURCE_TYPES = new Set(['admission_request','work_incident','app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
   'activity','activity_registration','activity_installment_plan','payment_evidence','delegated_permission','notification_outbox',
   'annual_fee_round','annual_fee_family_group','annual_fee_obligation','annual_fee_payment',
   'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',
@@ -139,6 +140,25 @@ export async function queryAuthorized(db, input={}) {
   const page=rows.slice(0,limit);
   const last=page.at(-1);
   return { events:page, nextCursor:rows.length>limit && last?encode([last.occurred_at,last.id]):null };
+}
+
+// 3.5H.3 Activitat: the safe projection reads only successful events of an explicit action whitelist, and only
+// the columns it needs (never metadata, session or request ids). Redaction happens in the activity service.
+export async function queryForActivity(db, { actions, actorId=null, from=null, to=null, cursor=null, limit=50 }) {
+  if (!Array.isArray(actions) || !actions.length || actions.some(action => !ACTIONS.has(action))) throw new Error('INVALID_AUDIT_FILTER');
+  if (!Number.isInteger(limit) || limit<1 || limit>100) throw new Error('INVALID_AUDIT_FILTER');
+  const clauses=[`action IN (${actions.map(()=>'?').join(',')})`,"result='SUCCESS'"], values=[...actions];
+  if (actorId!==null) { if (!UUID.test(actorId)) throw new Error('INVALID_AUDIT_FILTER'); clauses.push('actor_user_id=?'); values.push(actorId); }
+  for (const [value,operator] of [[from,'>='],[to,'<']]) {
+    if (value===null) continue;
+    if (!Number.isSafeInteger(value) || value<0) throw new Error('INVALID_AUDIT_FILTER');
+    clauses.push(`occurred_at${operator}?`); values.push(value);
+  }
+  if (cursor!==null) { const [time,id]=decode(cursor); clauses.push('(occurred_at<? OR (occurred_at=? AND id<?))'); values.push(time,time,id); }
+  const rows=(await db.prepare(`SELECT id,occurred_at,actor_user_id,action,resource_type,resource_id FROM audit_event
+    WHERE ${clauses.join(' AND ')} ORDER BY occurred_at DESC,id DESC LIMIT ?`).bind(...values,limit+1).all()).results;
+  const page=rows.slice(0,limit), last=page.at(-1);
+  return { rows:page, nextCursor:rows.length>limit && last?encode([last.occurred_at,last.id]):null };
 }
 
 export function retentionDeleteStatement(db, cutoff) {
