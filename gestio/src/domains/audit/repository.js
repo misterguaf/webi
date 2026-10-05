@@ -7,6 +7,8 @@ export const ACTIONS = new Set([
   'USER_ENABLED','USER_SECURITY_SUSPENDED','ROLE_ASSIGNED','ROLE_REMOVED',
   'PERMISSION_GRANTED','PERMISSION_REVOKED','AUTHZ_ALLOW','AUTHZ_DENY',
   'ROLE_RATIFIED','PERMISSION_RATIFIED',
+  'ADMISSION_RECEIVED','ADMISSION_REVIEW_STARTED','ADMISSION_WAITLISTED','ADMISSION_RETURNED_TO_REVIEW','ADMISSION_SECTION_CONFIRMED',
+  'ADMISSION_MATCH_RESOLVED','ADMISSION_ACCEPTED','ADMISSION_REJECTED','ADMISSION_WITHDRAWN',
   'SENSITIVE_DATA_READ','HEALTH_ACCESS_GRANTED','HEALTH_ACCESS_REVOKED',
   'DATA_CREATED','DATA_UPDATED','DATA_DELETED','BREAK_GLASS_GRANTED',
   'BREAK_GLASS_USED','BREAK_GLASS_REVOKED','EXPORT_REQUESTED','EXPORT_DENIED',
@@ -45,7 +47,7 @@ export const ACTIONS = new Set([
   'BUDGET_CREATED','BUDGET_PROPOSED','BUDGET_RETURNED_TO_DRAFT','BUDGET_APPROVED','BUDGET_LINE_CREATED','BUDGET_LINE_REVISED',
   'BUDGET_LINE_DEACTIVATED','BUDGET_REVISION_PROPOSED','BUDGET_REVISION_APPROVED','BUDGET_REVISION_REJECTED'
 ]);
-const RESOURCE_TYPES = new Set(['app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
+const RESOURCE_TYPES = new Set(['admission_request','app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
   'activity','activity_registration','activity_installment_plan','payment_evidence','delegated_permission','notification_outbox',
   'annual_fee_round','annual_fee_family_group','annual_fee_obligation','annual_fee_payment',
   'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',

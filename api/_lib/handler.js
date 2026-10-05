@@ -18,6 +18,23 @@ import { isAcceptedFormContentType } from "./http-body.js";
 import { isAllowedOrigin } from "./environment.js";
 
 const MAX_BODY = 16 * 1024; // 16 KB: molt per damunt d'un formulari legítim
+const GESTIO_ADMISSIONS_URL = "https://gestio-intake.internal/v1/admissions";
+
+/* Mapatge dels camps del formulari existent al contracte d'admissions de Gestió (cap camp nou, cap dada de salut). */
+export function admissionPayload(d) {
+  return {
+    givenName: d.nom,
+    familyNames: d.cognoms,
+    birthDate: d.naixement,
+    ...(d.seccio ? { sectionLabel: d.seccio } : {}),
+    guardianName: d.tutor,
+    contactPhone: d.telefon,
+    contactEmail: d.email,
+    ...(d.conegut ? { heardFrom: d.conegut } : {}),
+    dataConsent: true,
+    contactConsent: true,
+  };
+}
 
 const MISSATGES = {
   ok: {
@@ -176,6 +193,33 @@ export async function handleAlta(req) {
     // Es registren només els NOMS dels camps invàlids, mai els valors.
     console.warn("[alta] validació fallida:", Object.keys(v.errors).join(","));
     return respond(400, { ok: false, message: MISSATGES.invalid, errors: v.errors });
+  }
+
+  // 3.5H.2: Gestió (Participants → Noves altes) is the operational source of admissions. When the site Worker
+  // has the GESTIO_INTAKE service binding, the request goes only there. Without it (the current deployment,
+  // before cut-over) the legacy Apps Script write stays as a transitional, NON-authoritative path; it is never
+  // the admissions database of record. The public answer is the same neutral message either way.
+  const intake = req.env && req.env.GESTIO_INTAKE;
+  if (intake && typeof intake.fetch === "function") {
+    let status = 0;
+    try {
+      const response = await intake.fetch(new Request(GESTIO_ADMISSIONS_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(admissionPayload(v.data)),
+      }));
+      status = response.status;
+    } catch (e) {
+      console.error("[alta] Gestió no disponible:", e && e.name);
+      return respond(502, { ok: false, message: MISSATGES.server });
+    }
+    if (status === 400) return respond(400, { ok: false, message: MISSATGES.invalid });
+    if (status < 200 || status >= 300) {
+      console.error("[alta] Gestió ha rebutjat la sol·licitud:", status);
+      return respond(502, { ok: false, message: MISSATGES.server });
+    }
+    console.info("[alta] sol·licitud registrada a Gestió");
+    return respond(200, { ok: true, message: MISSATGES.ok });
   }
 
   try {

@@ -8,7 +8,7 @@ import { FINANCIAL_DELEGATIONS, permissionDefinition } from '../permissions.js';
 const FINANCIAL=new Set(FINANCIAL_DELEGATIONS);
 const DELEGABLE=new Set(['activities.registration.review','activities.registration.contact.read',
   'participants.profile.read','participants.profile.manage','participants.contact.read','participants.contact.manage',
-  'participants.guardian.manage',...FINANCIAL]);
+  'participants.guardian.manage','admissions.read','admissions.manage','admissions.decide',...FINANCIAL]);
 // 3.5E delegation duration: 90 days by default, up to 365 days, always with an expiry. Never indefinite.
 // The maximum matches the delegate-role expiry cap (security-service) so the role never expires first.
 const DAY=24*60*60*1000;

@@ -29,6 +29,10 @@ export const PERMISSIONS = Object.freeze({
     note: 'Marking legal representation as documentarily accredited: Secretaria or general coordination.' },
   'participants.review.manage': { kind: 'GLOBAL', note: 'Secretaria administrative review queue and change requests.' },
   'health.record.read': { kind: 'SCOPED', note: 'Section derived from participantId; also needs a health grant.' },
+  // 3.5H.2 Noves altes: scope = the request's confirmed section, or the requested one until confirmed.
+  'admissions.read': { kind: 'SCOPED', delegable: true },
+  'admissions.manage': { kind: 'SCOPED', delegable: true },
+  'admissions.decide': { kind: 'SCOPED', delegable: true, note: 'Accept or reject; records a decision taken by the group.' },
 
   'activities.read': { kind: 'SCOPED', note: 'Any scope also reads GENERAL activities (3.5D); managing them needs activities.general.manage.' },
   'activities.manage': { kind: 'SCOPED' },

@@ -41,13 +41,18 @@ const TABLES=[
   'finance_budget_revision','finance_expense','finance_expense_line','finance_expense_revision','finance_expense_evidence',
   'finance_reimbursement','finance_card_statement','finance_overpayment','finance_family_refund_decision','finance_family_refund',
   'finance_income','finance_income_revision','finance_allocation',
-  'finance_allocation_correction'
+  'finance_allocation_correction',
+  // 3.5H.2 Noves altes.
+  'admission_request','admission_request_event'
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
   // 3.5H.1 (0043): one active grant per origin and scope, role-sourced grants and ratification guards.
   'index:user_permission_active_unique','index:user_permission_source_role_idx','trigger:user_permission_grant_source_guard',
   'trigger:user_role_ratification_guard','trigger:user_permission_ratification_guard',
+  // 3.5H.2 (0044): admission workflow guards and immutable history.
+  'trigger:admission_request_insert_guard','trigger:admission_request_transition','trigger:admission_request_no_delete',
+  'trigger:admission_request_event_no_update','trigger:admission_request_event_no_delete',
   'trigger:session_user_must_be_active','trigger:revoke_session_on_account_block',
   'trigger:role_recipient_must_be_active','trigger:permission_recipient_must_be_active',
   'trigger:health_recipient_must_be_active','index:activity_registration_member_unique',

@@ -20,7 +20,9 @@ export const EXPLICIT_ONLY = Object.freeze(new Set(['finance.bank_description.re
   'health.record.read', 'health.grant.manage', 'auth.permission.ratify']));
 const ROLE_EXPLICIT_ONLY = Object.freeze({
   GROUP_COORDINATOR: new Set(['finance.movement.import']),
-  TECH_ADMIN: new Set(['auth.user.manage', 'auth.role.manage', 'auth.permission.manage', 'auth.session.revoke', 'auth.user.suspend'])
+  TECH_ADMIN: new Set(['auth.user.manage', 'auth.role.manage', 'auth.permission.manage', 'auth.session.revoke', 'auth.user.suspend']),
+  // A section delegate receives admissions only by an explicit grant or delegation.
+  SECTION_DELEGATE: new Set(['admissions.read', 'admissions.manage', 'admissions.decide'])
 });
 /** Permissions granted by default when a role is assigned (inside its ceiling). */
 export function roleDefaults(roleCode, ceiling) {
@@ -30,6 +32,7 @@ export function roleDefaults(roleCode, ceiling) {
 
 export const MODULES = Object.freeze([
   { id: 'participants', label: 'Participants', match: code => code.startsWith('participants.') },
+  { id: 'admissions', label: 'Noves altes', match: code => code.startsWith('admissions.') },
   { id: 'activities', label: 'Activitats i inscripcions', match: code => code.startsWith('activities.') || code === 'finance.payment.verify' },
   { id: 'fees', label: 'Quotes', match: code => code.startsWith('finance.fee.') || code.startsWith('finance.family.') },
   { id: 'treasury', label: 'Tresoreria', match: code => code.startsWith('finance.') },
@@ -61,7 +64,8 @@ const LABELS = {
   'auth.role.manage': 'Assignar rols', 'auth.permission.manage': 'Concedir permisos individuals', 'auth.permission.authorize': 'Autoritzar delegacions',
   'auth.permission.provision': 'Tramitar delegacions', 'auth.permission.ratify': 'Ratificar canvis d’autoritat',
   'auth.session.revoke': 'Tancar sessions d’altres persones', 'health.record.read': 'Consultar dades de salut', 'health.grant.manage': 'Concedir accés a salut',
-  'security.incident.manage': 'Gestionar incidents de seguretat'
+  'security.incident.manage': 'Gestionar incidents de seguretat',
+  'admissions.read': 'Consultar noves altes', 'admissions.manage': 'Gestionar noves altes', 'admissions.decide': 'Acceptar o rebutjar noves altes'
 };
 export const permissionLabel = code => LABELS[code] ?? code;
 
@@ -79,7 +83,8 @@ export const PACKAGES = Object.freeze([
     roles: [{ roleCode: 'TREASURY', permissions: ['finance.fee.read', 'finance.fee.manage', 'finance.fee.payment.review', 'finance.family.read'] }] },
   { id: 'activities', label: 'Activitats', description: 'Activitats i inscripcions d’una secció.',
     roles: [{ roleCode: 'SECTION_COORDINATOR', permissions: ['activities.read', 'activities.manage', 'activities.registration.review'], sectionRequired: true }] },
-  { id: 'admissions', label: 'Noves altes', description: 'Preparat per a 3.5H.2: encara sense permisos propis.', roles: [], disabled: true },
+  { id: 'admissions', label: 'Noves altes', description: 'Gestionar i decidir noves altes d’una secció.',
+    roles: [{ roleCode: 'SECTION_COORDINATOR', permissions: ['admissions.read', 'admissions.manage', 'admissions.decide'], sectionRequired: true }] },
   { id: 'secretary', label: 'Secretaria', description: 'Participants, revisió administrativa i alta de comptes.',
     roles: [{ roleCode: 'SECRETARY', permissions: null }] },
   { id: 'user-administration', label: 'Administració d’usuaris', description: 'Crear comptes, assignar rols i permisos i tancar sessions. Sense accés a dades funcionals.',

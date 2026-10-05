@@ -62,6 +62,12 @@ export async function capabilities(db, context, now = Date.now()) {
       readContacts: scope('activities.registration.contact.read'),
       verifyPayments: scope('finance.payment.verify')
     },
+    // 3.5H.2 Noves altes (scoped by the request's section).
+    admissions: {
+      read: scope('admissions.read'),
+      manage: scope('admissions.manage'),
+      decide: scope('admissions.decide')
+    },
     fees: {
       status: scope('finance.fee.status.read'),
       read: scope('finance.fee.read'),

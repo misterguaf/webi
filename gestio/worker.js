@@ -17,6 +17,7 @@ import { scopedFeeStatus } from './src/services/annual-fee-status.js';
 import * as capabilityService from './src/services/capability-service.js';
 import * as identityService from './src/services/identity-service.js';
 import * as accessAdmin from './src/services/access-admin-service.js';
+import * as admissions from './src/services/admissions-service.js';
 import { AppError } from './src/services/common.js';
 import { financeRoute } from './src/domains/finance/routes.js';
 import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
@@ -261,6 +262,19 @@ async function api(request,env,url,requestId) {
     if (response) return response;
   }
 
+  // 3.5H.2 Noves altes.
+  if (path==='/api/admissions' && method==='GET') return json({...await admissions.listAdmissions(db,context,requestId,url.searchParams),requestId});
+  match=path.match(/^\/api\/admissions\/([^/]+)$/);
+  if (match && method==='GET') return json({...await admissions.admissionDetail(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/admissions\/([^/]+)\/(start-review|waitlist|return-to-review|withdraw|reject|section|resolve-match|accept)$/);
+  if (match && method==='POST') {
+    const body=await readJson(request), [, id, op]=match;
+    const result=op==='section'?await admissions.confirmSection(db,context,requestId,id,body)
+      :op==='resolve-match'?await admissions.resolveMatch(db,context,requestId,id,body)
+      :op==='accept'?await admissions.acceptAdmission(db,context,requestId,id,body)
+      :await admissions.transition(db,context,requestId,id,op,body);
+    return json({...result,requestId});
+  }
   // 3.5H.1 Administració (docs/decisions/ADMIN_DECISIONS.md).
   if (path==='/api/admin/catalog' && method==='GET') return json({...await accessAdmin.catalog(db,context,requestId),requestId});
   if (path==='/api/admin/users' && method==='POST') return json({...await accessAdmin.provisionUser(db,context,session,requestId,await readJson(request,8192)),requestId},201);
