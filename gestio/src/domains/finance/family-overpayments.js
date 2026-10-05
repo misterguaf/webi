@@ -46,9 +46,10 @@ export async function listOverpayments(db, context, requestId, params) {
   const rows = (await db.prepare(`SELECT o.id,o.round_id AS roundId,o.registration_id AS registrationId,
     o.fee_payment_id AS feePaymentId,o.recipient_email AS recipientEmail,o.cause,
     o.amount_cents AS amountCents,o.status,o.created_at AS createdAt,
+    EXISTS(SELECT 1 FROM finance_family_refund f WHERE f.overpayment_id=o.id) AS refundDue,
     COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a
       WHERE a.kind='FAMILY_OVERPAYMENT' AND a.overpayment_id=o.id),0) AS reconciledCents
     FROM finance_overpayment o ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
     ORDER BY o.created_at DESC,o.id DESC LIMIT 100`).bind(...binds).all()).results;
-  return { overpayments: rows };
+  return { overpayments: rows.map(row => ({...row,refundDue:!!row.refundDue})) };
 }

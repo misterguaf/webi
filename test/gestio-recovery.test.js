@@ -227,6 +227,9 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal((await finance('incomes/'+sale,{concept:'Venda de loteria',expectedVersion:1},'PATCH')).status,200);
     const saleMove=(await finance('movements',{positionId:bank,operationDate:'2026-11-07',amountCents:30000,label:'Ingrés loteria'})).data.id;
     assert.equal((await finance('movements/'+saleMove+'/allocations',{expectedVersion:0,allocations:[{kind:'INCOME',amountCents:30000,incomeId:sale}]})).status,200);
+    assert.equal((await finance('rounds/'+round+'/reserve-operations',{kind:'CONTRIBUTION',amountCents:500})).status,201);
+    assert.equal((await finance('rounds/'+round+'/closing',{expectedVersion:2})).status,200);
+    assert.equal((await finance('rounds/'+round+'/close',{expectedVersion:3})).status,200);
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -235,7 +238,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,31);
+    assert.equal(manifest.schema_version,42);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -247,7 +250,12 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0021_issue_notices_per_attempt.sql','0022_financial_delegation.sql','0023_finance_rounds_positions.sql',
       '0024_finance_movements.sql','0025_finance_counterparties_budget.sql','0026_finance_expenses_allocations.sql',
       '0027_finance_permissions.sql','0028_finance_expense_concept.sql','0029_finance_income.sql',
-      '0030_finance_reimbursements_evidence.sql','0031_finance_corrections.sql']);
+      '0030_finance_reimbursements_evidence.sql','0031_finance_corrections.sql',
+      '0032_fee_n_installments.sql','0033_finance_family_permissions.sql','0034_finance_reserves_close.sql',
+      '0035_finance_fee_activity_receipts.sql','0036_finance_post_close_receipts.sql',
+      '0037_activity_price_snapshot.sql','0038_activity_installment_plans.sql',
+      '0039_finance_family_overpayments.sql','0040_finance_family_refunds.sql',
+      '0041_fee_obligation_corrections.sql','0042_activity_price_corrections.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);
@@ -271,9 +279,9 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(manifest.table_counts.finance_budget_revision,1);
     for (const object of ['table:annual_fee_family_revision','table:annual_fee_family_revision_member',
       'trigger:annual_fee_payment_no_unverify_allocated','trigger:annual_fee_confirm_delivery_guard',
-      'trigger:annual_fee_installment_total_insert',
-      'trigger:annual_fee_installment_immutable_delete',
-      'trigger:annual_fee_obligation_installment_total_update','view:annual_fee_installment_part',
+      'trigger:annual_fee_installment_plan_insert_guard',
+      'trigger:annual_fee_installment_part_no_delete',
+      'trigger:annual_fee_obligation_installment_total_update','table:annual_fee_installment_part',
       'view:annual_fee_payment_balance','trigger:annual_fee_payment_allocated_review_guard',
       'trigger:annual_fee_family_member_delete_guard','index:annual_fee_family_member_binding_unique',
       'trigger:annual_fee_family_member_binding_insert','trigger:annual_fee_obligation_member_update',
@@ -398,6 +406,15 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(restoredFinance.status,0);
     assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:10000,income:30000,current_allocations:7,budget_current:105000},
       'the transfer counts nothing, the card and advanced expenses once, the collected sale once; current budget = initial + approved revision');
+    const restoredClose=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
+      '--config','wrangler.toml','--command',"SELECT r.status,c.income_cents AS income,c.expense_cents AS expenses,c.result_cents AS result,"+
+      "c.reserve_contribution_cents AS contribution,c.result_after_reserves_cents AS final FROM finance_round r "+
+      "JOIN finance_round_close c ON c.round_id=r.id WHERE r.id='"+round+"'",'--json'],
+      {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    assert.equal(restoredClose.status,0);
+    assert.deepEqual(JSON.parse(restoredClose.stdout)[0].results[0],
+      {status:'CLOSED',income:30000,expenses:10000,result:20000,contribution:500,final:19500},
+      'the immutable official close and reserve operation survive restore');
     const restoredReimbursements=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
       '--config','wrangler.toml','--command',"SELECT r.status,r.amount_cents AS amount,r.recipient_id AS recipient,"+
       "COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a WHERE a.reimbursement_id=r.id),0) AS settled,"+

@@ -12,14 +12,14 @@ const DIRECT_CELLS = new Set(['D21','D28','D29','D30','D31','D33','D34','J27','J
   'J38','J39','J40','J41','J44','J45','J46','J47','J48','J49','J50']);
 const decoder = new TextDecoder();
 
-function validateCents(cents) {
+export function validateCents(cents) {
   if (!Number.isSafeInteger(cents) || Math.abs(cents) > 10000000000)
     throw new Error('invalid_treasury_export_amount');
   return cents / 100;
 }
 const escapeXml = value => String(value).replaceAll('&','&amp;').replaceAll('<','&lt;')
   .replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&apos;');
-function excelDate(date) {
+export function excelDate(date) {
   if (typeof date !== 'string' || !/^20\d\d-\d\d-\d\d$/.test(date) ||
       new Date(`${date}T00:00:00Z`).toISOString().slice(0,10) !== date)
     throw new Error('invalid_treasury_export_date');
@@ -34,7 +34,7 @@ function cellXml(coord, value, style) {
 function columnNumber(coord) {
   return [...coord.match(/^[A-Z]+/)[0]].reduce((n,char) => n*26+char.charCodeAt(0)-64,0);
 }
-function setCell(xml, coord, value, style=11) {
+export function setCell(xml, coord, value, style=11, { allowFormula = false } = {}) {
   const rowNumber = Number(coord.match(/\d+$/)[0]);
   const rowPattern = new RegExp(`<row\\b[^>]*\\br="${rowNumber}"[^>]*>[\\s\\S]*?<\\/row>`);
   const rowMatch = rowPattern.exec(xml);
@@ -54,7 +54,7 @@ function setCell(xml, coord, value, style=11) {
   const existing = new RegExp(`<c\\b([^>]*\\br="${coord}"[^>]*)(?:\\/>|>[\\s\\S]*?<\\/c>)`);
   const found = existing.exec(row);
   if (found) {
-    if (/<f(?:\s|>)/.test(found[0])) throw new Error('treasury_template_formula_protected');
+    if (/<f(?:\s|>)/.test(found[0]) && !allowFormula) throw new Error('treasury_template_formula_protected');
     const styleMatch = found[1].match(/\bs="(\d+)"/);
     row = row.replace(found[0],cellXml(coord,value,styleMatch?.[1]??style));
   } else {
@@ -65,12 +65,12 @@ function setCell(xml, coord, value, style=11) {
   }
   return xml.slice(0,rowMatch.index)+row+xml.slice(rowMatch.index+rowMatch[0].length);
 }
-function updateDimension(xml) {
+export function updateDimension(xml) {
   const lastRow = Math.max(...[...xml.matchAll(/<row\b[^>]*\br="(\d+)"/g)].map(match => Number(match[1])));
   return xml.replace(/<dimension ref="([A-Z]+\d+):([A-Z]+)\d+"\/>/,
     (_whole,first,lastColumn) => `<dimension ref="${first}:${lastColumn}${lastRow}"/>`);
 }
-async function sha256(bytes) {
+export async function sha256(bytes) {
   const hash = new Uint8Array(await crypto.subtle.digest('SHA-256',bytes));
   return [...hash].map(byte=>byte.toString(16).padStart(2,'0')).join('');
 }
@@ -125,6 +125,7 @@ export async function fillTreasuryTemplate(templateBytes,model) {
   let result=strFromU8(files['xl/worksheets/sheet1.xml']);
   result=setCell(result,'A1',`RESULTAT RONDA SOLAR ${model.roundCode.slice(2,4)}/${model.roundCode.slice(7,9)}`,57);
   if (model.resultDate) result=setCell(result,'E10',excelDate(model.resultDate),11);
+  if (model.detail.Otras?.income?.length) result=setCell(result,'A33','4.1 Altres ingressos i activitats',57);
   for (const [coord,cents] of Object.entries(model.direct)) result=setCell(result,coord,validateCents(cents));
   files['xl/worksheets/sheet1.xml']=strToU8(result);
   files['xl/workbook.xml']=strToU8(workbook.replace('<calcPr/>','<calcPr fullCalcOnLoad="1" forceFullCalc="1"/>'));

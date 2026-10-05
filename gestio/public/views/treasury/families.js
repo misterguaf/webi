@@ -1,5 +1,5 @@
 import { h } from '../../ui.js';
-import { formatEur } from './model.js';
+import { errorCopy, formatEur } from './model.js';
 
 const CAUSE = {
   OVERPAYMENT_REFUND: 'Excés de pagament',
@@ -25,11 +25,12 @@ export async function renderFamilyPayments(root,ctx) {
         h('li',{className:'allocation-item'},
           h('span',{className:'allocation-kind',text:row.cause==='PRICE_CORRECTION'?'Correcció d’import':'Pagament superior al degut'}),
           h('span',{className:'allocation-target',text:`${formatEur(row.amountCents)} · conciliat ${formatEur(row.reconciledCents)}`}),
-          row.reconciledCents===row.amountCents?h('button',{className:'btn btn-secondary',text:'Preparar devolució',
+          row.refundDue?h('span',{className:'field-hint',text:'Devolució preparada'}):
+          row.reconciledCents===row.amountCents && ctx.caps().treasury?.classifyMovements?h('button',{className:'btn btn-secondary',text:'Preparar devolució',
             attrs:{type:'button'},on:{click:async()=>{
               try {await ctx.call(`/api/finance/family-overpayments/${row.id}/refund`,
                 {method:'POST',body:'{}'});await renderFamilyPayments(root,ctx);}
-              catch(error){message.textContent=error.message??'No s’ha pogut preparar la devolució.';}
+              catch(error){message.textContent=errorCopy(error);}
             }}}):h('span',{className:'field-hint',text:'Pendent de conciliar amb el banc'}))))
         :h('p',{className:'empty-state',text:'No hi ha excessos familiars oberts.'})),
     h('section',{className:'activity-surface'},h('h3',{text:`Devolucions pendents · ${refundRows.length}`}),
