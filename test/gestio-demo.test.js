@@ -85,8 +85,15 @@ test('legacy G.2A demo can receive only the missing synthetic expense receipts a
     const names = readdirSync(resolve(repo, 'gestio/migrations')).filter(name => name.endsWith('.sql')).sort();
     for (const name of names.filter(name => name < '0030')) sql.exec(readFileSync(resolve(repo, 'gestio/migrations', name), 'utf8'));
     sql.exec(readFileSync(resolve(repo, 'gestio/seed.sql'), 'utf8'));
-    sql.exec(buildDemoData({ now: Date.UTC(2026, 9, 3) }).sql);
-    sql.exec(buildTreasuryDemo().replace(/INSERT INTO finance_expense_evidence[^;]+;\n/, ''));
+    const legacyDemo = buildDemoData({ now: Date.UTC(2026, 9, 3) }).sql
+      .replace(/INSERT INTO annual_fee_installment_plan[^;]+;\n/g, '')
+      .replace(/INSERT INTO annual_fee_installment_part[^;]+;\n/g, '')
+      .replace(/UPDATE annual_fee_installment_plan[^;]+;\n/g, '');
+    sql.exec(legacyDemo);
+    const legacyTreasury = buildTreasuryDemo()
+      .replace(/UPDATE activity_registration SET finance_round_id[^;]+;\n/, '')
+      .replace(/INSERT INTO finance_expense_evidence[^;]+;\n/, '');
+    sql.exec(legacyTreasury);
     assert.equal(sql.prepare('SELECT count(*) AS n FROM finance_expense_evidence').get().n, 0);
     sql.exec(readFileSync(resolve(repo, 'gestio/migrations/0030_finance_reimbursements_evidence.sql'), 'utf8'));
     assert.equal(sql.prepare("SELECT count(*) AS n FROM finance_expense WHERE status='RECOGNISED'").get().n, 2,

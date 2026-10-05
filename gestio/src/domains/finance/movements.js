@@ -576,9 +576,10 @@ export async function incomeFromMovement(db, context, requestId, id, input, now 
 }
 export async function treasurySummary(db, context, requestId) {
   const can = async permission => (await authorize(db, context, { permission })).allow;
-  const [treasury, movementsRead, expensesRead, incomesRead] = await Promise.all(['finance.treasury.read', 'finance.movement.read', 'finance.expense.read',
-    'finance.income.read'].map(can));
-  if (!treasury && !movementsRead && !expensesRead && !incomesRead) await allow(db, context, requestId, 'finance.treasury.read', 'finance_round');
+  const [treasury, movementsRead, expensesRead, incomesRead, budgetRead] = await Promise.all(['finance.treasury.read', 'finance.movement.read', 'finance.expense.read',
+    'finance.income.read', 'finance.budget.read'].map(can));
+  if (!treasury && !movementsRead && !expensesRead && !incomesRead && !budgetRead)
+    await allow(db, context, requestId, 'finance.treasury.read', 'finance_round');
   const round = await db.prepare("SELECT id,code,period_start AS periodStart,period_end AS periodEnd,status FROM finance_round WHERE status='OPEN'").first();
   const result = { round: round ?? null };
   if (treasury && round) {

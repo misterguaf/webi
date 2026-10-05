@@ -123,7 +123,9 @@ export async function fillTreasuryTemplate(templateBytes,model) {
     files[`xl/worksheets/sheet${index}.xml`]=strToU8(updateDimension(xml));
   }
   let result=strFromU8(files['xl/worksheets/sheet1.xml']);
-  result=setCell(result,'A1',`RESULTAT RONDA SOLAR ${model.roundCode.slice(2,4)}/${model.roundCode.slice(7,9)}`,57);
+  const suffix=model.reportStatus==='ADJUSTED'?' · ACTUAL AJUSTAT':
+    model.reportStatus==='DRAFT'?' · PROVISIONAL':'';
+  result=setCell(result,'A1',`RESULTAT RONDA SOLAR ${model.roundCode.slice(2,4)}/${model.roundCode.slice(7,9)}${suffix}`,57);
   if (model.resultDate) result=setCell(result,'E10',excelDate(model.resultDate),11);
   if (model.detail.Otras?.income?.length) result=setCell(result,'A33','4.1 Altres ingressos i activitats',57);
   for (const [coord,cents] of Object.entries(model.direct)) result=setCell(result,coord,validateCents(cents));

@@ -28,7 +28,7 @@ const EXPENSE = Object.freeze({
   '2.3.11':'D60','2.3.12':'D61','2.4':'J24','3.1':'J26',
   '3.2.1':'J39','3.2.2':'J40','3.2.3':'J41','3.2.4':'J42','3.3':'J28',
   '4.1':'J30','4.2':'J31','4.3':'J32','4.4':'J33',
-  '5.1':'J45','5.2':'J46','5.3':'J47','5.4':'J48','5.5':'J49','5.6':'J50',
+  '5.1':'J45','5.2':'J46','5.4':'J47','5.5':'J48','5.6':'J49','5.7':'J50',
   '6':'J35'
 });
 
@@ -61,7 +61,8 @@ export async function fillBudgetTemplate(templateBytes, model) {
   const names = [...workbook.matchAll(/<sheet\b[^>]*\bname="([^"]+)"/g)].map(match => match[1]);
   if (JSON.stringify(names) !== JSON.stringify(BUDGET_TEMPLATE_SHEETS)) throw new Error('unexpected_budget_template');
   let xml = strFromU8(files['xl/worksheets/sheet1.xml']);
-  xml = setCell(xml, 'A1', `PRESSUPOST ANUAL ${model.roundCode.slice(2,4)}/${model.roundCode.slice(7,9)}`, 57);
+  const suffix=model.budgetStatus==='DRAFT'?' · ESBORRANY':model.budgetStatus==='PROPOSED'?' · PENDENT D’APROVACIÓ':'';
+  xml = setCell(xml, 'A1', `PRESSUPOST ANUAL ${model.roundCode.slice(2,4)}/${model.roundCode.slice(7,9)}${suffix}`, 57);
   for (const [coord, cents] of Object.entries(model.cells)) {
     if (!inputCells.has(coord)) throw new Error('invalid_budget_export_cell');
     xml = setCell(xml, coord, validateCents(cents), 11, { allowFormula: coord === 'D19' || coord === 'J19' });

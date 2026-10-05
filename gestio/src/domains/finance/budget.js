@@ -16,6 +16,10 @@ async function round(db, id) {
   if (!row) throw notFound();
   return row;
 }
+export async function listBudgetRounds(db, context, requestId) {
+  await allow(db, context, requestId, 'finance.budget.read', 'finance_budget');
+  return { rounds: (await db.prepare(`SELECT id,code,status FROM finance_round ORDER BY period_start DESC`).all()).results };
+}
 export async function getBudget(db, context, requestId, roundId) {
   await allow(db, context, requestId, 'finance.budget.read', 'finance_budget');
   await round(db, roundId);
@@ -34,6 +38,39 @@ export async function getBudget(db, context, requestId, roundId) {
     FROM finance_allocation_current a WHERE a.round_id=? AND a.kind='INCOME'
     GROUP BY a.budget_line_id`).bind(roundId).all()).results;
   for (const row of incomeRows) add(row.lineId, row.cents);
+  // Fee and activity receipts retain their own obligations. Budget actuals use the same
+  // recognised caps and refund subtraction as finance_round_economics; bank excess is not income.
+  const familyIncome = await db.prepare(`SELECT
+    COALESCE((SELECT sum(min(
+      COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a
+        WHERE a.kind='FEE_PAYMENT' AND a.fee_payment_id=p.id),0),
+      COALESCE((SELECT sum(a.amount_cents) FROM annual_fee_allocation a WHERE a.payment_id=p.id),0)
+        -COALESCE((SELECT sum(o.amount_cents) FROM finance_overpayment o
+          WHERE o.fee_payment_id=p.id AND o.cause='PRICE_CORRECTION'),0)))
+      FROM annual_fee_payment p JOIN finance_round r ON r.annual_fee_round_id=p.round_id
+      WHERE r.id=?),0) AS feeCents`).bind(roundId).first();
+  if (familyIncome.feeCents > 0) {
+    const feeLines=lines.filter(line => line.nature==='INCOME' && line.code==='1.1' && !line.hasChildren && line.status==='ACTIVE');
+    if (feeLines.length!==1) throw new AppError(409,'treasury_export_mapping_missing');
+    add(feeLines[0].id,familyIncome.feeCents);
+  }
+  const activityIncome=(await db.prepare(`SELECT ar.activity_id AS activityId,
+    sum(max(0,min(COALESCE((SELECT sum(f.amount_cents) FROM finance_allocation_current f
+      JOIN activity_payment_allocation pa ON pa.id=f.activity_allocation_id
+      WHERE f.kind='ACTIVITY_PAYMENT' AND pa.registration_id=ar.id),0),ar.expected_amount_cents)
+      -min(COALESCE((SELECT sum(f.amount_cents) FROM finance_allocation_current f
+        JOIN activity_payment_allocation pa ON pa.id=f.activity_allocation_id
+        WHERE f.kind='FAMILY_REFUND' AND pa.registration_id=ar.id),0),
+        COALESCE((SELECT sum(f.amount_cents) FROM finance_allocation_current f
+          JOIN activity_payment_allocation pa ON pa.id=f.activity_allocation_id
+          WHERE f.kind='ACTIVITY_PAYMENT' AND pa.registration_id=ar.id),0)))) AS cents
+    FROM activity_registration ar WHERE ar.finance_round_id=? GROUP BY ar.activity_id`).bind(roundId).all()).results;
+  for (const row of activityIncome) if (row.cents>0) {
+    const matches=lines.filter(line => line.nature==='INCOME' && line.activityId===row.activityId &&
+      !line.hasChildren && line.status==='ACTIVE');
+    if (matches.length!==1) throw new AppError(409,'treasury_export_mapping_missing');
+    add(matches[0].id,row.cents);
+  }
   const expenses = (await db.prepare(`SELECT e.id,e.total_cents AS totalCents,l.budget_line_id AS lineId,
     l.line_no AS lineNo,l.amount_cents AS amountCents
     FROM finance_expense e JOIN finance_expense_line l ON l.expense_id=e.id AND l.lines_version=e.lines_version

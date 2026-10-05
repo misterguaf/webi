@@ -62,7 +62,13 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await rounds.recordOpeningBalance(db, context, requestId, match[1], await body()), 201);
   if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/reserves$/)) && method === 'POST')
     return ok(await rounds.recordReserves(db, context, requestId, match[1], await body()), 201);
+  if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/export\/(result|budget)$/)) && method === 'GET') {
+    const { downloadTreasuryWorkbook } = await import('./treasury-export.js');
+    return downloadTreasuryWorkbook(db, context, requestId, match[1], match[2]);
+  }
   // Budget.
+  if (path === '/api/finance/budget-rounds' && method === 'GET')
+    return ok(await budget.listBudgetRounds(db, context, requestId));
   if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/budget$/))) {
     if (method === 'GET') return ok(await budget.getBudget(db, context, requestId, match[1]));
     if (method === 'POST') return ok(await budget.createBudget(db, context, requestId, match[1]), 201);

@@ -30,7 +30,7 @@ const category = (nature, code) => {
   return null;
 };
 
-export function resultTemplateModel(roundCode, entries, totals, resultDate) {
+export function resultTemplateModel(roundCode, entries, totals, resultDate, reportStatus = 'DRAFT') {
   const detail = Object.fromEntries(TEMPLATE_SHEETS.slice(1).map(name => [name,{income:[],expense:[]}]));
   const direct = {};
   let income = 0, expense = 0;
@@ -50,7 +50,7 @@ export function resultTemplateModel(roundCode, entries, totals, resultDate) {
   }
   if (income !== totals.incomeCents || expense !== totals.expenseCents)
     throw new AppError(409,'treasury_export_economics_mismatch');
-  return { roundCode, resultDate, detail, direct };
+  return { roundCode, resultDate, reportStatus, detail, direct };
 }
 
 async function requiredRound(db,roundId) {
@@ -63,13 +63,16 @@ async function requiredRound(db,roundId) {
 export async function budgetWorkbookModel(db,context,requestId,roundId) {
   await allow(db,context,requestId,'finance.budget.read','finance_budget',roundId);
   const round=await requiredRound(db,roundId);
+  const budget=await db.prepare('SELECT status FROM finance_budget WHERE round_id=?').bind(roundId).first();
+  if (!budget)
+    throw new AppError(409,'treasury_export_budget_missing');
   const lines=(await db.prepare(`SELECT l.code,l.nature,l.planned_cents AS plannedCents,
       a.current_cents AS currentCents,
       EXISTS(SELECT 1 FROM finance_budget_line child WHERE child.parent_id=l.id) AS hasChildren
     FROM finance_budget_line l LEFT JOIN finance_budget_line_amount a ON a.line_id=l.id
     WHERE l.round_id=? ORDER BY l.nature,l.code`).bind(roundId).all()).results;
   if (!lines.length) throw new AppError(409,'treasury_export_budget_missing');
-  try { return budgetTemplateModel(round.code,lines); }
+  try { return {...budgetTemplateModel(round.code,lines),budgetStatus:budget.status}; }
   catch (error) {
     if (String(error?.message??'').startsWith('budget_template_unmapped_line:')) failMapping();
     throw error;
@@ -155,6 +158,11 @@ export async function resultWorkbookModel(db,context,requestId,roundId) {
       entries.push({nature:'EXPENSE',code:line.code,date:line.date,label:line.label,cents:line.cents-refund});
     });
   }
-  const resultDate=round.closedAt ? new Date(round.closedAt).toISOString().slice(0,10) : round.periodEnd;
-  return resultTemplateModel(round.code,entries,totals,resultDate);
+  const close=await db.prepare('SELECT result_cents AS resultCents FROM finance_round_close WHERE round_id=?')
+    .bind(roundId).first();
+  const reportStatus=round.status!=='CLOSED' ? 'DRAFT' :
+    close?.resultCents===totals.incomeCents-totals.expenseCents ? 'OFFICIAL' : 'ADJUSTED';
+  const resultDate=reportStatus==='OFFICIAL' && round.closedAt ?
+    new Date(round.closedAt).toISOString().slice(0,10) : new Date().toISOString().slice(0,10);
+  return resultTemplateModel(round.code,entries,totals,resultDate,reportStatus);
 }

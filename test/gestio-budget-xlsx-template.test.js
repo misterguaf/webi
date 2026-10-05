@@ -32,11 +32,13 @@ test('budget model maps current leaf amounts and clears every sample value in th
     {nature:'INCOME',code:'1',currentCents:10000,hasChildren:true},
     {nature:'INCOME',code:'1.1',currentCents:10000,hasChildren:false},
     {nature:'EXPENSE',code:'2.1.1',currentCents:2500,hasChildren:false},
-    {nature:'RESERVE_CONTRIBUTION',code:'r',currentCents:500,hasChildren:false}
+    {nature:'RESERVE_CONTRIBUTION',code:'r',currentCents:500,hasChildren:false},
+    {nature:'EXPENSE',code:'5.7',currentCents:250,hasChildren:false}
   ]);
   assert.equal(model.cells.D19,10000);
   assert.equal(model.cells.D39,2500);
   assert.equal(model.cells.J35,500);
+  assert.equal(model.cells.J50,250);
   assert.equal(model.cells.D20,0);
   assert.throws(() => budgetTemplateModel('2026/2027',[
     {nature:'EXPENSE',code:'unknown',currentCents:100,hasChildren:false}

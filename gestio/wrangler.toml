@@ -12,6 +12,12 @@ directory = "./public"
 binding = "ASSETS"
 run_worker_first = true
 
+# The original Excel templates are bundled privately into the Worker, not exposed as public assets.
+[[rules]]
+type = "Data"
+globs = ["**/*.xlsx"]
+fallthrough = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "parpallo-gestio-local"

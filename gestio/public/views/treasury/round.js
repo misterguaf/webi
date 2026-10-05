@@ -6,17 +6,40 @@ const line = (label, cents) => h('div', { className: 'mini-row' },
   h('span', { className: 'mini-main', text: label }), h('strong', { text: formatEur(cents) }));
 
 export async function renderRound(root, ctx) {
-  const rounds = (await ctx.call('/api/finance/rounds')).rounds;
+  const caps = ctx.caps().treasury ?? {};
+  const rounds = (await ctx.call(caps.read ? '/api/finance/rounds' : '/api/finance/budget-rounds')).rounds;
   const round = rounds.find(row => row.status === 'CLOSING') ?? rounds.find(row => row.status === 'OPEN') ?? rounds[0];
   if (!round) { root.replaceChildren(h('p', { className: 'empty-detail', text: 'Encara no hi ha cap ronda econòmica.' })); return; }
-  const detail = await ctx.call(`/api/finance/rounds/${round.id}`);
-  const caps = ctx.caps().treasury ?? {};
-  const result = detail.economics;
+  const detail = caps.read ? await ctx.call(`/api/finance/rounds/${round.id}`) : null;
+  const result = detail?.economics;
   const message = h('p', { attrs: { role: 'status' } });
   async function action(path, body) {
     try { await ctx.call(path, { method: 'POST', body: JSON.stringify(body) });
       await renderRound(root, ctx);
     } catch (error) { message.textContent = errorCopy(error); }
+  }
+  async function download(kind) {
+    try {
+      const response=await fetch(`/api/finance/rounds/${round.id}/export/${kind}`,{credentials:'same-origin'});
+      if (!response.ok) {
+        let data;try {data=await response.json();} catch { /* network or non-JSON failure */ }
+        message.textContent=errorCopy({status:response.status,code:data?.error});return;
+      }
+      const match=response.headers.get('content-disposition')?.match(/filename="([A-Za-z0-9_.-]+)"/);
+      const filename=match?.[1]??`${kind}-${round.code.replace('/','-')}.xlsx`;
+      const url=URL.createObjectURL(await response.blob());
+      const link=h('a',{attrs:{href:url,download:filename}});
+      document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+      message.textContent=`S’ha preparat ${kind==='budget'?'el pressupost':'el resultat'} de la ronda ${round.code}.`;
+    } catch {message.textContent='No s’ha pogut descarregar el llibre. Torna-ho a provar.';}
+  }
+  if (!caps.read) {
+    root.replaceChildren(h('section',{className:'activity-surface treasury-block'},
+      h('h2',{className:'block-title',text:`Pressupost · ronda ${round.code}`}),
+      h('button',{className:'btn btn-secondary',text:'Descarrega pressupost Excel',attrs:{type:'button'},
+        on:{click:()=>void download('budget')}}),message));
+    await renderBudget(root,ctx,round,()=>renderRound(root,ctx));
+    return;
   }
   const reserveForm = h('form', { on: { submit: event => {
     event.preventDefault();
@@ -57,11 +80,16 @@ export async function renderRound(root, ctx) {
         h('h3', { text: 'Tancament oficial' }),
         line('Resultat oficial', official.resultCents), line('Resultat final oficial', official.resultAfterReservesCents),
         line('Reserva general final', official.reservesFinalCents)) : null,
-      detail.postClose?.adjustments.length ? h('div', { className: 'treasury-block-plain' },
+      detail.postClose ? h('div', { className: 'treasury-block-plain' },
         h('h3', { text: 'Després del tancament' }),
         line('Ajustos posteriors', detail.postClose.resultDeltaCents),
         line('Resultat actual ajustat', detail.postClose.adjustedResultAfterReservesCents),
         ...detail.postClose.adjustments.map(item => line(item.kind === 'LATE_INCOME' ? 'Ingrés tardà' : 'Correcció', item.amountCents))) : null,
+      h('div',{className:'form-actions'},
+        caps.read ? h('button',{className:'btn btn-secondary',text:'Descarrega resultat Excel',attrs:{type:'button'},
+          on:{click:()=>void download('result')}}) : null,
+        caps.readBudget ? h('button',{className:'btn btn-secondary',text:'Descarrega pressupost Excel',attrs:{type:'button'},
+          on:{click:()=>void download('budget')}}) : null),
       caps.manageRounds && ['OPEN', 'CLOSING'].includes(round.status) ? reserveForm : null,
       actions.length ? h('div', { className: 'form-actions' }, actions) : null,
       message));

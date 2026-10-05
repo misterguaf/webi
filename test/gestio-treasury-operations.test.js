@@ -157,7 +157,7 @@ test('classification: enabled kinds only, partial, over-allocation, stale versio
   try {
     const movement = await s.manual(s.bank, 20000);
     const allocate = (expectedVersion, allocations, reason) => s.call(104, `/api/finance/movements/${movement}/allocations`, 'POST', { expectedVersion, allocations, ...(reason ? { reason } : {}) });
-    assert.equal((await allocate(0, [{ kind: 'FEE_PAYMENT', amountCents: 1000, budgetLineId: s.lines.quotes }])).data.error, 'allocation_kind_not_enabled');
+    assert.equal((await allocate(0, [{ kind: 'FEE_PAYMENT', amountCents: 1000, budgetLineId: s.lines.quotes }])).data.error, 'invalid_allocation');
     assert.equal((await allocate(0, [{ kind: 'INCOME', amountCents: 25000, budgetLineId: s.lines.quotes }])).data.error, 'allocation_exceeds_movement');
     assert.equal((await allocate(0, [{ kind: 'INCOME', amountCents: 5000, budgetLineId: s.lines.income }])).data.error, 'invalid_income_allocation', 'not a heading');
     assert.equal((await allocate(0, [{ kind: 'INCOME', amountCents: 5000, budgetLineId: s.lines.kitchen }])).data.error, 'invalid_income_allocation', 'not an expense line');

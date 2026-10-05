@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -106,6 +106,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
   const temp=mkdtempSync(join(tmpdir(),'parpallo-2b-drill-'));
   const isolated=join(temp,'gestio');
   cpSync(gestio,isolated,{recursive:true,filter:path=>!path.split('/').includes('.wrangler')});
+  symlinkSync(resolve(repo,'node_modules'),join(temp,'node_modules'),'dir');
   const config=join(isolated,'wrangler.toml');
   const sourceState=join(isolated,'.wrangler','state');
   const backup=join(temp,'approved-backup');

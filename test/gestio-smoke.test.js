@@ -3,11 +3,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { root } from './helpers/gestio-sqlite.js';
+import { unzipSync, strFromU8 } from 'fflate';
 
 const wrangler = resolve(root, 'node_modules/.bin/wrangler');
 const env = extra => ({ ...process.env, WRANGLER_SEND_METRICS: 'false', ...extra });
@@ -52,6 +53,7 @@ test('smoke on workerd: Gestió headers, login, capabilities, pagination; portal
   const temp = mkdtempSync(join(tmpdir(), 'parpallo-smoke-'));
   const gestio = join(temp, 'gestio'), portal = join(temp, 'portal');
   cpSync(resolve(root, 'gestio'), gestio, { recursive: true, filter: path => !path.split('/').includes('.wrangler') });
+  symlinkSync(resolve(root,'node_modules'),join(temp,'node_modules'),'dir');
   cpSync(resolve(root, 'portal'), portal, { recursive: true });
   mkdirSync(join(temp, 'api'), { recursive: true });
   cpSync(resolve(root, 'api/_lib'), join(temp, 'api/_lib'), { recursive: true });
@@ -79,6 +81,40 @@ test('smoke on workerd: Gestió headers, login, capabilities, pagination; portal
     assert.equal(people.data.participants.length, 1);
     assert.ok(people.data.nextCursor, 'real D1 returns a cursor for a truncated page');
     assert.equal((await call(host.base, '/api/fees/rounds', { cookie })).status, 403);
+
+    // G.4: the two original workbook templates are private and only authorised finance holders
+    // receive a freshly generated XLSX. The section role has no Treasury export authority.
+    const treasuryLogin=await call(host.base,'/api/dev/login',{method:'POST',body:{subject:'seed-104'}});
+    const treasuryCookie=treasuryLogin.cookie.split(';')[0];
+    const groupLogin=await call(host.base,'/api/dev/login',{method:'POST',body:{subject:'seed-101'}});
+    const groupCookie=groupLogin.cookie.split(';')[0];
+    const adminLogin=await call(host.base,'/api/dev/login',{method:'POST',body:{subject:'seed-107'}});
+    const adminCookie=adminLogin.cookie.split(';')[0];
+    const financeRound=await call(host.base,'/api/finance/rounds',{method:'POST',cookie:treasuryCookie,
+      body:{code:'2026/2027',periodStart:'2026-10-01',periodEnd:'2027-09-30'}});
+    assert.equal(financeRound.status,201,JSON.stringify(financeRound.data));
+    const roundId=financeRound.data.id;
+    assert.equal((await call(host.base,`/api/finance/rounds/${roundId}/budget`,
+      {method:'POST',cookie:treasuryCookie})).status,201);
+    assert.equal((await call(host.base,'/api/finance/budget-lines',{method:'POST',cookie:treasuryCookie,
+      body:{roundId,code:'1.1',name:'Quotes',nature:'INCOME',plannedCents:12000}})).status,201);
+    const download=async(kind,auth)=>fetch(`${host.base}/api/finance/rounds/${roundId}/export/${kind}`,
+      {headers:{Cookie:auth},signal:AbortSignal.timeout(15000)});
+    for (const kind of ['result','budget']) {
+      const response=await download(kind,treasuryCookie);
+      assert.equal(response.status,200,`${kind}: ${await response.clone().text()}`);
+      assert.match(response.headers.get('content-type'),/spreadsheetml/);
+      assert.match(response.headers.get('content-disposition'),/attachment; filename=/);
+      assert.equal(response.headers.get('cache-control'),'no-store');
+      const parts=unzipSync(new Uint8Array(await response.arrayBuffer()));
+      const sheet=strFromU8(parts['xl/worksheets/sheet1.xml']);
+      assert.match(sheet,kind==='budget'?/<c r="D19"[^>]*><v>120<\/v><\/c>/:
+        /<c r="D19"[^>]*><f>SUM\(Cuotas!D:D\)<\/f>/);
+      assert.equal((await download(kind,groupCookie)).status,200);
+      assert.equal((await download(kind,cookie)).status,403);
+      assert.equal((await download(kind,adminCookie)).status,403);
+    }
+    assert.equal((await call(host.base,'/templates/Tesorería General 26_27.xlsx')).status,404);
 
     front = await start(portal, { state, registry, environment: 'local', ready: '/' });
     const portalLogin = await call(front.base, '/api/portal/session', { method: 'POST', body: { password: 'families-demo' } });

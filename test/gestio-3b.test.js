@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -77,6 +77,7 @@ test('FASE 3B: annual fees, authorization, payments, allocations, outbox and res
   const temp=mkdtempSync(join(tmpdir(),'parpallo-3b-'));
   const gestio=join(temp,'gestio'),portal=join(temp,'portal');
   cpSync(resolve(root,'gestio'),gestio,{recursive:true,filter:path=>!path.split('/').includes('.wrangler')});
+  symlinkSync(resolve(root,'node_modules'),join(temp,'node_modules'));
   cpSync(resolve(root,'portal'),portal,{recursive:true});
   mkdirSync(join(temp,'api'),{recursive:true});
   cpSync(resolve(root,'api/_lib'),join(temp,'api/_lib'),{recursive:true});

@@ -31,7 +31,8 @@ test('money and dates: EUR with grouping and sign, calendar days, no technical c
 test('tabs and actions follow the advisory capabilities; no finance capability means no Tresoreria', () => {
   assert.equal(model.treasuryAvailable(caps({})), false);
   assert.equal(model.treasuryAvailable({}), false);
-  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'despeses', 'families']);
+  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'despeses', 'families', 'ronda']);
+  assert.deepEqual(model.availableTabs(caps({ readBudget: true })).map(t => t.id), ['inici', 'ronda']);
   assert.deepEqual(model.availableTabs(caps({ readMovements: true })).map(t => t.id), ['inici', 'moviments'], 'a movement-only delegation sees no expenses');
   assert.equal(model.canReveal(caps({ read: true, readMovements: true })), false);
   assert.equal(model.canReveal(caps({ revealDescriptions: true })), true);
@@ -168,7 +169,7 @@ test('wiring: each action label reaches its endpoint; reveal is on demand, never
 });
 
 test('incomes: tab by capability, human states, filters, form validation and keeping income links', () => {
-  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readIncomes: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'ingressos', 'despeses', 'families']);
+  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readIncomes: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'ingressos', 'despeses', 'families', 'ronda']);
   assert.ok(!model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).some(t => t.id === 'ingressos'), 'no Ingressos without finance.income.read');
   assert.equal(model.treasuryAvailable(caps({ readIncomes: true })), true);
   assert.deepEqual(['PENDING', 'PARTIAL', 'RECONCILED', 'VOID'].map(code => model.incomeState(code).label), ['Pendent de conciliar', 'Conciliat en part', 'Conciliat', 'Anul·lat']);

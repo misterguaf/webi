@@ -507,10 +507,34 @@ test('G.3: one bank receipt splits across a verified fee and activity without do
   } finally { s.f.close(); }
 });
 
+test('G.4: a budget-only grant lists rounds and budget without exposing Treasury results', async () => {
+  const s=await setup();
+  try {
+    const delegate=140;
+    s.f.sql.exec(`INSERT INTO app_user(id,display_name,status,created_at,updated_at)
+      VALUES('${id(delegate)}','Suport de pressupost (fictici)','ACTIVE',1,1)`);
+    await s.f.login(delegate);
+    assert.equal((await s.call(delegate,'/api/finance/budget-rounds')).status,403);
+    const created=await s.call(107,'/api/delegations','POST',{userId:id(delegate),
+      permissionCode:'finance.budget.read',authorizedBy:id(101),
+      authorizationReference:'DEMO-BUDGET-READ',expiresAt:Date.now()+86400000});
+    assert.equal(created.status,201,JSON.stringify(created.data));
+    await s.call(101,`/api/delegations/${created.data.id}/confirm`,'POST',{});
+    assert.equal((await s.call(101,`/api/delegations/${created.data.id}/ratify`,'POST',
+      {ratificationReference:'DEMO-BUDGET-READ-R'})).status,200);
+    assert.equal((await s.call(delegate,'/api/finance/summary')).status,200);
+    assert.equal((await s.call(delegate,'/api/finance/budget-rounds')).data.rounds[0].id,s.round);
+    assert.equal((await s.call(delegate,`/api/finance/rounds/${s.round}/budget`)).status,200);
+    assert.equal((await s.call(delegate,`/api/finance/rounds/${s.round}`)).status,403);
+  } finally { s.f.close(); }
+});
+
 test('G.3: excess fee money stays a separate open family claim and never becomes income', async () => {
   const s = await setup();
   try {
     s.f.sql.exec(buildDemoData().sql);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/budget`, 'POST')).status, 201);
+    const feeBudgetLine = await s.line({ code: '1.1', name: 'Quotes', nature: 'INCOME', plannedCents: 10000 });
     const fee = s.f.sql.prepare(`SELECT p.id,sum(a.amount_cents) AS dueCents FROM annual_fee_payment p
       JOIN annual_fee_allocation a ON a.payment_id=p.id WHERE p.review_status='VERIFIED'
       GROUP BY p.id ORDER BY p.id LIMIT 1`).get();
@@ -537,6 +561,9 @@ test('G.3: excess fee money stays a separate open family claim and never becomes
     assert.equal((await s.call(104, path, 'POST', { expectedVersion: 1, allocations })).status, 200,
       'retaining the same claim in a new allocation set is valid');
     assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, fee.dueCents);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/budget`)).data.lines
+      .find(row => row.id === feeBudgetLine).actualCents, fee.dueCents,
+    'budget actuals include the recognised fee and exclude the family excess');
     assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM finance_income').get().n, 0);
     assert.equal((await s.call(104, '/api/finance/family-overpayments?status=OPEN')).data.overpayments
       .find(row => row.id === claim.data.id).reconciledCents, 2000);
@@ -676,6 +703,9 @@ test('G.3: withdrawn activity chooses full, partial or no refund; one bank debit
     s.f.sql.exec(buildDemoData().sql);
     const registrationId = id(12034);
     s.f.sql.prepare('UPDATE activity_registration SET finance_round_id=? WHERE id=?').run(s.round, registrationId);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/budget`, 'POST')).status, 201);
+    const activityId=s.f.sql.prepare('SELECT activity_id AS id FROM activity_registration WHERE id=?').get(registrationId).id;
+    const activityBudgetLine=await s.line({ code:'2.3', name:'Activitat', nature:'INCOME', activityId, plannedCents:1300 });
     const sources = s.f.sql.prepare(`SELECT id,amount_cents FROM activity_payment_allocation
       WHERE registration_id=? ORDER BY created_at,id`).all(registrationId);
     assert.deepEqual(sources.map(row => row.amount_cents), [1000, 300]);
@@ -685,6 +715,8 @@ test('G.3: withdrawn activity chooses full, partial or no refund; one bank debit
         activityAllocationId: row.id, amountCents: row.amount_cents }))
     })).status, 200);
     assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 1300);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/budget`)).data.lines
+      .find(row=>row.id===activityBudgetLine).actualCents,1300);
     const reg = s.f.sql.prepare('SELECT version FROM activity_registration WHERE id=?').get(registrationId);
     const withdrawn = await s.call(101, `/api/registrations/${registrationId}/withdraw`, 'POST',
       { source: 'FAMILY_COMMUNICATION', expectedVersion: reg.version, notifyFamily: false });
@@ -705,6 +737,9 @@ test('G.3: withdrawn activity chooses full, partial or no refund; one bank debit
     assert.equal(settled.status, 200, JSON.stringify(settled.data));
     assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 0,
       'the activity receipt is reversed once by its family refund');
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}/budget`)).data.lines
+      .find(row=>row.id===activityBudgetLine).actualCents,0,
+    'budget actuals reverse the family refund once');
     const refunds = (await s.call(104, '/api/finance/family-refunds')).data.refunds;
     assert.ok(decision.data.refundIds.every(refundId => refunds.find(row => row.id === refundId).status === 'SETTLED'));
     for (const [registration, choice, amount] of [[id(12012), 'PARTIAL', 500], [id(12025), 'NONE', 0]]) {

@@ -87,14 +87,14 @@ export const budgetPath = line => line?.path?.length ? line.path.join(' › ') :
 // ---------------------------------------------------------------- capabilities (advisory)
 
 const t = caps => caps?.treasury ?? {};
-export const treasuryAvailable = caps => !!(t(caps).read || t(caps).readMovements || t(caps).readExpenses || t(caps).readIncomes);
+export const treasuryAvailable = caps => !!(t(caps).read || t(caps).readMovements || t(caps).readExpenses || t(caps).readIncomes || t(caps).readBudget);
 export const TABS = [
   { id: 'inici', label: 'Inici', available: caps => treasuryAvailable(caps) },
   { id: 'moviments', label: 'Moviments', available: caps => !!t(caps).readMovements },
   { id: 'ingressos', label: 'Ingressos', available: caps => !!t(caps).readIncomes },
   { id: 'despeses', label: 'Despeses', available: caps => !!t(caps).readExpenses },
   { id: 'families', label: 'Famílies', available: caps => !!t(caps).read },
-  { id: 'ronda', label: 'Ronda', available: caps => !!t(caps).readBudget }
+  { id: 'ronda', label: 'Ronda', available: caps => !!(t(caps).read || t(caps).readBudget) }
 ];
 export const availableTabs = caps => TABS.filter(tab => tab.available(caps));
 export const canClassify = caps => !!t(caps).classifyMovements;
@@ -230,6 +230,9 @@ const ERRORS = {
   invalid_reserve_operation: 'La reserva no admet este import o la ronda ja està tancada.',
   insufficient_reserve: 'L’aplicació supera la reserva general disponible.',
   invalid_finance_round_close: 'El resultat ha canviat. Revisa les xifres abans de tancar.',
+  treasury_export_mapping_missing: 'Hi ha una partida amb import que no correspon a cap categoria del llibre tradicional. Revisa els codis de les partides abans de descarregar-lo.',
+  treasury_export_budget_missing: 'Prepara el pressupost de la ronda abans de descarregar-lo.',
+  treasury_export_economics_mismatch: 'Les xifres de l’exportació no quadren amb el resultat de Gestió. Torna-ho a intentar després de revisar les conciliacions.',
   invalid_filter: 'Algun filtre no és vàlid.',
   invalid_income: 'Revisa l’ingrés: la partida ha de ser una partida d’ingressos activa i final d’esta ronda, i l’import no pot baixar del ja conciliat.',
   income_reconciled: 'Aquest ingrés ja té cobraments vinculats. Corregeix primer la classificació del moviment.',
