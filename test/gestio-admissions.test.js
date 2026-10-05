@@ -206,3 +206,28 @@ test('acceptance: no match creates the participant graph atomically; ambiguous b
     assert.equal(resolved.data.created, true, 'explicit resolution, then explicit creation');
   } finally { s.f.close(); }
 });
+
+test('3.5H.3: admissions.read alone (Tropa) uses Noves altes without Participants access; a linked person is navigable only with profile access', async () => {
+  const s = await setup();
+  try {
+    const created = await s.call(101, '/api/admin/users', 'POST', { displayName: 'Lectura Altes (fictícia)', roles: [
+      { roleCode: 'SECTION_COORDINATOR', sectionId: TROPA, permissions: ['admissions.read'] }] });
+    assert.equal(created.status, 201, JSON.stringify(created.data));
+    await s.loginAs('r', created.data.id);
+    const me = (await s.f.request('r', '/api/me')).data.capabilities;
+    assert.equal(me.participants.read, null, 'no Participants capability');
+    assert.deepEqual(me.admissions.read.sections.map(item => item.code), ['TROPA']);
+    await s.submit({ nom: 'Tropa3', seccio: 'Tropa (11-14)', naixement: '2013-04-04', email: 't3@example.test' }); const tropa = s.latest().id;
+    await s.submit({ nom: 'Manada3', seccio: 'Estol (8-11)', naixement: '2017-04-04', email: 'm3@example.test' }); const manada = s.latest().id;
+    assert.equal(s.f.sql.prepare('SELECT requested_section_id FROM admission_request WHERE id=?').get(manada).requested_section_id, MANADA, 'legacy «Estol» → MANADA');
+    assert.deepEqual((await s.f.request('r', '/api/admissions')).data.admissions.map(row => row.id), [tropa]);
+    assert.equal((await s.f.request('r', `/api/admissions/${manada}`)).status, 404);
+    assert.equal((await s.f.request('r', '/api/participants')).status, 403, 'Participants is not widened');
+    await s.act(105, tropa, 'start-review'); await s.act(105, tropa, 'section', { section: 'TROPA' });
+    const participantId = (await s.act(105, tropa, 'accept')).data.participantId;
+    const view = (await s.f.request('r', `/api/admissions/${tropa}`)).data.admission;
+    assert.deepEqual([view.status, view.participantId, view.participantLinked, view.contact], ['ACCEPTED', null, true, null], 'safe, non-navigable result');
+    assert.ok([403, 404].includes((await s.f.request('r', `/api/participants/${participantId}`)).status), 'no participant detail');
+    assert.equal((await s.call(102, `/api/admissions/${tropa}`)).data.admission.participantId, participantId, 'the Tropa coordinator can open it');
+  } finally { s.f.close(); }
+});

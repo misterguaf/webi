@@ -37,10 +37,11 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
   const familia = createFamiliaTab({ call, caps, onChanged: () => { invalidate(); detailCache = null; familia.clear(); if (route.path[0]) void showDetail(route.path[0], { force: true }); } });
   const readsContacts = p => { const s = caps()?.participants?.readContacts; return !!s && (s.all || s.sections.some(x => x.id === p.currentSectionId)); };
   const admissions = createAdmissionsInbox({ call, routes });
+  const readsParticipants = () => !!me?.capabilities?.participants?.read;
   const reviews = createReviewQueue({ call, onOpenParticipant: id => { openedFromList = false; routes.go({ page: 'participants', path: [id] }); } });
 
   async function refresh({ force = false } = {}) {
-    if (!me) return;
+    if (!me || !readsParticipants()) return;
     const status = parseFilters(route.query).estat === 'de-baixa' ? 'de-baixa' : 'actius';
     if (loading) return loading;
     if (!force && rows && loadedStatus === status && Date.now() - loadedAt < STALE_AFTER_MS) return;
@@ -352,7 +353,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const title = h('h1', { className: 'detail-title', text: 'Noves altes', attrs: { tabindex: '-1' } });
     detailRoot.replaceChildren(h('article', { className: 'participant-detail' },
       h('header', { className: 'detail-header' },
-        h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', query: lastListQuery }); } } }, icon('arrow-left'), h('span', { text: 'Participants' })),
+        readsParticipants() ? h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', query: lastListQuery }); } } }, icon('arrow-left'), h('span', { text: 'Participants' })) : null,
         h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title)),
         h('p', { className: 'field-hint', text: 'Sol·licituds del formulari públic «Fer-se scout». Aquí es revisen, s’accepten o es rebutgen; acceptar crea o vincula la persona a Participants.' })), container));
     document.title = 'Noves altes · Participants · Gestió';
@@ -362,6 +363,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     if (!me) return;
     const id = route.path[0];
     if (id === 'altes') renderAdmissions();
+    else if (!readsParticipants()) routes.go({ page: 'participants', path: ['altes'] }, { replace: true });
     else if (id === 'revisions') renderReviews();
     else if (id && UUID.test(id)) renderDetailRoute();
     else if (id) routes.go({ page: 'participants' }, { replace: true });
@@ -370,13 +372,14 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
 
   return {
     id: 'participants', page: 'participants',
-    available: caps2 => !!caps2.participants.read,
-    async load(nextMe) { me = nextMe; view.hidden = false; await refresh({ force: true }); },
+    // Noves altes is reachable with admissions.read alone; it never loads the participant list for that.
+    available: caps2 => !!(caps2.participants.read || caps2.admissions?.read),
+    async load(nextMe) { me = nextMe; view.hidden = false; if (readsParticipants()) await refresh({ force: true }); },
     enter(nextMe, nextRoute) {
       me = nextMe; view.hidden = false;
       const previous = route;
       route = nextRoute ?? { page: 'participants', path: [], query: {} };
-      const fromDetail = !!previous.path[0], toList = !route.path[0];
+      const fromDetail = !!previous.path[0], toList = !route.path[0] && readsParticipants();
       renderRoute();
       if (toList) {
         if (document.body.dataset.page === 'participants') setPageHeader({ hidden: false, title: 'Participants', subtitle: scopeSubtitle(me.capabilities) });

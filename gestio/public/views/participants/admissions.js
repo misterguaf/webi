@@ -104,7 +104,8 @@ export function createAdmissionsInbox({ call, routes }) {
             a.heardFrom ? h('div', { className: 'info-row' }, h('dt', { text: 'Com ens ha conegut' }), h('dd', { text: a.heardFrom })) : null))
           : a.contactTransferred ? h('div', { className: 'info-block' }, h('p', { className: 'field-hint', text: 'El contacte ja és a la fitxa de Participants.' })) : null,
         a.participantId ? h('div', { className: 'info-block' }, h('a', { className: 'link-button', attrs: { href: `#/participants/${a.participantId}` }, text: 'Obri la fitxa a Participants',
-          on: { click: event => { event.preventDefault(); routes.go({ page: 'participants', path: [a.participantId] }); } } })) : null,
+          on: { click: event => { event.preventDefault(); routes.go({ page: 'participants', path: [a.participantId] }); } } }))
+          : a.participantLinked ? h('div', { className: 'info-block' }, h('p', { className: 'field-hint', text: 'Vinculada a una persona de Participants.' })) : null,
         matchBlock,
         h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Historial' }),
           h('ol', { className: 'history-list' }, data.events.map(event => h('li', {}, h('span', { text: EVENTS[event.action] ?? event.action }),

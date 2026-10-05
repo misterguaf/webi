@@ -136,12 +136,18 @@ export async function admissionDetail(db, context, requestId, id) {
         birthDate: person.birth_date, active: person.status === 'ACTIVE', section: sections.get(person.current_section_id)?.code ?? null })) ?? [] : null,
       canResolve: groupWide };
   }
+  // A linked participant is navigable only for viewers who can read that person in Participants anyway.
+  let participantId = null;
+  if (row.participant_id) {
+    const person = await db.prepare('SELECT current_section_id FROM participant WHERE id=?').bind(row.participant_id).first();
+    if (person && covers(await authorize(db, context, { permission: 'participants.profile.read', mode: 'list' }), person.current_section_id)) participantId = row.participant_id;
+  }
   return { admission: {
     id: row.id, status: row.status, givenName: row.given_name, familyNames: row.family_names, birthDate: row.birth_date,
     adult: isAdult(row.birth_date), receivedAt: row.received_at, version: row.version, heardFrom: manage ? row.heard_from : null,
     requestedSection: sections.get(row.requested_section_id)?.code ?? null, section: sections.get(row.section_id)?.code ?? null,
     contact: manage && !row.contact_transferred_at ? { guardianName: row.guardian_name, phone: row.contact_phone, email: row.contact_email } : null,
-    contactTransferred: !!row.contact_transferred_at, participantId: row.participant_id, rejectionCategory: row.rejection_category,
+    contactTransferred: !!row.contact_transferred_at, participantId, participantLinked: !!row.participant_id, rejectionCategory: row.rejection_category,
     matchStatus: row.match_status }, events, match, actions: { manage, decide } };
 }
 

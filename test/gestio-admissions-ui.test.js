@@ -40,6 +40,10 @@ test('wiring: Noves altes lives in Participants and each action reaches its endp
   const view = source('views/participants/admissions.js'), participants = source('views/participants.js');
   assert.match(participants, /id === 'altes'\) renderAdmissions\(\)/);
   assert.match(participants, /me\.capabilities\.admissions\?\.read/);
+  // 3.5H.3: Noves altes does not require Participants; without it the list is never loaded and links stay inert.
+  assert.match(participants, /available: caps2 => !!\(caps2\.participants\.read \|\| caps2\.admissions\?\.read\)/);
+  assert.match(participants, /if \(readsParticipants\(\)\) await refresh/);
+  assert.ok(view.includes('a.participantLinked') && view.includes('Vinculada a una persona de Participants.'));
   for (const op of ['start-review', 'waitlist', 'return-to-review', 'section', 'reject', 'withdraw', 'resolve-match', 'accept'])
     assert.ok(view.includes(`'${op}'`), op);
   assert.ok(view.includes('/api/admissions/${id}/${op}`'));
