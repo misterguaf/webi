@@ -10,7 +10,7 @@
 // Only non-personal identifiers belong in a route: page names, activity UUIDs, section codes and
 // filter keywords. Views never put names, emails or participant ids in it.
 
-export const PAGES = Object.freeze(['inici', 'activitats', 'inscripcions', 'quotes', 'tresoreria', 'participants', 'incidencies', 'administracio']);
+export const PAGES = Object.freeze(['inici', 'activitats', 'inscripcions', 'quotes', 'tresoreria', 'participants', 'activitat', 'incidencies', 'administracio']);
 export const DEFAULT_PAGE = 'inici';
 const SEGMENT = /^[a-z0-9-]{1,64}$/i;
 

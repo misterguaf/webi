@@ -122,6 +122,7 @@ export function formDialog({ title, fields, confirm, tone = 'primary' }) {
     const nodes = fields.map(f => {
       let control;
       if (f.type === 'select') control = h('select', { attrs: { id: `fd-${f.name}`, ...f.attrs } }, (f.options ?? []).map(o => h('option', { text: o.label, attrs: { value: o.value, selected: o.value === f.value } })));
+      else if (f.type === 'textarea') control = h('textarea', { text: f.value ?? '', attrs: { id: `fd-${f.name}`, rows: 4, ...f.attrs } });
       else if (f.type === 'checkbox') control = h('input', { attrs: { id: `fd-${f.name}`, type: 'checkbox', ...(f.value ? { checked: '' } : {}), ...f.attrs } });
       else control = h('input', { attrs: { id: `fd-${f.name}`, type: f.type ?? 'text', value: f.value ?? '', autocomplete: 'off', ...f.attrs } });
       controls[f.name] = control;

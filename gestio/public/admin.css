@@ -54,3 +54,45 @@
   .admissions-inbox .filter-chip{flex:none}
 }
 .admissions-inbox .info-row dd::first-letter{text-transform:none}
+
+/* Activitat (3.5H.3). */
+.activity-feed-view,.incidents-view{display:grid;gap:var(--space-3);min-width:0}
+.feed-categories{flex-wrap:wrap}
+.feed-filters input[type="date"]{min-height:36px;padding:var(--space-1) var(--space-2);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary);color:var(--text-primary)}
+.feed-surface{padding-bottom:var(--space-2)}
+.feed-day+.feed-day{border-top:1px solid var(--border-default)}
+.feed-day-title{margin:0;padding:var(--space-3) var(--space-5) var(--space-1);font-size:12px;line-height:16px;font-weight:600;color:var(--text-secondary);text-transform:capitalize}
+.feed-list{list-style:none;margin:0;padding:0!important}
+.feed-item{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:var(--space-3);align-items:baseline;padding:var(--space-2) var(--space-5);margin:0!important}
+.feed-time{font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.feed-text{overflow-wrap:anywhere}
+.feed-link{color:var(--text-primary);text-decoration:underline;text-decoration-color:color-mix(in srgb,var(--text-secondary) 50%,transparent);text-underline-offset:3px}
+.feed-link:hover,.feed-link:focus-visible{text-decoration-color:currentColor}
+.feed-category{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+
+/* Incidències i millores (3.5H.3). */
+.incidents-toolbar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap}
+.incidents-toolbar .group-title{margin:0}
+.incidents-list{list-style:none;margin:0;padding:0!important}
+.incidents-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-5);margin:0!important}
+.incidents-row>.badge{justify-self:end}
+.incidents-row+.incidents-row{border-top:1px solid color-mix(in srgb,var(--border-default) 70%,transparent)}
+.incidents-detail{display:grid;gap:var(--space-3);min-width:0}
+.incidents-detail .detail-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.incidents-detail .info-row dd::first-letter{text-transform:none}
+.incidents-description{white-space:pre-wrap;overflow-wrap:anywhere;margin:0}
+.dialog-form textarea{width:100%;min-height:96px;padding:var(--space-2) var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary);color:var(--text-primary);font:inherit;resize:vertical}
+@media(max-width:767px){
+  .feed-item{grid-template-columns:40px minmax(0,1fr);padding:var(--space-2) var(--space-4)}
+  .feed-category{grid-column:2}
+  .feed-day-title{padding:var(--space-3) var(--space-4) var(--space-1)}
+  .feed-categories{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+  .feed-categories .filter-chip{flex:none}
+  .incidents-row{grid-template-columns:minmax(0,1fr);padding:var(--space-3) var(--space-4)}
+  .incidents-row>.badge{justify-self:start}
+  /* The shared mobile rule hides filter selects; here they are the only way to filter, so keep them (as Tresoreria). */
+  :is(.activity-feed-view,.incidents-view) .activity-filters{flex-wrap:wrap}
+  :is(.activity-feed-view,.incidents-view) .search-field{flex-basis:100%}
+  :is(.activity-feed-view,.incidents-view) .select-field{display:flex!important;flex:1 1 100%;justify-content:space-between}
+  :is(.activity-feed-view,.incidents-view) .select-field :is(select,input){flex:1;min-width:0;max-width:70%;min-height:40px}
+}

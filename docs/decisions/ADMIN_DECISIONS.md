@@ -108,3 +108,46 @@ Implementation: migration 0044, `gestio/src/services/admissions-service.js`, `Po
    rejected (category), withdrawn — minimal payload, no contact data or free text.
 10. Out of scope: Activitat (H.3), general Incidències (H.3), Health (Phase 5), retention of rejected/withdrawn intake
     data (LEGAL DECISION REQUIRED).
+
+## H.3 — Activitat i Incidències i millores (CLOSED)
+
+0. **Corrections to H.2.** Noves altes depends only on `admissions.read / manage / decide` + scope, never on
+   `participants.profile.read` because it lives under Participants: a person with only `admissions.read` (Tropa) uses the
+   inbox without the participant list. An accepted request's participant is navigable only if the viewer can read that
+   participant independently; otherwise «Vinculada a una persona de Participants» (no link, no id). The legacy public label
+   «Estol (8-11)» keeps mapping to MANADA (no ESTOL section). The visible section name is **Esculta** (migration 0045);
+   the internal code stays `ESCOLTA`.
+1. **Three distinct things.** Raw audit (`audit_event`) stays the authoritative technical/security history. **Activitat**
+   is a read-only *projection* of it (no table, no second truth). An **incident** (`work_incident`) is an operational work
+   item. Security incidents (`security_incident`) are unrelated and unchanged.
+2. **Activitat is for every signed-in user** (no capability). Only a closed whitelist of meaningful actions is projected
+   (participants, guardians/contacts, admissions, activities, registration decisions, meaningful payment/treasury actions,
+   round close, users/roles/permissions/delegations, ratification/revocation, other people's session revocation, sensitive
+   reads/reveals/downloads the audit already records, exports, incidents). Logins, own-session housekeeping, AUTHZ
+   decisions, list loads, notifications, automatic intakes, retention and debug events are omitted (omission over noise).
+3. **Actor always named** (accountability). **Subject named only if the viewer could identify it through their own normal
+   permissions** (participant → `participants.profile.read` on its current section; admission → `admissions.read` on its
+   section; activity → `activities.read`); otherwise a generic noun («un educand», «una persona», «una activitat»). Gestió
+   user names (targets of access changes) are visible like actors.
+4. **Never content**: no metadata, amounts, contact values, health, evidence, original bank descriptions, free-text
+   reasons, finance resource ids, session or request ids. Future Health events follow the same rule (only that access
+   changed). Search runs server-side over the *projected* text only; filters: module, kind, actor, dates.
+5. **Links are decided by the server**: only to a resource the viewer can already open (participant, request, activity,
+   own/managed incident, user administration with `auth.user.manage`, Tresoreria module with `finance.treasury.read`).
+   Activitat is never a permission bypass.
+6. **Incidències i millores**: types ERROR / IMPROVEMENT / ACCESS / DATA / OTHER; origins MANUAL / SYSTEM; states
+   OPEN → IN_PROGRESS → RESOLVED (also OPEN → RESOLVED and a simple reopen). **No priority/severity**, no attachments,
+   screenshots, comments, assignee or notifications in v1. Minimal fields: type, title, optional description, module
+   (pre-filled from the page the person came from), reporter, timestamps, optional resource reference, short resolution
+   (≤ 280). Facts immutable, no delete.
+7. **Everyone reports and sees only their own** (state and short answer); another person's report is indistinguishable
+   from a missing one. **Management needs `admin.incidents.manage`** (GLOBAL — incidents are not owned by a section):
+   Secretaria and Coordinació general hold it; **TECH_ADMIN only has the ceiling** and manages incidents only after an
+   explicit individual grant (H.1 origin authority, no self-grant). OPEN badge only for managers.
+8. **SYSTEM incidents only for deterministic blockers.** H.3 wires the ambiguous admission match: the blocked accept opens
+   exactly one incident keyed `ADMISSION_MATCH_AMBIGUOUS:<request>` (unique; reused, never duplicated; opening the request
+   writes nothing). It references the request and copies none of its personal data. Resolving the match (or rejecting /
+   withdrawing the request) resolves it with a short system answer.
+9. Activitat shows «X ha reportat / començat / resolt una incidència»; titles and descriptions never reach it.
+10. Out of scope: notifications, Health (Phase 5), retention of incidents and of the activity projection beyond the audit's
+    own (LEGAL DECISION REQUIRED, as for audit retention).

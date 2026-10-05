@@ -8,7 +8,8 @@ const pages = [
   {id:'quotes',label:'Quotes',icon:'wallet'},
   {id:'tresoreria',label:'Tresoreria',icon:'bank'},
   {id:'participants',label:'Participants',icon:'people'},
-  {id:'incidencies',label:'Incidències',icon:'alert'},
+  {id:'activitat',label:'Activitat',icon:'activity'},
+  {id:'incidencies',label:'Incidències i millores',icon:'alert'},
   {id:'administracio',label:'Administració',icon:'settings'}
 ];
 const mobilePrimary = new Set(['inici','activitats','quotes','participants']);
@@ -235,6 +236,8 @@ function syncEmptyStates(){
   }
   const feeAvailable=!$('feePanel').hidden;
   $('openFeeIssues').hidden=!feeAvailable;
+  // 3.5H.3: the fee-issue pointer only matters to people who use Quotes; the page itself is Incidències i millores.
+  $('issuesShortcut').hidden=!feeAvailable;
   $('feeIssuesDescription').textContent=feeAvailable
     ?'Les incidències de quota es consulten i es resolen en Quotes en esta versió.'
     :'Les incidències de quota no estan disponibles en esta sessió.';

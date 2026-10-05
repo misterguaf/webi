@@ -8,6 +8,9 @@ const FEE_LISTS = ['feeRoundRevisions', 'feeMetrics', 'feeSearchResults', 'feeGr
 
 // 3.5H.1 Administració tabs (Usuaris, Rols i permisos, Delegacions, Ratificacions, Sessions).
 export { createAdministrationView } from './administration.js';
+// 3.5H.3 Activitat and Incidències i millores (every signed-in user).
+export { createActivityFeedView } from './activity-feed.js';
+export { createIncidentsView } from './incidents.js';
 export function createAccountView({ call, message, reportLoadError, reload }) {
   async function load(me) {
     $('account').hidden = false; $('sessions').hidden = false;

@@ -6,7 +6,7 @@ import { navigateTo, onNavigate, routes, setContextAction, setNavAvailable, setN
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
-import { createAccountView, createAdministrationView, createDashboardView, createFeeStatusView, createFeesView } from './views/simple-views.js';
+import { createAccountView, createActivityFeedView, createAdministrationView, createDashboardView, createFeeStatusView, createFeesView, createIncidentsView } from './views/simple-views.js';
 import { createParticipantsView } from './views/participants.js';
 import { createTreasuryView } from './views/treasury.js';
 import { createFamilyGroupsView } from './views/family-groups.js';
@@ -47,7 +47,7 @@ const views = createViewRegistry([
   createFeesView({ call, message, reportLoadError }),
   createFamilyGroupsView({ call, message, reportLoadError }),
   createFeeStatusView({ call, reportLoadError }),
-  createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge })
+  createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge }), createActivityFeedView({ call, reportLoadError, routes, setPageHeader }), createIncidentsView({ call, reportLoadError, routes, setPageHeader, setNavBadge, onNavigate })
 ]);
 onNavigate((page, route) => views.enter(page, currentMe, route));
 
