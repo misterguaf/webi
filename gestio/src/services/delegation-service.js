@@ -143,8 +143,10 @@ export async function listDelegations(db,context,requestId,params) {
     ORDER BY d.granted_at DESC,d.id DESC LIMIT ?`).bind(...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
   const result=pageResult(rows,page.limit,row=>[row.granted_at,row.id]);
   const now=Date.now();
-  const names=new Map((await Promise.all([...new Set(result.items.flatMap(row=>[row.user_id,row.authorized_by,row.provisioned_by]))]
-    .map(async id=>[id,(await db.prepare('SELECT display_name FROM app_user WHERE id=?').bind(id).first())?.display_name??null]))));
+  /** @type {Map<string, string|null>} */
+  const names=new Map();
+  for (const id of new Set(result.items.flatMap(row=>[row.user_id,row.authorized_by,row.provisioned_by])))
+    names.set(id,(await db.prepare('SELECT display_name FROM app_user WHERE id=?').bind(id).first())?.display_name??null);
   const sections=new Map((await db.prepare('SELECT id,code FROM section').all()).results.map(row=>[row.id,row.code]));
   return {delegations:result.items.map(row=>({...row,state:delegationState(row,now),user_name:names.get(row.user_id),
     authorized_by_name:names.get(row.authorized_by),provisioned_by_name:names.get(row.provisioned_by),section_code:sections.get(row.section_id)??null})),

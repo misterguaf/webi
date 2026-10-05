@@ -305,6 +305,10 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       'trigger:finance_expense_reimbursement_sync','trigger:finance_allocation_correction_immutable',
       'trigger:finance_allocation_correction_no_delete'])
       assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
+    for (const object of ['index:user_permission_active_unique','index:user_permission_source_role_idx','trigger:user_permission_grant_source_guard',
+      'trigger:user_role_ratification_guard','trigger:user_permission_ratification_guard'])
+      assert.ok(manifest.schema_objects.includes(object),`${object} must survive backup and restore`);
+    assert.ok(!manifest.schema_objects.includes('index:user_permission_unrevoked_unique'),'0043 replaced the single-grant index');
     assert.equal(verifyBackup(backup,config).manifest.sql_sha256,manifest.sql_sha256);
     assert.match(runNpm('db:backup:verify',['--config',config,'--backup',backup]),/BACKUP_VERIFIED/);
     const dump=readFileSync(join(backup,'dump.sql'),'utf8');

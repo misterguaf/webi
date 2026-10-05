@@ -110,9 +110,10 @@ export async function assignRole(db,context,session,requestId,input,now=Date.now
   await requirePermission(db,context,requestId,'auth.role.manage'); requireFresh(session,now);
   const {userId}=input??{};
   requireUuid(userId); notSelf(context,userId);
-  if (Object.keys(input).some(key=>!['userId','roleCode','sectionId','expiresAt','permissions','authorizedBy'].includes(key))) throw new AppError(400,'invalid_role');
+  // Legacy contract: unknown fields are ignored (never stored or logged); only these are read.
+  const {roleCode,sectionId=null,expiresAt=null,permissions}=input;
   const authorizedBy=await authorizer(db,context,input,'auth.role.manage',userId,now);
-  const {id,statements,granted}=await roleAssignmentStatements(db,context,requestId,{...input,sectionId:input.sectionId??null,authorizedBy},now);
+  const {id,statements,granted}=await roleAssignmentStatements(db,context,requestId,{userId,roleCode,sectionId,expiresAt,permissions,authorizedBy},now);
   try { await db.batch(statements); }
   catch(error) {
     // Regression (audit remediation): a duplicate active assignment is a conflict, not a server error.
@@ -158,10 +159,10 @@ export async function grantPermission(db,context,session,requestId,input,now=Dat
   await requirePermission(db,context,requestId,'auth.permission.manage'); requireFresh(session,now);
   const {userId}=input??{};
   requireUuid(userId);notSelf(context,userId);
-  if (Object.keys(input).some(key=>!['userId','permissionCode','sectionId','expiresAt','authorizedBy'].includes(key))) throw new AppError(400,'invalid_permission');
   if ((await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(400,'invalid_permission');
+  const {permissionCode,sectionId=null,expiresAt=null}=input;
   const authorizedBy=await authorizer(db,context,input,'auth.permission.manage',userId,now);
-  const {id,statements}=await directGrantStatements(db,context,requestId,{...input,sectionId:input.sectionId??null,authorizedBy},now);
+  const {id,statements}=await directGrantStatements(db,context,requestId,{userId,permissionCode,sectionId,expiresAt,authorizedBy},now);
   try { await db.batch(statements); }
   catch(error) { if (/UNIQUE/.test(error?.message??'')) throw new AppError(409,'permission_already_granted'); throw error; }
   return {id,ratificationStatus:'PENDING_RATIFICATION'};

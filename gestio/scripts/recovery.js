@@ -45,6 +45,9 @@ const TABLES=[
 ];
 const REQUIRED_OBJECTS=[
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
+  // 3.5H.1 (0043): one active grant per origin and scope, role-sourced grants and ratification guards.
+  'index:user_permission_active_unique','index:user_permission_source_role_idx','trigger:user_permission_grant_source_guard',
+  'trigger:user_role_ratification_guard','trigger:user_permission_ratification_guard',
   'trigger:session_user_must_be_active','trigger:revoke_session_on_account_block',
   'trigger:role_recipient_must_be_active','trigger:permission_recipient_must_be_active',
   'trigger:health_recipient_must_be_active','index:activity_registration_member_unique',
