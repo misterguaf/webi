@@ -116,7 +116,7 @@ export async function updateRound(db,context,requestId,id,input,now=Date.now()) 
 }
 export async function createFamilyGroup(db,context,requestId,input,now=Date.now()) {
   await globalPermission(db,context,requestId,'finance.family.manage','annual_fee_family_group');
-  if (!keysOnly(input,['roundId','reference','participantIds']) || !validUuid(input.roundId) ||
+  if (!keysOnly(input,['roundId','reference','participantIds','reason']) || !validUuid(input.roundId) ||
     !synthetic.reference(input.reference,{min:3,max:75}) ||
     !Array.isArray(input.participantIds) || input.participantIds.length<2 || input.participantIds.length>20 ||
     new Set(input.participantIds).size!==input.participantIds.length || input.participantIds.some(id=>!validUuid(id))) fail('invalid_family_group');
@@ -129,7 +129,7 @@ export async function createFamilyGroup(db,context,requestId,input,now=Date.now(
     .bind(input.roundId,...input.participantIds).all()).results;
   const id=uuid();
   if (existing.length) return correctFamilyGroup(db,context,requestId,id,
-    {participantIds:input.participantIds},now,{roundId:input.roundId,reference:input.reference});
+    {participantIds:input.participantIds,reason:input.reason},now,{roundId:input.roundId,reference:input.reference});
   await db.batch([
     db.prepare(`INSERT INTO annual_fee_family_group(id,round_id,reference,created_by,created_at) VALUES(?,?,?,?,?)`)
       .bind(id,input.roundId,input.reference,context.userId,now),
@@ -145,7 +145,7 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
   const group=creation?{id:requireUuid(id),round_id:creation.roundId,version:1}:
     await db.prepare('SELECT * FROM annual_fee_family_group WHERE id=?').bind(requireUuid(id)).first();
   if (!group) throw new AppError(404,'not_found');
-  if (!keysOnly(input,['participantIds']) || !Array.isArray(input.participantIds) || input.participantIds.length>20 ||
+  if (!keysOnly(input,['participantIds','reason']) || !Array.isArray(input.participantIds) || input.participantIds.length>20 ||
     new Set(input.participantIds).size!==input.participantIds.length || input.participantIds.some(value=>!validUuid(value)))
     fail('invalid_family_group');
   const before=creation?[]:(await db.prepare(`SELECT participant_id,sibling_ordinal FROM annual_fee_family_member
@@ -169,6 +169,8 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
     EXISTS(SELECT 1 FROM annual_fee_installment_plan p WHERE p.obligation_id=o.id) AS has_installment
     FROM annual_fee_obligation o WHERE o.round_id=? AND o.participant_id IN (${affected.map(()=>'?').join(',')})`)
     .bind(group.round_id,...affected).all()).results;
+  if (obligations.length && (typeof input.reason!=='string' || input.reason.trim().length<3 || input.reason.trim().length>240))
+    fail('family_correction_reason_required');
   const obligationByPerson=new Map(obligations.map(row=>[row.participant_id,row]));
   const changes=[];
   for (const participantId of affected) {
@@ -178,18 +180,38 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
     const discount=ordinal>=3?Math.floor(row.base_cents/2):0;
     if (row.override_by && discount!==row.discount_cents) throw new AppError(409,'family_override_review_required');
     const amountDue=row.override_by?row.amount_due_cents:row.base_cents-discount;
-    if (amountDue<row.allocated_cents) throw new AppError(409,'family_allocation_conflict');
     if (row.has_installment && amountDue!==row.amount_due_cents) throw new AppError(409,'installment_plan_exists');
     changes.push({row,groupId:newOrder.has(participantId)?id:null,ordinal,discount,amountDue,
       amountChanged:amountDue!==row.amount_due_cents,discountChanged:discount!==row.discount_cents});
   }
   const changeByPerson=new Map(changes.map(change=>[change.row.participant_id,change]));
   const revisionId=uuid();
-  const correctionIssues=[];
-  for (const change of changes.filter(item=>item.amountChanged && item.row.allocated_cents>0)) {
-    const payments=(await db.prepare(`SELECT DISTINCT p.id,p.receipt_email FROM annual_fee_allocation a
-      JOIN annual_fee_payment p ON p.id=a.payment_id WHERE a.obligation_id=?`).bind(change.row.id).all()).results;
-    correctionIssues.push({change,id:uuid(),payments});
+  const overpaymentClaims=[];
+  for (const change of changes.filter(item=>item.amountChanged)) {
+    const existingClaims=await db.prepare(`SELECT COALESCE(sum(amount_cents),0) AS cents
+      FROM finance_overpayment WHERE fee_obligation_id=?`).bind(change.row.id).first();
+    let excess=change.row.allocated_cents-existingClaims.cents-change.amountDue;
+    if (excess<=0) continue;
+    const financeRound=await db.prepare('SELECT id FROM finance_round WHERE annual_fee_round_id=?')
+      .bind(group.round_id).first();
+    if (!financeRound) throw new AppError(409,'finance_round_required');
+    const sources=(await db.prepare(`SELECT p.id,p.receipt_email,p.review_status,a.amount_cents,
+      COALESCE((SELECT sum(o.amount_cents) FROM finance_overpayment o
+        WHERE o.fee_obligation_id=a.obligation_id AND o.fee_payment_id=a.payment_id),0) AS claimed_cents
+      FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id
+      WHERE a.obligation_id=? ORDER BY a.created_at DESC,a.id DESC`).bind(change.row.id).all()).results;
+    if (sources.some(source=>source.review_status!=='VERIFIED'))
+      throw new AppError(409,'family_payment_review_required');
+    for (const source of sources) {
+      if (!excess) break;
+      const amount=Math.min(excess,source.amount_cents-source.claimed_cents);
+      if (amount<=0) continue;
+      overpaymentClaims.push({id:uuid(),obligationId:change.row.id,paymentId:source.id,
+        roundId:financeRound.id,recipientEmail:source.receipt_email,amountCents:amount,
+        targetDueCents:change.amountDue});
+      excess-=amount;
+    }
+    if (excess>0) throw new AppError(409,'family_allocation_conflict');
   }
   try { await db.batch([
     ...(creation?[db.prepare(`INSERT INTO annual_fee_family_group
@@ -199,6 +221,14 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
     db.prepare(`UPDATE annual_fee_family_group SET ${versionCas('version')} WHERE id=?`)
       .bind(group.version,id),
     db.prepare('INSERT INTO annual_fee_family_correction_gate(group_id,opened_at) VALUES(?,?)').bind(id,now),
+    ...changes.filter(change=>change.amountChanged && change.amountDue<change.row.amount_due_cents &&
+      change.row.allocated_cents>0).map(change=>
+      db.prepare(`INSERT INTO finance_fee_correction_gate(obligation_id,target_due_cents,reason,opened_by,opened_at)
+        VALUES(?,?,?,?,?)`).bind(change.row.id,change.amountDue,input.reason.trim(),context.userId,now)),
+    ...overpaymentClaims.map(claim=>db.prepare(`INSERT INTO finance_overpayment
+      (id,round_id,fee_payment_id,fee_obligation_id,recipient_email,cause,amount_cents,created_by,created_at)
+      VALUES(?,?,?,?,?,'PRICE_CORRECTION',?,?,?)`).bind(claim.id,claim.roundId,claim.paymentId,
+        claim.obligationId,claim.recipientEmail,claim.amountCents,context.userId,now)),
     db.prepare('DELETE FROM annual_fee_family_member WHERE group_id=?').bind(id),
     // Compare-and-set on the whole financial state of each obligation (see concurrency.js).
     ...changes.map(change=>db.prepare(`UPDATE annual_fee_obligation SET family_group_id=?,sibling_ordinal=?,
@@ -215,8 +245,8 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
       (group_id,round_id,participant_id,sibling_ordinal,assigned_by,assigned_at) VALUES(?,?,?,?,?,?)`)
       .bind(id,group.round_id,participantId,index+1,context.userId,now)),
     db.prepare(`INSERT INTO annual_fee_family_revision
-      (id,group_id,previous_version,new_version,changed_by,changed_at) VALUES(?,?,?,?,?,?)`)
-      .bind(revisionId,id,group.version,group.version+1,context.userId,now),
+      (id,group_id,previous_version,new_version,changed_by,changed_at,reason) VALUES(?,?,?,?,?,?,?)`)
+      .bind(revisionId,id,group.version,group.version+1,context.userId,now,input.reason?.trim()??null),
     ...affected.map(participantId=>{
       const change=changeByPerson.get(participantId);
       return db.prepare(`INSERT INTO annual_fee_family_revision_member
@@ -231,18 +261,12 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
       (id,obligation_id,previous_amount_cents,new_amount_cents,changed_by,changed_at) VALUES(?,?,?,?,?,?)`)
       .bind(uuid(),change.row.id,change.row.amount_due_cents,change.amountDue,context.userId,now)),
     audit(db,context,requestId,'FEE_FAMILY_CORRECTED','annual_fee_family_group',id,now),
+    ...overpaymentClaims.map(claim=>audit(db,context,requestId,'FAMILY_OVERPAYMENT_CREATED','finance_overpayment',claim.id,now)),
     ...changes.filter(change=>change.discountChanged).map(change=>
       audit(db,context,requestId,'FEE_DISCOUNT_RECALCULATED','annual_fee_obligation',change.row.id,now)),
-    ...correctionIssues.flatMap(({change,id:issueId,payments})=>{
-      return [db.prepare(`INSERT INTO annual_fee_issue
-        (id,round_id,obligation_id,code,created_by,created_at) VALUES(?,?,?,'DISCREPANCY',?,?)`)
-        .bind(issueId,group.round_id,change.row.id,context.userId,now),
-      audit(db,context,requestId,'FEE_ISSUE_OPENED','annual_fee_issue',issueId,now),
-      ...payments.flatMap(payment=>{
-        const queued=issueQueue(db,issueId,payment,now);
-        return [queued.query,audit(db,context,requestId,'NOTIFICATION_QUEUED','annual_fee_issue_outbox',queued.id,now)];
-      })];
-    }),
+    ...changes.filter(change=>change.amountChanged && change.amountDue<change.row.amount_due_cents &&
+      change.row.allocated_cents>0).map(change=>
+      db.prepare('DELETE FROM finance_fee_correction_gate WHERE obligation_id=?').bind(change.row.id)),
     db.prepare('DELETE FROM annual_fee_family_correction_gate WHERE group_id=?').bind(id)
   ]); } catch(error) {
     if (!creation) {
@@ -253,13 +277,13 @@ export async function correctFamilyGroup(db,context,requestId,id,input,now=Date.
       throw new AppError(409,'stale_family_financial_state');
     throw error;
   }
-  return {id,revisionId};
+  return {id,revisionId,overpaymentIds:overpaymentClaims.map(claim=>claim.id)};
 }
 export async function familyGroupRevisions(db,context,requestId,id) {
   await globalPermission(db,context,requestId,'finance.family.read','annual_fee_family_group',id);
   const group=await db.prepare('SELECT id FROM annual_fee_family_group WHERE id=?').bind(requireUuid(id)).first();
   if (!group) throw new AppError(404,'not_found');
-  const revisions=(await db.prepare(`SELECT id,previous_version,new_version,changed_by,changed_at
+  const revisions=(await db.prepare(`SELECT id,previous_version,new_version,changed_by,changed_at,reason
     FROM annual_fee_family_revision WHERE group_id=? ORDER BY changed_at DESC,id DESC LIMIT 50`).bind(id).all()).results;
   for (const revision of revisions) revision.members=(await db.prepare(`SELECT participant_id,previous_group_id,new_group_id,
     previous_ordinal,new_ordinal,previous_discount_cents,new_discount_cents,

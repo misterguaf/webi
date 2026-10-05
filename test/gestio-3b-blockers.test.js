@@ -63,6 +63,12 @@ function fixture() {
 }
 const count=(sql,table)=>sql.prepare(`SELECT count(*) AS n FROM ${table}`).get().n;
 const status=(sql,obligationId)=>sql.prepare('SELECT status FROM annual_fee_obligation_status WHERE id=?').get(obligationId).status;
+function financeRound(f) {
+  const now=Date.now();
+  f.sql.prepare(`INSERT INTO finance_round(id,code,period_start,period_end,status,annual_fee_round_id,
+    created_by,created_at,updated_at,opened_by,opened_at) VALUES(?,?,'2026-09-01','2027-08-31','OPEN',?,?,?,?,?,?)`)
+    .run(id(990),'2026/2027',id(901),id(104),now,now,id(104),now);
+}
 const submission=(key=crypto.randomUUID().replaceAll('-',''))=>({roundCode:'2026/2027',children,
   submittedByName:'Família fictícia',contactPhone:null,receiptEmail:'fee-blocker@example.test',
   declaredAmountCents:25000,privacyAcknowledged:true,privacyNoticeVersion:'DEMO-3B-PRIVACY-NOTICE-V1',
@@ -129,31 +135,32 @@ test('3B blocker: family order and membership correction is authorized, historic
       {obligationId:ids.get(502),amountCents:5000},{obligationId:ids.get(503),amountCents:5000}]);
     const reordered=[id(502),id(503),id(501),id(504)];
     await assert.rejects(correctFamilyGroup(f.db,f.contexts[104],crypto.randomUUID(),groupId,
-      {participantIds:reordered}),error=>error.code==='family_allocation_conflict');
+      {participantIds:reordered,reason:'Correcció familiar verificada'}),error=>error.code==='finance_round_required');
     assert.equal(count(f.sql,'annual_fee_family_revision'),0);
+    financeRound(f);
     const next=[id(501),id(503),id(502),id(504),id(505)];
     await assert.rejects(correctFamilyGroup(f.db,f.contexts[107],crypto.randomUUID(),groupId,
-      {participantIds:next}),error=>error.status===403);
+      {participantIds:next,reason:'Correcció familiar verificada'}),error=>error.status===403);
     const corrected=await correctFamilyGroup(f.db,f.contexts[104],crypto.randomUUID(),groupId,
-      {participantIds:next});
+      {participantIds:next,reason:'Correcció familiar verificada'});
     const revision=(await familyGroupRevisions(f.db,f.contexts[104],crypto.randomUUID(),groupId))[0];
     assert.equal(revision.id,corrected.revisionId);
     assert.equal(revision.members.length,5);
     assert.equal(revision.members.find(row=>row.participant_id===id(502)).previous_amount_due_cents,10000);
     assert.equal(revision.members.find(row=>row.participant_id===id(502)).new_amount_due_cents,5000);
     assert.equal(revision.members.find(row=>row.participant_id===id(505)).previous_group_id,null);
-    assert.equal(status(f.sql,ids.get(502)),'ISSUE');
-    assert.equal(status(f.sql,ids.get(503)),'ISSUE');
+    assert.equal(status(f.sql,ids.get(502)),'PAID');
+    assert.equal(status(f.sql,ids.get(503)),'PARTIAL');
     assert.equal(f.sql.prepare('SELECT amount_due_cents FROM annual_fee_obligation WHERE id=?').get(ids.get(505)).amount_due_cents,5000);
     const issues=f.sql.prepare(`SELECT id,obligation_id FROM annual_fee_issue WHERE code='DISCREPANCY'`).all();
-    assert.equal(issues.length,2);
+    assert.equal(issues.length,0);
     assert.equal(f.sql.prepare(`SELECT count(*) AS n FROM annual_fee_issue_outbox n
-      JOIN annual_fee_issue i ON i.id=n.issue_id WHERE i.code='DISCREPANCY'`).get().n,2);
+      JOIN annual_fee_issue i ON i.id=n.issue_id WHERE i.code='DISCREPANCY'`).get().n,0);
     for (const issue of issues) await resolveFeeIssue(f.db,f.contexts[104],crypto.randomUUID(),issue.id);
     assert.equal(status(f.sql,ids.get(502)),'PAID');
     assert.equal(status(f.sql,ids.get(503)),'PARTIAL');
     await correctFamilyGroup(f.db,f.contexts[104],crypto.randomUUID(),groupId,
-      {participantIds:[id(501),id(503),id(502),id(505)]});
+      {participantIds:[id(501),id(503),id(502),id(505)],reason:'Baixa de membre familiar'});
     const removed=f.sql.prepare('SELECT family_group_id,amount_due_cents FROM annual_fee_obligation WHERE id=?')
       .get(ids.get(504));
     assert.equal(removed.family_group_id,null);
@@ -170,10 +177,12 @@ test('3B blocker: first explicit family group after obligations is atomic and ke
     for (const number of [501,502,503]) ids.set(number,(await createObligation(f.db,f.contexts[104],
       crypto.randomUUID(),{roundId:id(901),participantId:id(number)})).id);
     const paymentId=await payment(f,[{obligationId:ids.get(503),amountCents:10000}]);
-    const input={roundId:id(901),reference:'DEMO-LATE-SIBLINGS-001',participantIds:[id(501),id(502),id(503)]};
+    const input={roundId:id(901),reference:'DEMO-LATE-SIBLINGS-001',participantIds:[id(501),id(502),id(503)],
+      reason:'Agrupació familiar posterior'};
     await assert.rejects(createFamilyGroup(f.db,f.contexts[104],crypto.randomUUID(),input),
-      error=>error.code==='family_allocation_conflict');
+      error=>error.code==='finance_round_required');
     assert.equal(count(f.sql,'annual_fee_family_group'),0);
+    financeRound(f);
     await reviseFeeAllocations(f.db,f.contexts[104],crypto.randomUUID(),paymentId,
       {expectedVersion:1,allocations:[{obligationId:ids.get(501),amountCents:5000},
         {obligationId:ids.get(503),amountCents:5000}]});
@@ -182,11 +191,9 @@ test('3B blocker: first explicit family group after obligations is atomic and ke
     assert.equal(revisions.length,1);
     assert.equal(revisions[0].members.find(row=>row.participant_id===id(503)).previous_group_id,null);
     assert.equal(revisions[0].members.find(row=>row.participant_id===id(503)).new_amount_due_cents,5000);
-    assert.equal(status(f.sql,ids.get(503)),'ISSUE');
-    const issue=f.sql.prepare(`SELECT id FROM annual_fee_issue WHERE obligation_id=? AND code='DISCREPANCY'`)
-      .get(ids.get(503));
-    await resolveFeeIssue(f.db,f.contexts[104],crypto.randomUUID(),issue.id);
     assert.equal(status(f.sql,ids.get(503)),'PAID');
+    assert.equal(f.sql.prepare(`SELECT count(*) AS n FROM annual_fee_issue WHERE obligation_id=? AND code='DISCREPANCY'`)
+      .get(ids.get(503)).n,0);
     assert.equal(f.sql.prepare('PRAGMA foreign_key_check').all().length,0);
   } finally {f.close();}
 });
@@ -404,7 +411,7 @@ test('3B final: direct SQL cannot use the legacy gate to orphan or move funded f
     assert.equal(f.sql.prepare('PRAGMA foreign_key_check').all().length,0);
     assert.equal(count(f.sql,'annual_fee_family_correction_gate'),0);
     await correctFamilyGroup(f.db,f.contexts[104],crypto.randomUUID(),groupId,
-      {participantIds:[id(502),id(501),id(503),id(504)]});
+      {participantIds:[id(502),id(501),id(503),id(504)],reason:'Revisió familiar'});
     assert.equal(f.sql.prepare('PRAGMA foreign_key_check').all().length,0);
   } finally {f.close();}
 });
@@ -614,7 +621,7 @@ test('3B second review: direct family member deletion cannot orphan an obligatio
     assert.throws(()=>f.sql.prepare('UPDATE annual_fee_family_member SET sibling_ordinal=9 WHERE group_id=? AND participant_id=?')
       .run(groupId,id(501)));
     await correctFamilyGroup(f.db,f.contexts[104],crypto.randomUUID(),groupId,
-      {participantIds:[id(502),id(501),id(503),id(504)]});
+      {participantIds:[id(502),id(501),id(503),id(504)],reason:'Revisió familiar'});
     assert.equal(f.sql.prepare('SELECT family_group_id FROM annual_fee_obligation WHERE id=?').get(ids.get(501)).family_group_id,groupId);
   } finally {f.close();}
 });

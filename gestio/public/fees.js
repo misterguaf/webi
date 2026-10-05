@@ -188,7 +188,8 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
         send('/api/fees/obligations','POST',{roundId:selected,participantId:row.id}))));}));
   }catch(error){message(error.message);}});
   $('feeCreateGroup').addEventListener('click',()=>{const participantIds=[...$('feeSearchResults').querySelectorAll('input:checked')].map(node=>node.value);
-    act(()=>send('/api/fees/groups','POST',{roundId:selected,reference:$('feeGroupReference').value.trim(),participantIds}))
+    act(()=>send('/api/fees/groups','POST',{roundId:selected,reference:$('feeGroupReference').value.trim(),participantIds,
+      reason:$('feeGroupReason').value.trim()}))
       .catch(error=>message(error.message));});
   return load;
 }

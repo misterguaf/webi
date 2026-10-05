@@ -573,6 +573,47 @@ test('G.3: excess fee money stays a separate open family claim and never becomes
   } finally { s.f.close(); }
 });
 
+test('G.3: changing a paid second child to third corrects due 100 to 50 and isolates the excess', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const obligationId = id(3002);
+    const source = s.f.sql.prepare(`SELECT p.id,p.verified_amount_cents AS cents FROM annual_fee_payment p
+      JOIN annual_fee_allocation a ON a.payment_id=p.id WHERE a.obligation_id=?`).get(obligationId);
+    assert.equal(source.cents, 10000);
+    const movement = await s.manual(s.bank, 10000);
+    assert.equal((await s.call(104, `/api/finance/movements/${movement}/allocations`, 'POST', {
+      expectedVersion: 0, allocations: [{ kind: 'FEE_PAYMENT', feePaymentId: source.id, amountCents: 10000 }]
+    })).status, 200);
+    const corrected = await s.call(104, '/api/fees/groups', 'POST', {
+      roundId: id(901), reference: 'DEMO-G3-CORRECTION',
+      participantIds: [id(501), id(503), id(502)], reason: 'Ordre familiar corregit'
+    });
+    assert.equal(corrected.status, 201, JSON.stringify(corrected.data));
+    assert.equal(corrected.data.overpaymentIds.length, 1);
+    const claimId = corrected.data.overpaymentIds[0];
+    const obligation = s.f.sql.prepare('SELECT amount_due_cents,sibling_ordinal FROM annual_fee_obligation WHERE id=?')
+      .get(obligationId);
+    assert.deepEqual([obligation.amount_due_cents, obligation.sibling_ordinal], [5000, 3]);
+    assert.equal(s.f.sql.prepare('SELECT status,allocated_cents FROM annual_fee_obligation_status WHERE id=?')
+      .get(obligationId).status, 'PAID');
+    assert.equal(s.f.sql.prepare('SELECT allocated_cents FROM annual_fee_obligation_status WHERE id=?')
+      .get(obligationId).allocated_cents, 5000);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 5000);
+    assert.equal((await s.call(104, `/api/finance/movements/${movement}/allocations`, 'POST', {
+      expectedVersion: 1, reason: 'Separar excés familiar', allocations: [
+        { kind: 'FEE_PAYMENT', feePaymentId: source.id, amountCents: 5000 },
+        { kind: 'FAMILY_OVERPAYMENT', overpaymentId: claimId, amountCents: 5000 }]
+    })).status, 200);
+    assert.equal((await s.call(104, `/api/finance/rounds/${s.round}`)).data.economics.incomeCents, 5000);
+    assert.equal((await s.call(104, '/api/finance/family-overpayments')).data.overpayments
+      .find(row => row.id === claimId).reconciledCents, 5000);
+    assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM annual_fee_issue WHERE obligation_id=? AND status=?')
+      .get(obligationId, 'OPEN').n, 0);
+    assert.deepEqual(s.f.sql.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally { s.f.close(); }
+});
+
 test('migration 0039 preserves a populated legacy activity overpayment and every foreign key', () => {
   const sql = new DatabaseSync(':memory:');
   try {

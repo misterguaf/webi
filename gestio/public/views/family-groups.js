@@ -58,9 +58,11 @@ export function createFamilyGroupsView({ call, message, reportLoadError }) {
       try {
         if (selected.length < 2) { message('Selecciona almenys dos educands.'); return; }
         await call('/api/fees/groups', { method: 'POST', body: JSON.stringify({
-          roundId, reference: $('familyGroupsReference').value.trim(), participantIds: selected
+          roundId, reference: $('familyGroupsReference').value.trim(), participantIds: selected,
+          reason: $('familyGroupsReason').value.trim()
         }) });
         selected = []; $('familyGroupsSearchResults').replaceChildren(); $('familyGroupsReference').value = '';
+        $('familyGroupsReason').value = '';
         message('Agrupació familiar guardada.'); await loadGroups();
       } catch (error) { message(error.message); }
     });
