@@ -2,6 +2,7 @@
 // controller owns the #/participants routes and composes the list and the participant record. It
 // replaces the legacy bullet list. Batch 2 is the read surface (list + Fitxa); the guided create,
 // edit, section change and the Família tab are added in later batches.
+import { createAdmissionsInbox } from './participants/admissions.js';
 import { fetchAllPages } from '../api.js';
 import { announce, confirmDialog, h, icon, openMenu, toast, trapTab } from '../ui.js';
 import { createParticipantEditor } from './participants/editor.js';
@@ -35,6 +36,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
   function openCreate() { if (canCreate(me?.capabilities)) editor.open({ trigger: document.activeElement }); }
   const familia = createFamiliaTab({ call, caps, onChanged: () => { invalidate(); detailCache = null; familia.clear(); if (route.path[0]) void showDetail(route.path[0], { force: true }); } });
   const readsContacts = p => { const s = caps()?.participants?.readContacts; return !!s && (s.all || s.sections.some(x => x.id === p.currentSectionId)); };
+  const admissions = createAdmissionsInbox({ call, routes });
   const reviews = createReviewQueue({ call, onOpenParticipant: id => { openedFromList = false; routes.go({ page: 'participants', path: [id] }); } });
 
   async function refresh({ force = false } = {}) {
@@ -123,11 +125,13 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
       ? h('button', { className: 'btn btn-primary toolbar-cta', attrs: { type: 'button' }, on: { click: () => openCreate() } }, icon('plus'), h('span', { text: 'Nou participant' })) : null;
     const reviewLink = me.capabilities.participants.review
       ? h('a', { className: 'btn btn-secondary toolbar-reviews', text: 'Revisions', attrs: { href: '#/participants/revisions' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['revisions'] }); } } }) : null;
+    const admissionsLink = me.capabilities.admissions?.read
+      ? h('a', { className: 'btn btn-secondary toolbar-admissions', text: 'Noves altes', attrs: { href: '#/participants/altes' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['altes'] }); } } }) : null;
     const toolbar = h('div', { className: 'participant-toolbar' },
       h('label', { className: 'search-field', attrs: { for: 'participantSearch' } }, icon('search'), searchInput),
       h('label', { className: 'select-field' }, h('span', { text: 'Secció' }), sectionSelect),
       h('label', { className: 'select-field' }, h('span', { text: 'Estat' }), estatSelect),
-      compToggle, reset, reviewLink, cta);
+      compToggle, reset, admissionsLink, reviewLink, cta);
     const results = $('participantResults') ?? h('div', { className: 'participant-surface', attrs: { id: 'participantResults' } });
     listRoot.replaceChildren(toolbar, results);
   }
@@ -336,10 +340,29 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     reviews.render(container);
     title.focus({ preventScroll: true });
   }
+  // 3.5H.2 Participants → Noves altes.
+  function renderAdmissions() {
+    if (!me.capabilities.admissions?.read) { routes.go({ page: 'participants' }, { replace: true }); return; }
+    const requestId = route.path[1];
+    if (requestId && !UUID.test(requestId)) { routes.go({ page: 'participants', path: ['altes'] }, { replace: true }); return; }
+    listRoot.hidden = true; detailRoot.hidden = false;
+    if (document.body.dataset.page === 'participants') { setContextAction(false); setPageHeader({ hidden: true }); }
+    const container = h('div', { className: 'admissions-inbox' });
+    if (requestId) { detailRoot.replaceChildren(h('article', { className: 'participant-detail' }, container)); void admissions.renderDetail(container, requestId); document.title = 'Noves altes · Gestió'; return; }
+    const title = h('h1', { className: 'detail-title', text: 'Noves altes', attrs: { tabindex: '-1' } });
+    detailRoot.replaceChildren(h('article', { className: 'participant-detail' },
+      h('header', { className: 'detail-header' },
+        h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', query: lastListQuery }); } } }, icon('arrow-left'), h('span', { text: 'Participants' })),
+        h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title)),
+        h('p', { className: 'field-hint', text: 'Sol·licituds del formulari públic «Fer-se scout». Aquí es revisen, s’accepten o es rebutgen; acceptar crea o vincula la persona a Participants.' })), container));
+    document.title = 'Noves altes · Participants · Gestió';
+    void admissions.renderList(container, route.query ?? {});
+  }
   function renderRoute() {
     if (!me) return;
     const id = route.path[0];
-    if (id === 'revisions') renderReviews();
+    if (id === 'altes') renderAdmissions();
+    else if (id === 'revisions') renderReviews();
     else if (id && UUID.test(id)) renderDetailRoute();
     else if (id) routes.go({ page: 'participants' }, { replace: true });
     else renderList();
@@ -366,7 +389,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     unload() {
       me = null; rows = null; listError = null; loadedAt = 0; view.hidden = true; toolbarState = ''; search = '';
       editor.close({ immediate: true, restoreFocus: false });
-      familia.clear(); reviews.clear(); detailCache = null;
+      familia.clear(); reviews.clear(); admissions.clear(); detailCache = null;
       listRoot.replaceChildren(); detailRoot.replaceChildren(); setContextAction(true);
     },
     openCreate

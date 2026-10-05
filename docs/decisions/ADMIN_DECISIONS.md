@@ -73,3 +73,38 @@ Status: CLOSED for H.1 (product decisions from the 3.5H.1 brief). Implementation
 
 Noves altes (3.5H.2; the "Noves altes" package is a disabled placeholder), global Activitat, the Incidències domain,
 Health, negative overrides, Council/quorum management.
+
+# H.2 — Noves altes (CLOSED)
+
+Implementation: migration 0044, `gestio/src/services/admissions-service.js`, `PortalIntake /v1/admissions`,
+`api/_lib/handler.js`, `gestio/public/views/participants/admissions*.js`. Tests: `test/gestio-admissions*.test.js`.
+
+1. **One public form**: the existing «Fer-se scout» form (`/api/alta`) is the only intake. With the `GESTIO_INTAKE`
+   service binding it writes an `AdmissionRequest` in Gestió (operational source) through the existing PortalIntake
+   boundary. Without the binding (the current public deployment, real data) the legacy Apps Script/Sheets write stays as a
+   **transitional, non-authoritative** path until cut-over; Sheets is never the admissions database of record.
+2. **Minimal data**: the form's existing fields only (name, surnames, birth date, optional section, guardian name, phone,
+   e-mail, how they heard, two consents). **No health data, no DNI.** Gestió stays SYNTHETIC_ONLY.
+3. **States** `PENDING → IN_REVIEW ⇄ WAITLISTED`, then `ACCEPTED | REJECTED | WITHDRAWN` (final). WAITLISTED is an active
+   state; REJECTED (a category, never free text) ≠ WITHDRAWN (the family withdrew). Requests are never deleted; every
+   change is an immutable event with actor and time. No participant is created except by ACCEPT.
+4. **Section**: the public choice (labels mapped to MANADA/TROPA/ESCOLTA/CLAN) is untrusted; the operational section is
+   confirmed internally before acceptance. Scope = confirmed section, or the requested one until confirmed; a request
+   without section is group-wide only.
+5. **Permissions** `admissions.read / manage / decide` (SCOPED, delegable). Secretaria and Coordinació general: whole group.
+   Coordinació de secció: its section, **including accept/reject** (Gestió records a decision; it does not run the
+   Council). Anyone else: through H.1 grants or delegations (SECTION_DELEGATE holds the ceiling, never by default).
+6. **Matching** before ACCEPT, server-side, against every participant (exact name key + birth date): **NONE** → explicit
+   creation; **CLEAR** → link only after explicit confirmation of that participant (a former member is reactivated);
+   **AMBIGUOUS** → blocked and flagged inside Admissions until a group-wide reviewer (who can see every participant)
+   resolves it as a different or the same person. No automatic merge, no fuzzy identity, candidates never leave Gestió
+   and never reach section coordinators or the public.
+7. **Acceptance is atomic**: participant + enrolment episode in the confirmed section + (minor) guardian with phone/e-mail,
+   or (adult) own contact + provenance (`COMUNICACIO_FAMILIA`, «Noves altes», request linked). The request's contact is
+   cleared once it lives in Participants (not kept twice). A stale accept writes nothing.
+8. **Public answer is neutral**: same message whatever happens internally; no ids, matches, waitlist or other requests;
+   no status browsing.
+9. **Audit**: received, review started, waitlisted, returned, section confirmed, match resolved, accepted (new/linked),
+   rejected (category), withdrawn — minimal payload, no contact data or free text.
+10. Out of scope: Activitat (H.3), general Incidències (H.3), Health (Phase 5), retention of rejected/withdrawn intake
+    data (LEGAL DECISION REQUIRED).

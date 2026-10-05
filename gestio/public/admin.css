@@ -34,3 +34,23 @@
   .admin-row-actions .btn{flex:1;min-height:40px}
   .admin-access .allocation-item{grid-template-columns:minmax(0,1fr)}
 }
+
+/* Noves altes (3.5H.2). */
+.badge.tone-waitlist{background:color-mix(in srgb,var(--info) 16%,transparent);color:var(--text-primary);border:1px solid color-mix(in srgb,var(--info) 40%,transparent)}
+.admissions-inbox{display:grid;gap:var(--space-3);min-width:0}
+.admissions-filters{flex-wrap:wrap}
+.admissions-toolbar{margin-bottom:var(--space-2)}
+.admissions-list{list-style:none;margin:0;padding:0!important}
+.admissions-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-5);margin:0!important}
+.admissions-row+.admissions-row{border-top:1px solid color-mix(in srgb,var(--border-default) 70%,transparent)}
+.admissions-badges{display:flex;gap:var(--space-2);flex-wrap:wrap;justify-content:flex-end}
+.admissions-match .candidate{grid-template-columns:minmax(0,1fr) auto}
+.admissions-inbox .detail-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.admissions-inbox .summary-strip{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+@media(max-width:767px){
+  .admissions-row{grid-template-columns:minmax(0,1fr);padding:var(--space-3) var(--space-4)}
+  .admissions-badges{justify-content:flex-start}
+  .admissions-inbox .filter-chips{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+  .admissions-inbox .filter-chip{flex:none}
+}
+.admissions-inbox .info-row dd::first-letter{text-transform:none}
