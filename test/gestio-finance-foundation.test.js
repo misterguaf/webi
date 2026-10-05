@@ -803,6 +803,10 @@ test('G.3: submitted activity fixes the third sibling price from the round famil
       VALUES(?,?,?,'PUBLISHED','GENERAL',?,?,?,?,?,?,?,?)`)
       .run(activity, 'G3-SIBLING-PAID', 'Campament de prova (fictici)', 'Lloc fictici',
         Date.parse('2027-06-01'), Date.parse('2027-06-05'), Date.parse('2027-05-01'), 18000, id(104), 1, 1);
+    const candidates=await s.call(104,`/api/finance/activity-installment-candidates?activityId=${activity}&q=Tropa%20B`);
+    assert.equal(candidates.status,200,JSON.stringify(candidates.data));
+    assert.equal(candidates.data.candidates.find(person=>person.id===id(503)).prices.NONE,9000);
+    assert.equal((await s.call(102,`/api/finance/activity-installment-candidates?activityId=${activity}&q=Tropa%20B`)).status,403);
     assert.equal((await s.call(102, '/api/finance/activity-installment-plans', 'POST', {
       activityId: activity, participantId: id(503), parts: [3000, 3000, 3000].map(amountCents => ({ amountCents }))
     })).status, 403);
@@ -833,6 +837,17 @@ test('G.3: submitted activity fixes the third sibling price from the round famil
     });
     assert.equal(revised.status, 201, JSON.stringify(revised.data));
     assert.equal((await s.call(104, `/api/finance/activity-installment-plans/${approved.data.id}`)).data.plan.currentRevision, 2);
+    const planAtRegistration=await s.call(104,`/api/finance/registrations/${row.id}/installment-plan`);
+    assert.equal(planAtRegistration.data.plan.parts.length,3);
+    const correctedPrice=await s.call(104,`/api/finance/registrations/${row.id}/price`,'PATCH',{
+      expectedVersion:s.f.sql.prepare('SELECT version FROM activity_registration WHERE id=?').get(row.id).version,
+      amountCents:7000,reason:'Preu familiar corregit amb terminis',
+      planParts:[3000,3000,1000].map(amountCents=>({amountCents}))
+    });
+    assert.equal(correctedPrice.status,200,JSON.stringify(correctedPrice.data));
+    assert.equal(correctedPrice.data.planRevision,3);
+    assert.equal(s.f.sql.prepare('SELECT expected_amount_cents FROM activity_registration WHERE id=?').get(row.id)
+      .expected_amount_cents,7000);
     assert.throws(() => s.f.sql.prepare(`UPDATE activity_installment_part SET planned_cents=1 WHERE plan_id=? AND revision=1`)
       .run(approved.data.id), /activity_installment_immutable/);
     assert.throws(() => s.f.sql.prepare(`UPDATE activity_registration SET expected_amount_cents=18000 WHERE activity_id=?`)

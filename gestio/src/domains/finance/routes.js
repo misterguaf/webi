@@ -31,10 +31,14 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await familyRefunds.listFamilyRefunds(db, context, requestId, url.searchParams));
   if (path === '/api/finance/activity-installment-plans' && method === 'POST')
     return ok(await activityInstallments.authorizeActivityPlan(db, context, requestId, await body()), 201);
+  if (path === '/api/finance/activity-installment-candidates' && method === 'GET')
+    return ok(await activityInstallments.activityPlanCandidates(db, context, requestId, url.searchParams));
   if ((match = path.match(/^\/api\/finance\/registrations\/([^/]+)\/price$/)) && method === 'PATCH')
     return ok(await activityPrices.correctActivityPrice(db, context, requestId, match[1], await body()));
   if ((match = path.match(/^\/api\/finance\/registrations\/([^/]+)\/price-history$/)) && method === 'GET')
     return ok(await activityPrices.activityPriceHistory(db, context, requestId, match[1]));
+  if ((match = path.match(/^\/api\/finance\/registrations\/([^/]+)\/installment-plan$/)) && method === 'GET')
+    return ok(await activityInstallments.planForRegistration(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)$/)) && method === 'GET')
     return ok(await activityInstallments.activityPlanDetail(db, context, requestId, match[1]));
   if ((match = path.match(/^\/api\/finance\/activity-installment-plans\/([^/]+)\/revisions$/)) && method === 'POST')

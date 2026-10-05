@@ -107,3 +107,49 @@ export async function activityPlanDetail(db, context, requestId, id) {
     .bind(id, revision.revision).all()).results;
   return { plan, revisions };
 }
+
+export async function planForRegistration(db,context,requestId,registrationId) {
+  await allow(db,context,requestId,'finance.activity.installment.authorize','activity_registration',
+    validUuid(registrationId)?registrationId:null);
+  const registration=await db.prepare('SELECT id FROM activity_registration WHERE id=?')
+    .bind(requireUuid(registrationId)).first();
+  if (!registration) throw notFound();
+  const plan=await db.prepare(`SELECT id,total_cents AS totalCents,current_revision AS currentRevision
+    FROM activity_installment_plan WHERE registration_id=? AND status='ACTIVE'`)
+    .bind(registrationId).first();
+  if (!plan) return {plan:null};
+  plan.parts=(await db.prepare(`SELECT ordinal,planned_cents AS amountCents,target_at AS targetAt
+    FROM activity_installment_part WHERE plan_id=? AND revision=? ORDER BY ordinal`)
+    .bind(plan.id,plan.currentRevision).all()).results;
+  return {plan};
+}
+
+export async function activityPlanCandidates(db,context,requestId,params) {
+  await allow(db,context,requestId,'finance.activity.installment.authorize','activity_installment_plan');
+  const activityId=params?.get('activityId'),search=params?.get('q')?.trim();
+  if (!validUuid(activityId) || !search || search.length<2 || search.length>60)
+    fail('invalid_activity_installment_search');
+  const activity=await db.prepare("SELECT id,audience,status,price_cents,starts_at FROM activity WHERE id=?")
+    .bind(activityId).first();
+  if (!activity || activity.status!=='PUBLISHED' || activity.price_cents<=0)
+    throw new AppError(409,'invalid_activity_installment_plan');
+  const escaped=search.replaceAll('\\','\\\\').replaceAll('%','\\%').replaceAll('_','\\_');
+  const rows=(await db.prepare(`SELECT p.id,p.display_name AS name,s.code AS sectionCode
+    FROM participant p JOIN section s ON s.id=p.current_section_id
+    WHERE p.status='ACTIVE' AND p.display_name LIKE ? ESCAPE '\\'
+      AND (?='GENERAL' OR EXISTS(SELECT 1 FROM activity_section x
+        WHERE x.activity_id=? AND x.section_id=p.current_section_id))
+      AND NOT EXISTS(SELECT 1 FROM activity_registration r WHERE r.activity_id=? AND r.participant_id=p.id
+        AND r.status NOT IN ('REJECTED','WITHDRAWN'))
+    ORDER BY p.display_name,p.id LIMIT 20`)
+    .bind(`%${escaped}%`,activity.audience,activityId,activityId).all()).results;
+  const options=(await db.prepare('SELECT code,price_adjustment_cents FROM activity_transport_option WHERE activity_id=?')
+    .bind(activityId).all()).results;
+  for(const row of rows){
+    row.prices={};
+    for(const option of options.length?options:[{code:'NONE',price_adjustment_cents:0}])
+      row.prices[option.code]=(await activityPrice(db,{baseCents:activity.price_cents+option.price_adjustment_cents,
+        startsAt:activity.starts_at,participantId:row.id})).amountCents;
+  }
+  return {candidates:rows};
+}

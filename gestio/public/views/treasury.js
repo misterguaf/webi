@@ -7,11 +7,12 @@ import { renderMovementDetail, renderMovementList } from './treasury/movements.j
 import { renderExpenseDetail, renderExpenseList } from './treasury/expenses.js';
 import { renderIncomeDetail, renderIncomeList } from './treasury/incomes.js';
 import { renderRound } from './treasury/round.js';
+import { renderFamilyPayments } from './treasury/families.js';
 import { availableTabs, errorCopy, treasuryAvailable } from './treasury/model.js';
 
 const $ = id => document.getElementById(id);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const TITLES = { inici: 'Tresoreria', moviments: 'Moviments', ingressos: 'Ingressos', despeses: 'Despeses', ronda: 'Ronda' };
+const TITLES = { inici: 'Tresoreria', moviments: 'Moviments', ingressos: 'Ingressos', despeses: 'Despeses', families:'Famílies', ronda: 'Ronda' };
 
 export function createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge }) {
   const root = $('treasuryView');
@@ -61,6 +62,7 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
       else if (tab.id === 'moviments') await (id ? renderMovementDetail(content, ctx, id) : renderMovementList(content, ctx, route.query ?? {}));
       else if (tab.id === 'ingressos') await (id ? renderIncomeDetail(content, ctx, id) : renderIncomeList(content, ctx, route.query ?? {}));
       else if (tab.id === 'ronda') await renderRound(content, ctx);
+      else if (tab.id === 'families') await renderFamilyPayments(content,ctx);
       else await (id ? renderExpenseDetail(content, ctx, id) : renderExpenseList(content, ctx, route.query ?? {}));
       if (id) announce(document.title);
     } catch (error) {

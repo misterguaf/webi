@@ -290,6 +290,24 @@ export function openClassify(data, ctx, onDone) {
           h('fieldset', { className: 'form-field candidate-list' }, h('legend', { className: 'field-label',
             text: choice === 'FEE_PAYMENT' ? 'Quota revisada' : 'Pagament verificat' }), choices), amountWrap());
         state.amount.value = centsInput(Math.min(rows[0].outstandingCents, m.unallocatedCents));
+      } else if (choice === 'FAMILY_OVERPAYMENT' || choice === 'FAMILY_REFUND') {
+        const candidates = await ctx.call(`/api/finance/movements/${m.id}/receipt-candidates`);
+        const rows = choice === 'FAMILY_OVERPAYMENT' ? candidates.overpayments : candidates.refunds;
+        if (!rows.length) { panel.replaceChildren(h('p', { className: 'form-notice',
+          text: choice === 'FAMILY_OVERPAYMENT' ? 'No hi ha excessos familiars pendents de conciliar.'
+            : 'No hi ha devolucions familiars pendents de liquidar.' })); return; }
+        const choices = rows.map((row,index) => h('label', { className: 'candidate' },
+          h('input', { attrs: { type: 'radio', name: 'receipt', value: row.id, checked: index === 0 },
+            dataset: { outstanding: String(row.outstandingCents),
+              activityAllocationId: row.activityAllocationId ?? '', overpaymentId: row.overpaymentId ?? '' },
+            on: { change: () => { state.amount.value = centsInput(Math.min(row.outstandingCents,m.unallocatedCents)); } } }),
+          h('span', { className: 'candidate-name', text: choice === 'FAMILY_OVERPAYMENT'
+            ? 'Excés de pagament familiar' : `Devolució familiar · ${row.recipientEmail}` }),
+          h('span', { className: 'candidate-meta', text: `Pendent ${formatEur(row.outstandingCents)}` })));
+        panel.replaceChildren(h('p', { className: 'form-notice', text: 'Comprova el justificant i confirma manualment la coincidència amb el banc.' }),
+          h('fieldset', { className: 'form-field candidate-list' }, h('legend', { className: 'field-label',
+            text: choice === 'FAMILY_OVERPAYMENT' ? 'Excés familiar' : 'Devolució pendent' }), choices), amountWrap());
+        state.amount.value = centsInput(Math.min(rows[0].outstandingCents,m.unallocatedCents));
       } else if (choice === 'INCOME') {
         const lines = (await ctx.call(`/api/finance/rounds/${round.id}/assignable-lines?nature=INCOME`)).lines;
         const picker = budgetLineButton({ lines, emptyText: 'Tria una línia d’ingressos' });
@@ -379,7 +397,10 @@ export function openClassify(data, ctx, onDone) {
       const result = newAllocation({ kind: choice, amount: state.amount?.value, budgetLineId: state.line?.value,
         expenseId: state.expense?.value, incomeId: picked?.value,
         feePaymentId: choice === 'FEE_PAYMENT' ? receipt?.value : null,
-        activityAllocationId: choice === 'ACTIVITY_PAYMENT' ? receipt?.value : null }, limit);
+        activityAllocationId: choice === 'ACTIVITY_PAYMENT' ? receipt?.value : choice === 'FAMILY_REFUND'
+          ? receipt?.dataset.activityAllocationId || null : null,
+        overpaymentId: choice === 'FAMILY_OVERPAYMENT' ? receipt?.value : choice === 'FAMILY_REFUND'
+          ? receipt?.dataset.overpaymentId || null : null }, limit);
       if (result.error) { drawer.showError(result.error); return false; }
       await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({ expectedVersion: m.allocationVersion,
         allocations: [...allocationPayload(data.allocations), result.allocation] }) });

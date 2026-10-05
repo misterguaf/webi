@@ -4,7 +4,7 @@
 // global reviewers; payments for this activity only (server-filtered by activityId).
 import { fetchAllPages } from '../../api.js';
 import { confirmDialog, formDialog, h, icon, openMenu, toast } from '../../ui.js';
-import { canVerifyPayments, dateTime, errorCopy, partialLabel, shortDate } from './model.js';
+import { canVerifyPayments, dateTime, errorCopy, formatMoney, partialLabel, shortDate } from './model.js';
 import {
   ESCALATION_LABELS, SECTION_LABELS, WITHDRAWAL_SOURCES, accessibleRowName, canRevealContact, correctionTargets, defaultNotify,
   displayName, groupConfirmed, isActionable, isGlobalReviewer, paymentLine, paymentStateLabel, registrationStateLabel, rowActions, secondaryLine,
@@ -74,6 +74,9 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
       filters.map(filter => h('button', { className: 'filter-chip', attrs: { type: 'button', 'aria-pressed': String(filter.value === selected) },
         on: { click: () => setFilter(activity.id, filter.value) } }, h('span', { text: filter.label }), h('span', { className: 'chip-count', text: String(counts[filter.value]) }))));
     const nodes = [];
+    if (activity.price_cents>0 && caps().treasury?.authorizeActivityInstallments)
+      nodes.push(h('button',{className:'btn btn-secondary btn-small',text:'Autoritza pagament a terminis',
+        attrs:{type:'button'},on:{click:()=>void authorizeActivityPlan(activity)}}));
     if (partial) nodes.push(h('p', { className: 'scope-note', text: `Veus les inscripcions de ${partial}. Les d’altres seccions les revisa cada secció.` }));
     if (cache.evidenceError) nodes.push(h('p', { className: 'inline-note', attrs: { role: 'status' }, text: 'No s’han pogut carregar els justificants de pagament. Les inscripcions es mostren igualment.' }));
     if (!rows.length) {
@@ -99,7 +102,7 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     const evidence = attempts[0] ?? null;
     const redraw = () => draw(container, activity, query);
     const state = h('span', { className: `badge reg-${row.status.toLowerCase().replaceAll('_', '-')}`, text: registrationStateLabel(row.status) });
-    const payment = activity.price_cents > 0 && row.payment_status && row.payment_status !== 'NOT_REQUIRED' && ['AWAITING_PAYMENT_REVIEW', 'WITHDRAWN'].includes(row.status)
+    const payment = activity.price_cents > 0 && row.payment_status && row.payment_status !== 'NOT_REQUIRED'
       ? h('span', { className: 'reg-payment', text: evidence ? paymentLine(evidence) : paymentStateLabel(row.payment_status) }) : null;
     const escalated = row.review_level === 'GLOBAL' && row.status === 'NEEDS_PARTICIPANT_REVIEW'
       ? h('span', { className: 'badge reg-escalated', text: 'En revisió global' }) : null;
@@ -145,6 +148,16 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
         h('div', {}, h('dt', { text: 'Qui la va enviar' }), h('dd', { text: shown.submittedByName || '—' })),
         h('div', {}, h('dt', { text: 'Telèfon' }), h('dd', { text: shown.phone || 'No indicat' })),
         h('div', {}, h('dt', { text: 'Correu' }), h('dd', { text: shown.email }))));
+    }
+    if (capabilities.treasury?.authorizeActivityInstallments && row.expected_amount_cents > 0) {
+      const financeActions=[];
+      if (['NEEDS_PARTICIPANT_REVIEW','AWAITING_PAYMENT_REVIEW','CONFIRMED'].includes(row.status))
+        financeActions.push(h('button',{className:'btn btn-secondary btn-small',text:'Corregeix import',attrs:{type:'button'},
+          on:{click:()=>void correctPrice(row)}}));
+      if (row.status==='WITHDRAWN')
+        financeActions.push(h('button',{className:'btn btn-secondary btn-small',text:'Decideix devolució',attrs:{type:'button'},
+          on:{click:()=>void decideRefund(row)}}));
+      if (financeActions.length)item.append(h('div',{className:'reg-tools'},financeActions));
     }
     if (row.status === 'NEEDS_PARTICIPANT_REVIEW' && expanded.has(row.id) && isActionable(capabilities, row))
       item.append(reviewPanel(row, activity, () => { expanded.delete(row.id); redraw(); document.querySelector(`[data-id="${row.id}"] .reg-toggle`)?.focus(); }));
@@ -255,6 +268,94 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     const values = await pending;
     if (!values) return;
     await post(`/api/registrations/${row.id}/withdraw`, { source: values.source, notifyFamily: !!values.notifyFamily, expectedVersion: row.version }, 'Retirada registrada');
+  }
+
+  async function correctPrice(row) {
+    let plan;
+    try {plan=(await call(`/api/finance/registrations/${row.id}/installment-plan`)).plan;}
+    catch(error){toast(regError(error.code));return;}
+    const fields=[
+      {name:'amount',label:'Import correcte en euros',type:'number',required:true,
+        value:(row.expected_amount_cents/100).toFixed(2),attrs:{min:'0.01',max:'10000',step:'0.01'}},
+      {name:'reason',label:'Motiu de la correcció',required:true,attrs:{minlength:'3',maxlength:'240'}},
+      ...(plan?.parts??[]).map((part,index)=>({name:`part${index}`,label:`Termini ${index+1} en euros`,
+        type:'number',required:true,value:(part.amountCents/100).toFixed(2),attrs:{min:'0.01',step:'0.01'}}))];
+    const values=await formDialog({title:'Corregir el preu de la inscripció',confirm:'Guarda la correcció',fields});
+    if (!values)return;
+    const amountCents=Math.round(Number(values.amount)*100);
+    if (!Number.isSafeInteger(amountCents)||amountCents<1||amountCents>1000000||values.reason.trim().length<3){
+      toast('Revisa l’import i el motiu de la correcció.');return;
+    }
+    const planParts=plan?.parts.map((part,index)=>({amountCents:Math.round(Number(values[`part${index}`])*100),targetAt:part.targetAt}));
+    if(planParts && (planParts.some(part=>!Number.isSafeInteger(part.amountCents)||part.amountCents<1)||
+      planParts.reduce((sum,part)=>sum+part.amountCents,0)!==amountCents)){
+      toast('La suma dels terminis ha de coincidir amb l’import corregit.');return;
+    }
+    try {await call(`/api/finance/registrations/${row.id}/price`,{method:'PATCH',
+      body:JSON.stringify({amountCents,expectedVersion:row.version,reason:values.reason.trim(),
+        ...(planParts?{planParts}:{})})});
+      toast(`Preu corregit a ${formatMoney(amountCents)}`);refresh();}
+    catch(error){toast(regError(error.code));if(error.status===409)refresh();}
+  }
+
+  async function decideRefund(row) {
+    const values=await formDialog({title:'Decidir devolució per retirada',confirm:'Registra la decisió',fields:[
+      {name:'decision',label:'Decisió',type:'select',options:[{value:'FULL',label:'Devolució completa'},
+        {value:'PARTIAL',label:'Devolució parcial'},{value:'NONE',label:'Sense devolució'}],value:'FULL'},
+      {name:'amount',label:'Import a retornar en euros',type:'number',required:true,
+        value:((row.paid_cents??0)/100).toFixed(2),attrs:{min:'0',step:'0.01'}},
+      {name:'reason',label:'Motiu',required:true,attrs:{minlength:'3',maxlength:'240'}}]});
+    if (!values)return;
+    const amountCents=Math.round(Number(values.amount)*100);
+    if (!Number.isSafeInteger(amountCents)||amountCents<0||values.reason.trim().length<3){
+      toast('Revisa la decisió, l’import i el motiu.');return;
+    }
+    try {await call(`/api/finance/withdrawn-registrations/${row.id}/refund-decision`,{method:'POST',
+      body:JSON.stringify({decision:values.decision,amountCents,reason:values.reason.trim()})});
+      toast('Decisió de devolució registrada');refresh();}
+    catch(error){toast(regError(error.code));if(error.status===409)refresh();}
+  }
+
+  async function authorizeActivityPlan(activity) {
+    const search=await formDialog({title:'Busca la persona per al fraccionament',confirm:'Busca',fields:[
+      {name:'name',label:'Nom de la persona',required:true,attrs:{minlength:'2',maxlength:'60'}}]});
+    if (!search)return;
+    let candidates;
+    try {candidates=(await call(`/api/finance/activity-installment-candidates?activityId=${activity.id}&q=${encodeURIComponent(search.name.trim())}`)).candidates;}
+    catch(error){toast(regError(error.code));return;}
+    if (!candidates.length){toast('No hi ha persones disponibles amb eixe nom.');return;}
+    const transport=activity.transportOptions?.length?activity.transportOptions.map(option=>({value:option.code,
+      label:option.code==='GROUP'?'Transport del grup':'Transport de la família'})):[{value:'NONE',label:'Sense opció de transport'}];
+    const choice=await formDialog({title:'Tria la persona i el transport',confirm:'Continua',fields:[
+      {name:'participant',label:'Persona',type:'select',options:candidates.map(row=>({value:row.id,
+        label:`${row.name} · ${row.sectionCode}`}))},
+      {name:'transport',label:'Transport',type:'select',options:transport}]});
+    if (!choice)return;
+    const person=candidates.find(row=>row.id===choice.participant);
+    const amountCents=person?.prices?.[choice.transport];
+    if (!Number.isSafeInteger(amountCents)||amountCents<2){toast('No s’ha pogut calcular el preu aplicable.');return;}
+    const count=await formDialog({title:'Nombre de terminis',confirm:'Continua',fields:[
+      {name:'count',label:'Terminis',type:'number',required:true,value:'2',attrs:{min:'2',max:'100',step:'1'}}]});
+    if (!count)return;
+    const n=Number(count.count);
+    if (!Number.isInteger(n)||n<2||n>100||amountCents<n){toast('Indica entre 2 i 100 terminis vàlids.');return;}
+    const base=Math.floor(amountCents/n),remainder=amountCents-base*n;
+    const fields=Array.from({length:n},(_,index)=>[
+      {name:`amount${index}`,label:`Termini ${index+1} · euros`,type:'number',required:true,
+        value:((base+(index===n-1?remainder:0))/100).toFixed(2),attrs:{min:'0.01',step:'0.01'}},
+      {name:`date${index}`,label:`Data prevista ${index+1}`,type:'date'}]).flat();
+    const values=await formDialog({title:`Distribuïx ${formatMoney(amountCents)}`,confirm:'Autoritza el fraccionament',fields});
+    if (!values)return;
+    const parts=Array.from({length:n},(_,index)=>({amountCents:Math.round(Number(values[`amount${index}`])*100),
+      targetAt:values[`date${index}`]?Date.parse(`${values[`date${index}`]}T00:00:00Z`):null}));
+    if(parts.some(part=>!Number.isSafeInteger(part.amountCents)||part.amountCents<1)||
+      parts.reduce((sum,part)=>sum+part.amountCents,0)!==amountCents){
+      toast('La suma dels terminis ha de coincidir amb el preu aplicable.');return;
+    }
+    try {await call('/api/finance/activity-installment-plans',{method:'POST',body:JSON.stringify({
+      activityId:activity.id,participantId:person.id,transportCode:choice.transport==='NONE'?null:choice.transport,parts})});
+      toast('Fraccionament excepcional autoritzat');refresh();}
+    catch(error){toast(regError(error.code));}
   }
 
   // ---- confirmed list (§17)

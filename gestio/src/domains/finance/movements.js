@@ -271,6 +271,8 @@ export async function receiptCandidates(db, context, requestId, id) {
   const fees = (await db.prepare(`SELECT p.id,r.code AS roundCode,
     (SELECT count(*) FROM annual_fee_allocation a WHERE a.payment_id=p.id) AS obligations,
     (SELECT COALESCE(sum(a.amount_cents),0) FROM annual_fee_allocation a WHERE a.payment_id=p.id)
+      -COALESCE((SELECT sum(o.amount_cents) FROM finance_overpayment o
+        WHERE o.fee_payment_id=p.id AND o.cause='PRICE_CORRECTION'),0)
       -COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a
         WHERE a.kind='FEE_PAYMENT' AND a.fee_payment_id=p.id),0) AS outstandingCents,
     p.reviewed_at AS reviewedAt

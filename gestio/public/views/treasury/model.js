@@ -51,7 +51,8 @@ export const EXPENSE_STATUS = {
 export const SETTLEMENT_STATE = { UNSETTLED: 'Sense pagament vinculat', PARTIAL: 'Pagada en part', SETTLED: 'Pagada' };
 export const ALLOCATION_KIND = { INCOME: 'Ingrés', EXPENSE_SETTLEMENT: 'Pagament de despesa', EXPENSE_REFUND: 'Devolució de despesa',
   INTERNAL_TRANSFER: 'Traspàs intern', REIMBURSEMENT_SETTLEMENT: 'Reemborsament a scouter',
-  FEE_PAYMENT: 'Quota anual', ACTIVITY_PAYMENT: 'Pagament d’activitat' };
+  FEE_PAYMENT: 'Quota anual', ACTIVITY_PAYMENT: 'Pagament d’activitat',
+  FAMILY_OVERPAYMENT: 'Excés familiar', FAMILY_REFUND: 'Devolució a família' };
 export const BATCH_STATUS = { IMPORTED: 'Importada', PARTIALLY_FLAGGED: 'Amb possibles duplicats' };
 export const BATCH_FORMAT = { SYNTHETIC_CSV_V1: 'CSV sintètic' };
 export const COUNTERPARTY_KIND = { PERSON: 'Persona', ORGANIZATION: 'Entitat' };
@@ -66,6 +67,8 @@ export function allocationLabel(allocation) {
   if (allocation.kind === 'REIMBURSEMENT_SETTLEMENT') return `Reemborsament · ${allocation.reimbursement?.recipientName ?? 'scouter'} · ${allocation.reimbursement?.concept ?? 'despesa'}`;
   if (allocation.kind === 'FEE_PAYMENT') return 'Quota anual';
   if (allocation.kind === 'ACTIVITY_PAYMENT') return 'Pagament d’activitat';
+  if (allocation.kind === 'FAMILY_OVERPAYMENT') return 'Excés de pagament familiar';
+  if (allocation.kind === 'FAMILY_REFUND') return 'Devolució a família';
   if (allocation.kind === 'INTERNAL_TRANSFER') {
     const pair = allocation.pairedMovement;
     return `Traspàs intern${pair ? ` · ${pair.positionName}` : ''}`;
@@ -90,6 +93,7 @@ export const TABS = [
   { id: 'moviments', label: 'Moviments', available: caps => !!t(caps).readMovements },
   { id: 'ingressos', label: 'Ingressos', available: caps => !!t(caps).readIncomes },
   { id: 'despeses', label: 'Despeses', available: caps => !!t(caps).readExpenses },
+  { id: 'families', label: 'Famílies', available: caps => !!t(caps).read },
   { id: 'ronda', label: 'Ronda', available: caps => !!t(caps).readBudget }
 ];
 export const availableTabs = caps => TABS.filter(tab => tab.available(caps));
@@ -106,7 +110,8 @@ export function classificationOptions(movement, caps) {
   if (movement.amountCents > 0) return [
     ...(movement.positionKind === 'BANK' && t(caps).read ? [
       { id: 'FEE_PAYMENT', label: 'És el cobrament d’una quota anual', hint: 'Vincula una quota revisada amb el banc. Confirma la coincidència tu mateix.' },
-      { id: 'ACTIVITY_PAYMENT', label: 'És el pagament d’una activitat', hint: 'Vincula un pagament verificat d’activitat amb el banc.' }
+      { id: 'ACTIVITY_PAYMENT', label: 'És el pagament d’una activitat', hint: 'Vincula un pagament verificat d’activitat amb el banc.' },
+      { id: 'FAMILY_OVERPAYMENT', label: 'És un excés familiar', hint: 'Vincula els diners que sobren d’una quota o activitat; no compten com a ingrés.' }
     ] : []),
     ...(canManageIncomes(caps) ? [{ id: 'NEW_INCOME', label: 'Crea un ingrés', hint: 'Subvenció, donació, loteria, venda… Es crea l’ingrés i queda conciliat amb aquest moviment.' }] : []),
     ...(t(caps).readIncomes ? [{ id: 'LINK_INCOME', label: 'Vincula a un ingrés existent', hint: 'Un ingrés ja registrat que esperava aquest cobrament.' }] : []),
@@ -117,6 +122,8 @@ export function classificationOptions(movement, caps) {
     ...(canManageExpenses(caps) ? [{ id: 'NEW_EXPENSE', label: 'És una despesa', hint: 'Crea la despesa i la reparteix entre línies del pressupost.' }] : []),
     ...(movement.positionKind === 'BANK' && t(caps).readExpenses ? [{ id: 'REIMBURSEMENT_SETTLEMENT',
       label: 'Reemborsament a scouter', hint: 'Concilia una transferència bancària amb una o diverses despeses avançades per la mateixa persona.' }] : []),
+    ...(movement.positionKind === 'BANK' && t(caps).read ? [{ id: 'FAMILY_REFUND',
+      label: 'Devolució a una família', hint: 'Liquida una devolució pendent amb una eixida bancària real.' }] : []),
     { id: 'EXPENSE_SETTLEMENT', label: 'Paga una despesa existent', hint: 'Vincula el moviment a una despesa ja reconeguda.' },
     { id: 'INTERNAL_TRANSFER', label: 'És un traspàs intern', hint: 'Diners que passen d’una posició del grup a una altra.' }
   ];
@@ -320,12 +327,12 @@ export function allocationPayload(allocations) {
   return allocations.map(item => Object.fromEntries(Object.entries({ kind: item.kind, amountCents: item.amountCents,
     budgetLineId: item.incomeId ? null : item.budgetLineId, expenseId: item.expenseId, pairedMovementId: item.pairedMovementId,
     incomeId: item.incomeId, reimbursementId: item.reimbursementId,
-    feePaymentId: item.feePaymentId, activityAllocationId: item.activityAllocationId,
+    feePaymentId: item.feePaymentId, activityAllocationId: item.activityAllocationId,overpaymentId:item.overpaymentId,
     activityId: item.activityId, sectionId: item.sectionId }).filter(([, value]) => value != null)));
 }
 /** One new part for a movement, validated against what is still unallocated. */
 export function newAllocation({ kind, amount, budgetLineId, expenseId, incomeId, reimbursementId,
-  feePaymentId, activityAllocationId }, unallocatedCents) {
+  feePaymentId, activityAllocationId, overpaymentId }, unallocatedCents) {
   const cents = parseEuros(amount);
   if (!cents || cents <= 0) return { error: 'Indica un import positiu.' };
   if (cents > unallocatedCents) return { error: 'L’import assignat supera l’import disponible del moviment.' };
@@ -339,6 +346,11 @@ export function newAllocation({ kind, amount, budgetLineId, expenseId, incomeId,
     : { error: 'Tria la quota revisada.' };
   if (kind === 'ACTIVITY_PAYMENT') return activityAllocationId ? { allocation: { kind, amountCents: cents, activityAllocationId } }
     : { error: 'Tria el pagament verificat.' };
+  if (kind === 'FAMILY_OVERPAYMENT') return overpaymentId ? { allocation: { kind, amountCents: cents, overpaymentId } }
+    : { error: 'Tria l’excés familiar.' };
+  if (kind === 'FAMILY_REFUND') return activityAllocationId || overpaymentId
+    ? { allocation: { kind, amountCents: cents, ...(activityAllocationId ? { activityAllocationId } : { overpaymentId }) } }
+    : { error: 'Tria la devolució familiar.' };
   return { allocation: { kind, amountCents: cents, ...(kind === 'INCOME' ? { budgetLineId } : { expenseId }) } };
 }
 /** Expenses a movement can settle (same method, still unpaid) or refund (recognised). */

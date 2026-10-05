@@ -31,7 +31,7 @@ test('money and dates: EUR with grouping and sign, calendar days, no technical c
 test('tabs and actions follow the advisory capabilities; no finance capability means no Tresoreria', () => {
   assert.equal(model.treasuryAvailable(caps({})), false);
   assert.equal(model.treasuryAvailable({}), false);
-  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'despeses']);
+  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'despeses', 'families']);
   assert.deepEqual(model.availableTabs(caps({ readMovements: true })).map(t => t.id), ['inici', 'moviments'], 'a movement-only delegation sees no expenses');
   assert.equal(model.canReveal(caps({ read: true, readMovements: true })), false);
   assert.equal(model.canReveal(caps({ revealDescriptions: true })), true);
@@ -123,6 +123,22 @@ test('allocation sets: keep the current parts, add one validated part; settleabl
   assert.equal(model.classificationLine({ classification: [{ kind: 'EXPENSE_SETTLEMENT', expense: { concept: 'Autobús' } }, { kind: 'INCOME', budgetLine: { name: 'Q' } }] }), 'Despesa · Autobús i 1 més');
 });
 
+test('G.3 family payment controls offer bank-only overpayment and refund classification', () => {
+  const capsAll=caps({read:true,readMovements:true,classifyMovements:true});
+  const incoming={state:'ACTIVE',amountCents:1500,positionKind:'BANK'};
+  const outgoing={...incoming,amountCents:-1500};
+  assert.ok(model.classificationOptions(incoming,capsAll).some(row=>row.id==='FAMILY_OVERPAYMENT'));
+  assert.ok(model.classificationOptions(outgoing,capsAll).some(row=>row.id==='FAMILY_REFUND'));
+  assert.ok(!model.classificationOptions({...incoming,positionKind:'CASH'},capsAll)
+    .some(row=>row.id==='FAMILY_OVERPAYMENT'));
+  assert.deepEqual(model.newAllocation({kind:'FAMILY_OVERPAYMENT',amount:'5',overpaymentId:UUID},1500).allocation,
+    {kind:'FAMILY_OVERPAYMENT',amountCents:500,overpaymentId:UUID});
+  assert.deepEqual(model.newAllocation({kind:'FAMILY_REFUND',amount:'10',activityAllocationId:UUID},1500).allocation,
+    {kind:'FAMILY_REFUND',amountCents:1000,activityAllocationId:UUID});
+  assert.deepEqual(model.allocationPayload([{kind:'FAMILY_REFUND',amountCents:1000,overpaymentId:UUID}]),
+    [{kind:'FAMILY_REFUND',amountCents:1000,overpaymentId:UUID}]);
+});
+
 test('wiring: each action label reaches its endpoint; reveal is on demand, never stored; shell, router and app register Tresoreria', () => {
   const movements = source('views/treasury/movements.js'), expenses = source('views/treasury/expenses.js'), form = source('views/treasury/expense-form.js');
   const shell = source('shell.js'), app = source('app.js'), html = source('index.html');
@@ -152,7 +168,7 @@ test('wiring: each action label reaches its endpoint; reveal is on demand, never
 });
 
 test('incomes: tab by capability, human states, filters, form validation and keeping income links', () => {
-  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readIncomes: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'ingressos', 'despeses']);
+  assert.deepEqual(model.availableTabs(caps({ read: true, readMovements: true, readIncomes: true, readExpenses: true })).map(t => t.id), ['inici', 'moviments', 'ingressos', 'despeses', 'families']);
   assert.ok(!model.availableTabs(caps({ read: true, readMovements: true, readExpenses: true })).some(t => t.id === 'ingressos'), 'no Ingressos without finance.income.read');
   assert.equal(model.treasuryAvailable(caps({ readIncomes: true })), true);
   assert.deepEqual(['PENDING', 'PARTIAL', 'RECONCILED', 'VOID'].map(code => model.incomeState(code).label), ['Pendent de conciliar', 'Conciliat en part', 'Conciliat', 'Anul·lat']);
