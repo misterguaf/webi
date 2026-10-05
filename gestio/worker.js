@@ -22,7 +22,7 @@ import * as activityFeed from './src/services/activity-feed-service.js';
 import * as workIncidents from './src/services/work-incident-service.js';
 import { AppError } from './src/services/common.js';
 import { financeRoute } from './src/domains/finance/routes.js';
-import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
+import { deploymentEnvironment, devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
 
 // Named entrypoint for the portal service binding only; never routed from the public handler below.
 export { PortalIntake } from './src/intake.js';
@@ -94,7 +94,8 @@ async function api(request,env,url,requestId) {
 
   const session=await getSession(db,cookieToken(request));
   if (!session) throw new AppError(401,'unauthenticated');
-  const context={userId:session.user_id,sessionId:session.session_id,status:session.status};
+  // `environment` is server configuration (environment-policy.js), recorded on work incidents; never client input.
+  const context={userId:session.user_id,sessionId:session.session_id,status:session.status,environment:deploymentEnvironment(env)};
   if (path==='/api/me' && method==='GET') return json({user:{id:context.userId,displayName:session.display_name,status:session.status},
     roles:await organization.currentRoles(db,context.userId,Date.now()),
     capabilities:await capabilityService.capabilities(db,context),requestId});

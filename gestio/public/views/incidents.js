@@ -3,13 +3,14 @@
 // detail, start, resolve with a short answer, reopen, and an OPEN badge in the navigation. No priority,
 // attachments, comments or notifications. View contract: ../view-registry.js.
 import { formDialog, h, icon, toast } from '../ui.js';
-import { ACTION_LABELS, MODULES, RESOLUTION_SUGGESTIONS, STATUS, TYPES, VIEWS, actionsFor, apiQuery, errorCopy, moduleFromPage, moduleLabel,
-  parseFilters, statusOf, typeLabel } from './incidents/model.js';
+import { ACTION_LABELS, ENVIRONMENTS, MODULES, RESOLUTION_SUGGESTIONS, STATUS, TYPES, VIEWS, actionsFor, apiQuery, errorCopy, moduleFromPage, moduleLabel,
+  environmentOf, parseFilters, statusOf, typeLabel } from './incidents/model.js';
 
 const $ = id => document.getElementById(id);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const day = ms => new Intl.DateTimeFormat('ca-ES', { day: 'numeric', month: 'short', year: 'numeric' }).format(new Date(ms));
 const badge = ({ label, tone }) => h('span', { className: `badge tone-${tone}`, text: label });
+const envBadge = value => { const env = environmentOf(value); return h('span', { className: `badge env-badge tone-${env.tone}`, text: env.label, attrs: { title: 'Entorn on s’ha creat' } }); };
 
 export function createIncidentsView({ call, reportLoadError, routes, setPageHeader, setNavBadge, onNavigate }) {
   const root = () => $('incidentsView');
@@ -58,7 +59,8 @@ export function createIncidentsView({ call, reportLoadError, routes, setPageHead
       h('div', { className: 'activity-filters incidents-filters' },
         select('Estat', 'estat', [{ value: '', label: 'Tots' }, ...Object.entries(STATUS).map(([value, item]) => ({ value, label: item.label }))]),
         select('Tipus', 'tipus', [{ value: '', label: 'Tots' }, ...TYPES]),
-        filters.vista === 'totes' ? select('Mòdul', 'modul', [{ value: '', label: 'Tots' }, ...MODULES]) : null),
+        filters.vista === 'totes' ? select('Mòdul', 'modul', [{ value: '', label: 'Tots' }, ...MODULES]) : null,
+        filters.vista === 'totes' ? select('Entorn', 'entorn', [{ value: '', label: 'Tots' }, ...ENVIRONMENTS]) : null),
       list);
     try {
       const { incidents } = await call(`/api/work-incidents?${apiQuery(filters)}`);
@@ -69,7 +71,7 @@ export function createIncidentsView({ call, reportLoadError, routes, setPageHead
           h('span', { className: 'tx-sub', text: [typeLabel(item.type), item.origin === 'SYSTEM' ? 'Detectada pel sistema' : filters.vista === 'totes' ? item.reporter : null,
             moduleLabel(item.module), day(item.createdAt)].filter(Boolean).join(' · ') }),
           item.status === 'RESOLVED' && item.resolution ? h('span', { className: 'tx-sub incidents-answer', text: `Resposta: ${item.resolution}` }) : null),
-        badge(statusOf(item.status)))))
+        h('span', { className: 'incidents-badges' }, filters.vista === 'totes' ? envBadge(item.environment) : null, badge(statusOf(item.status))))))
         : h('div', { className: 'empty-state' }, h('p', { className: 'empty-title', text: filters.vista === 'totes' ? 'No hi ha cap report amb aquests filtres.'
           : 'Encara no has reportat res. Si alguna cosa falla o es pot millorar, fes-nos-ho saber ací.' })));
     } catch (error) {
@@ -116,7 +118,7 @@ export function createIncidentsView({ call, reportLoadError, routes, setPageHead
           text: ACTION_LABELS[action], attrs: { type: 'button' }, on: { click: handlers[action] } }))) : null),
       h('div', { className: 'activity-surface info-surface' },
         h('div', { className: 'info-block' }, h('dl', { className: 'info-list' },
-          row('Tipus', typeLabel(item.type)), row('Origen', item.origin === 'SYSTEM' ? 'Detectada pel sistema' : 'Report manual'),
+          row('Tipus', typeLabel(item.type)), row('Entorn', environmentOf(item.environment).label), row('Origen', item.origin === 'SYSTEM' ? 'Detectada pel sistema' : 'Report manual'),
           row('Reportada per', item.reporter), row('On', moduleLabel(item.module)), row('Data', day(item.createdAt)),
           row('Començada', item.startedAt ? day(item.startedAt) : null), row('Resolta', item.resolvedAt ? day(item.resolvedAt) : null))),
         item.description ? h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Descripció' }), h('p', { className: 'incidents-description', text: item.description })) : null,

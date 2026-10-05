@@ -6,7 +6,8 @@
 
 /** @typedef {'local-synthetic'|'test'|'production'} RuntimeEnvironment */
 /** @typedef {{APP_ENV?: string, DB?: unknown, EVIDENCE_STORAGE?: unknown, DEV_IDENTITY_PROVIDER?: string,
- *   ACCESS_ISSUER?: string, ACCESS_AUDIENCE?: string}} RuntimeEnv */
+ *   ACCESS_ISSUER?: string, ACCESS_AUDIENCE?: string, DEPLOYMENT_ENVIRONMENT?: string}} RuntimeEnv */
+/** @typedef {'LOCAL'|'STAGING'|'PRODUCTION'} DeploymentEnvironment */
 
 // Data accepted by Gestió services, independent of the runtime: while SYNTHETIC_ONLY, every intake,
 // notification and privileged reference must carry a synthetic marker, even if a production
@@ -32,10 +33,28 @@ export function runtimeEnvironment(env) {
   }
 }
 
+// Where this deployment runs (3.5H: recorded on every work incident). Server configuration only, never client
+// input. Local runtimes (development/test) are always LOCAL. A production runtime is PRODUCTION unless its
+// deployment explicitly declares DEPLOYMENT_ENVIRONMENT="STAGING" (future staging infrastructure); a missing
+// declaration is treated as production, the conservative label. Contradictory values fail closed.
+export const DEPLOYMENT_ENVIRONMENTS = Object.freeze(['LOCAL', 'STAGING', 'PRODUCTION']);
+/** @param {RuntimeEnv} env @returns {DeploymentEnvironment} */
+export function deploymentEnvironment(env) {
+  const declared = env?.DEPLOYMENT_ENVIRONMENT;
+  if (runtimeEnvironment(env) !== 'production') {
+    if (declared != null && declared !== 'LOCAL') throw new Error('DEPLOYMENT_ENVIRONMENT invalid for a local runtime');
+    return 'LOCAL';
+  }
+  if (declared == null) return 'PRODUCTION';
+  if (declared !== 'STAGING' && declared !== 'PRODUCTION') throw new Error('DEPLOYMENT_ENVIRONMENT invalid');
+  return declared;
+}
+
 /** Throws on any configuration that could expose the dev identity provider or run without D1.
  * @param {RuntimeEnv} env */
 export function assertRuntime(env) {
   const name = runtimeEnvironment(env);
+  deploymentEnvironment(env);
   if (!ENVIRONMENTS[name].devIdentityProvider && env.DEV_IDENTITY_PROVIDER === 'enabled')
     throw new Error('DEV_IDENTITY_PROVIDER cannot be enabled in production');
   if (!env.DB) throw new Error('D1 binding missing');

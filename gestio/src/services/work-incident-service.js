@@ -8,6 +8,7 @@ import { append, conditionalStatement, statement } from '../domains/audit/reposi
 import { versionCas } from '../concurrency.js';
 import { AppError, requirePermission, requireUuid } from './common.js';
 import { capabilities } from './capability-service.js';
+import { DEPLOYMENT_ENVIRONMENTS } from '../environment-policy.js';
 
 export const TYPES = Object.freeze(['ERROR', 'IMPROVEMENT', 'ACCESS', 'DATA', 'OTHER']);
 export const STATUSES = Object.freeze(['OPEN', 'IN_PROGRESS', 'RESOLVED']);
@@ -20,6 +21,8 @@ async function commit(db, statements) {
   try { return await db.batch(statements); }
   catch (error) { if (/NOT NULL constraint failed: work_incident\.version/.test(String(error?.message))) throw new AppError(409, 'stale_incident'); throw error; }
 }
+// The environment comes from the server context (worker.js → deploymentEnvironment); a missing one fails closed.
+const environmentOf = value => { if (!DEPLOYMENT_ENVIRONMENTS.includes(value)) throw new Error('DEPLOYMENT_ENVIRONMENT missing'); return value; };
 const canManage = async (db, context) => (await authorize(db, context, { permission: 'admin.incidents.manage' })).allow;
 
 // ---------------------------------------------------------------- manual reports (any Gestió user)
@@ -28,16 +31,16 @@ export async function reportIncident(db, context, requestId, input, now = Date.n
   const title = clean(input.title), description = clean(input.description), module = input.module ?? null;
   if (!TYPES.includes(input.type) || title.length < 3 || title.length > 120 || description.length > 2000 || (module !== null && !MODULES.includes(module)))
     throw new AppError(400, 'invalid_incident');
-  const id = crypto.randomUUID();
+  const id = crypto.randomUUID(), environment = environmentOf(context.environment);
   await db.batch([
-    db.prepare(`INSERT INTO work_incident(id,type,origin,title,description,module,reporter_user_id,created_at,updated_at)
-      VALUES(?,?,'MANUAL',?,?,?,?,?,?)`).bind(id, input.type, title, description || null, module, context.userId, now, now),
+    db.prepare(`INSERT INTO work_incident(id,type,origin,title,description,module,reporter_user_id,environment,created_at,updated_at)
+      VALUES(?,?,'MANUAL',?,?,?,?,?,?,?)`).bind(id, input.type, title, description || null, module, context.userId, environment, now, now),
     audit(db, context, requestId, 'WORK_INCIDENT_REPORTED', id, now, input.type)]);
-  return { id, status: 'OPEN' };
+  return { id, status: 'OPEN', environment };
 }
 
 const view = (row, manager) => ({
-  id: row.id, type: row.type, origin: row.origin, status: row.status, title: row.title, module: row.module,
+  id: row.id, type: row.type, origin: row.origin, status: row.status, title: row.title, module: row.module, environment: row.environment,
   createdAt: row.created_at, startedAt: row.started_at, resolvedAt: row.resolved_at, resolution: row.resolution, version: row.version,
   mine: !!row.mine, reporter: manager ? row.reporter_name ?? null : null,
   // A manager sees the description; a reporter sees their own words back.
@@ -49,14 +52,16 @@ const SELECT = `SELECT w.*,u.display_name AS reporter_name,(w.reporter_user_id=?
 /** GET /api/work-incidents?vista=meues|totes — own reports for anyone; every report only for managers. */
 export async function listIncidents(db, context, requestId, params) {
   const scope = params.get('vista') || 'meues', status = params.get('status'), type = params.get('type'), module = params.get('module');
-  if (!['meues', 'totes'].includes(scope) || (status && !STATUSES.includes(status)) || (type && !TYPES.includes(type)) || (module && !MODULES.includes(module)))
-    throw new AppError(400, 'invalid_filter');
+  const environment = params.get('environment');
+  if (!['meues', 'totes'].includes(scope) || (status && !STATUSES.includes(status)) || (type && !TYPES.includes(type)) || (module && !MODULES.includes(module))
+    || (environment && !DEPLOYMENT_ENVIRONMENTS.includes(environment))) throw new AppError(400, 'invalid_filter');
   if (scope === 'totes') await requirePermission(db, context, requestId, 'admin.incidents.manage', { resourceType: 'work_incident' });
   const filters = [], binds = [context.userId];
   if (scope === 'meues') { filters.push('w.reporter_user_id=?'); binds.push(context.userId); }
   if (status) { filters.push('w.status=?'); binds.push(status); }
   if (type) { filters.push('w.type=?'); binds.push(type); }
   if (module) { filters.push('w.module=?'); binds.push(module); }
+  if (environment) { filters.push('w.environment=?'); binds.push(environment); }
   const rows = (await db.prepare(`${SELECT}${filters.length ? ` WHERE ${filters.join(' AND ')}` : ''}
     ORDER BY CASE w.status WHEN 'OPEN' THEN 0 WHEN 'IN_PROGRESS' THEN 1 ELSE 2 END,w.created_at DESC LIMIT 300`).bind(...binds).all()).results;
   const manager = scope === 'totes';
@@ -132,11 +137,12 @@ export async function moveIncident(db, context, requestId, id, step, input, now 
  * Statements that open the SYSTEM incident for a deterministic blocker exactly once (`key` is unique): calling
  * it again for the same blocker writes nothing. Only a title and a resource reference are stored.
  */
-export function openSystemIncidentStatements(db, { key, type, title, module, resourceType, resourceId, requestId }, now = Date.now()) {
+export function openSystemIncidentStatements(db, { key, type, title, module, resourceType, resourceId, requestId, environment }, now = Date.now()) {
   const id = crypto.randomUUID();
   return [
-    db.prepare(`INSERT INTO work_incident(id,type,origin,title,module,system_key,resource_type,resource_id,created_at,updated_at)
-      VALUES(?,?,'SYSTEM',?,?,?,?,?,?,?) ON CONFLICT(system_key) DO NOTHING`).bind(id, type, title, module, key, resourceType, resourceId, now, now),
+    db.prepare(`INSERT INTO work_incident(id,type,origin,title,module,system_key,resource_type,resource_id,environment,created_at,updated_at)
+      VALUES(?,?,'SYSTEM',?,?,?,?,?,?,?,?) ON CONFLICT(system_key) DO NOTHING`)
+      .bind(id, type, title, module, key, resourceType, resourceId, environmentOf(environment), now, now),
     conditionalStatement(db, { requestId, action: 'WORK_INCIDENT_SYSTEM_OPENED', resourceType: 'work_incident', resourceId: id, occurredAt: now },
       'SELECT 1 FROM work_incident WHERE id=?', [id])];
 }

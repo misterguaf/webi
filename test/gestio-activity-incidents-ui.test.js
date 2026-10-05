@@ -37,8 +37,8 @@ test('Incidències: types, states, no priority, actions by state for managers on
   assert.deepEqual(incidents.actionsFor({ status: 'IN_PROGRESS' }, true), ['resolve']);
   assert.deepEqual(incidents.actionsFor({ status: 'RESOLVED' }, true), ['reopen']);
   assert.deepEqual(incidents.actionsFor({ status: 'OPEN' }, false), [], 'a reporter never manages');
-  assert.deepEqual(incidents.parseFilters({ vista: 'totes', modul: 'quotes' }, false), { vista: 'meues', estat: '', tipus: '', modul: '' }, 'no "Totes" without the capability');
-  assert.deepEqual(incidents.parseFilters({ vista: 'totes', estat: 'OPEN', tipus: 'DATA', modul: 'quotes' }, true), { vista: 'totes', estat: 'OPEN', tipus: 'DATA', modul: 'quotes' });
+  assert.deepEqual(incidents.parseFilters({ vista: 'totes', modul: 'quotes' }, false), { vista: 'meues', estat: '', tipus: '', modul: '', entorn: '' }, 'no "Totes" without the capability');
+  assert.deepEqual(incidents.parseFilters({ vista: 'totes', estat: 'OPEN', tipus: 'DATA', modul: 'quotes' }, true), { vista: 'totes', estat: 'OPEN', tipus: 'DATA', modul: 'quotes', entorn: '' });
   assert.equal(incidents.apiQuery({ vista: 'totes', estat: 'OPEN', tipus: '', modul: 'quotes' }), 'vista=totes&status=OPEN&module=quotes');
   assert.equal(incidents.moduleFromPage('tresoreria'), 'tresoreria');
   assert.equal(incidents.moduleFromPage('incidencies'), 'altres');
@@ -61,4 +61,17 @@ test('shell wiring: Activitat and Incidències i millores are pages for everyone
   for (const op of ['start', 'resolve', 'reopen']) assert.ok(view.includes(`'${op}'`), op);
   assert.ok(view.includes('/api/work-incidents/${id}/${step}`'));
   assert.doesNotMatch(view, /innerHTML|localStorage|attachment|comment/i);
+});
+
+test('environment labels: PRODUCTION → PRODUCCIÓ, STAGING → PROVES, LOCAL → LOCAL; filter for managers only; never in the report form', () => {
+  assert.deepEqual(['PRODUCTION', 'STAGING', 'LOCAL'].map(value => incidents.environmentOf(value).label), ['PRODUCCIÓ', 'PROVES', 'LOCAL']);
+  assert.equal(incidents.parseFilters({ vista: 'totes', entorn: 'STAGING' }, true).entorn, 'STAGING');
+  assert.equal(incidents.parseFilters({ vista: 'totes', entorn: 'MARS' }, true).entorn, '');
+  assert.equal(incidents.parseFilters({ entorn: 'STAGING' }, false).entorn, '', 'reporters have no environment filter');
+  assert.equal(incidents.apiQuery({ vista: 'totes', estat: '', tipus: '', modul: '', entorn: 'PRODUCTION' }), 'vista=totes&environment=PRODUCTION');
+  const view = code('views/incidents.js');
+  const form = view.slice(view.indexOf('async function report()'), view.indexOf('async function renderList()'));
+  assert.doesNotMatch(form, /environment|entorn|ENVIRONMENTS/i, 'the reporter never chooses it');
+  assert.match(view, /select\('Entorn', 'entorn'/);
+  assert.match(view, /filters\.vista === 'totes' \? envBadge\(item\.environment\)/, 'badge in the management view');
 });

@@ -75,7 +75,8 @@
 .incidents-toolbar .group-title{margin:0}
 .incidents-list{list-style:none;margin:0;padding:0!important}
 .incidents-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-5);margin:0!important}
-.incidents-row>.badge{justify-self:end}
+.incidents-badges{display:flex;gap:var(--space-2);flex-wrap:wrap;justify-content:flex-end}
+.env-badge{font-size:11px;letter-spacing:.04em}
 .incidents-row+.incidents-row{border-top:1px solid color-mix(in srgb,var(--border-default) 70%,transparent)}
 .incidents-detail{display:grid;gap:var(--space-3);min-width:0}
 .incidents-detail .detail-actions{display:flex;flex-wrap:wrap;gap:var(--space-2)}
@@ -89,7 +90,7 @@
   .feed-categories{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
   .feed-categories .filter-chip{flex:none}
   .incidents-row{grid-template-columns:minmax(0,1fr);padding:var(--space-3) var(--space-4)}
-  .incidents-row>.badge{justify-self:start}
+  .incidents-badges{justify-content:flex-start}
   /* The shared mobile rule hides filter selects; here they are the only way to filter, so keep them (as Tresoreria). */
   :is(.activity-feed-view,.incidents-view) .activity-filters{flex-wrap:wrap}
   :is(.activity-feed-view,.incidents-view) .search-field{flex-basis:100%}

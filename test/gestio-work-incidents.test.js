@@ -6,6 +6,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { fixture, id } from './helpers/gestio-sqlite.js';
 import { PortalIntake } from '../gestio/src/intake.js';
+import { deploymentEnvironment } from '../gestio/src/environment-policy.js';
+import { reportIncident } from '../gestio/src/services/work-incident-service.js';
+import { acceptAdmission } from '../gestio/src/services/admissions-service.js';
 
 const TROPA = id(2), ESCULTA = id(3);
 async function setup() {
@@ -121,5 +124,52 @@ test('ambiguous admission match opens one SYSTEM incident (reused, reference onl
     assert.deepEqual({ ...resolved }, { status: 'RESOLVED', resolution: 'Coincidència resolta a Noves altes.', resolved_by: id(105) });
     assert.equal((await act(102, 'accept')).data.created, true);
     assert.equal(s.f.sql.prepare('SELECT count(*) AS n FROM work_incident').get().n, 1);
+  } finally { s.f.close(); }
+});
+
+test('environment is server-derived: configuration decides, the client cannot forge it, system incidents carry it, managers filter by it', async () => {
+  // Configuration → environment (fails closed on contradictions).
+  assert.equal(deploymentEnvironment({ APP_ENV: 'development' }), 'LOCAL');
+  assert.equal(deploymentEnvironment({ APP_ENV: 'test' }), 'LOCAL');
+  assert.equal(deploymentEnvironment({ APP_ENV: 'production' }), 'PRODUCTION');
+  assert.equal(deploymentEnvironment({ APP_ENV: 'production', DEPLOYMENT_ENVIRONMENT: 'STAGING' }), 'STAGING');
+  assert.throws(() => deploymentEnvironment({ APP_ENV: 'development', DEPLOYMENT_ENVIRONMENT: 'PRODUCTION' }), /invalid/);
+  assert.throws(() => deploymentEnvironment({ APP_ENV: 'production', DEPLOYMENT_ENVIRONMENT: 'staging' }), /invalid/);
+  const s = await setup();
+  try {
+    // Through the worker (local configuration): LOCAL, and a submitted environment is refused.
+    const local = await s.report(104);
+    assert.equal(local.data.environment, 'LOCAL');
+    assert.equal(s.f.sql.prepare('SELECT environment FROM work_incident WHERE id=?').get(local.data.id).environment, 'LOCAL');
+    for (const forged of ['PRODUCTION', 'STAGING']) assert.equal((await s.report(104, { environment: forged })).status, 400, `cannot submit ${forged}`);
+    // The service takes it only from the server context (as a STAGING deployment would set it).
+    const staging = await reportIncident(s.f.db, { ...s.f.context[102], environment: 'STAGING' }, crypto.randomUUID(), { type: 'ERROR', title: 'Error a proves', module: 'quotes' });
+    assert.equal(staging.environment, 'STAGING');
+    await assert.rejects(reportIncident(s.f.db, { ...s.f.context[102] }, crypto.randomUUID(), { type: 'ERROR', title: 'Sense entorn' }), /DEPLOYMENT_ENVIRONMENT missing/, 'fails closed');
+    assert.throws(() => s.f.sql.exec(`UPDATE work_incident SET environment='PRODUCTION' WHERE id='${staging.id}'`), /work_incident_environment_immutable/);
+    // System incident from an ambiguous admission carries the current environment; a retry never duplicates it.
+    s.f.sql.exec(`INSERT INTO participant(id,display_name,current_section_id,status,birth_date) VALUES
+      ('${id(9812)}','Pol Doble (fictici)','${TROPA}','ACTIVE','2013-01-01'),('${id(9813)}','Pol Doble (fictici)','${ESCULTA}','ACTIVE','2011-01-01')`);
+    const request = id(9814);
+    s.f.sql.prepare(`INSERT INTO admission_request(id,received_at,source,status,given_name,family_names,birth_date,requested_section_id,section_id,guardian_name,
+      contact_phone,contact_email,data_consent,contact_consent,updated_at) VALUES(?,1,'PUBLIC_FORM','PENDING','Pol','Doble (fictici)','2013-05-05',?,NULL,'Mare Pol (fictícia)','600000002','pol@example.test',1,1,1)`)
+      .run(request, TROPA);
+    s.f.sql.exec(`UPDATE admission_request SET status='IN_REVIEW',version=2 WHERE id='${request}'`);
+    s.f.sql.exec(`UPDATE admission_request SET section_id='${TROPA}',version=3 WHERE id='${request}'`);
+    const production = { ...s.f.context[105], environment: 'PRODUCTION' };
+    for (let i = 0; i < 2; i++) await assert.rejects(acceptAdmission(s.f.db, production, crypto.randomUUID(), request, { expectedVersion: 3 }), /admission_match_ambiguous/);
+    await assert.rejects(acceptAdmission(s.f.db, { ...production, environment: 'STAGING' }, crypto.randomUUID(), request, { expectedVersion: 3 }), /admission_match_ambiguous/);
+    const system = s.f.sql.prepare('SELECT environment,origin FROM work_incident WHERE resource_id=?').all(request);
+    assert.deepEqual(system.map(row => [row.origin, row.environment]), [['SYSTEM', 'PRODUCTION']], 'one incident, environment of its creation');
+    // Managers filter by environment; invalid values are refused.
+    const by = async environment => (await s.call(105, `/api/work-incidents?vista=totes&environment=${environment}`)).data.incidents.map(item => item.environment);
+    assert.deepEqual(await by('STAGING'), ['STAGING']);
+    assert.deepEqual(await by('PRODUCTION'), ['PRODUCTION']);
+    assert.ok((await by('LOCAL')).every(value => value === 'LOCAL'));
+    assert.equal((await s.call(105, '/api/work-incidents?vista=totes&environment=MARS')).status, 400);
+    // The workflow is unchanged for a non-local incident.
+    const move = async step => (await s.move(105, staging.id, step, step === 'resolve' ? { resolution: 'Corregit en la nova versió.' } : {})).data.status;
+    assert.deepEqual([await move('start'), await move('resolve')], ['IN_PROGRESS', 'RESOLVED']);
+    assert.equal((await s.call(102, `/api/work-incidents/${staging.id}`)).data.incident.environment, 'STAGING', 'the reporter can see it in their detail');
   } finally { s.f.close(); }
 });

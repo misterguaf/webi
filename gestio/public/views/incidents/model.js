@@ -23,18 +23,24 @@ export const moduleLabel = value => MODULES.find(item => item.value === value)?.
 /** The page the person came from fills the module, so nobody needs to know module names or ids. */
 export const moduleFromPage = page => MODULES.some(item => item.value === page) && page !== 'incidencies' ? page : 'altres';
 
+// Deployment that created the report (server-derived; nobody chooses it).
+export const ENVIRONMENTS = Object.freeze([{ value: 'PRODUCTION', label: 'PRODUCCIÓ', tone: 'attention' },
+  { value: 'STAGING', label: 'PROVES', tone: 'warning' }, { value: 'LOCAL', label: 'LOCAL', tone: 'muted' }]);
+export const environmentOf = value => ENVIRONMENTS.find(item => item.value === value) ?? { value, label: 'LOCAL', tone: 'muted' };
+
 export const VIEWS = Object.freeze([{ value: 'meues', label: 'Les meues' }, { value: 'totes', label: 'Totes' }]);
 const pick = (list, value) => list.some(item => item.value === value) ? value : '';
 export function parseFilters(query = {}, manage = false) {
   const vista = manage && query.vista === 'totes' ? 'totes' : 'meues';
   return { vista, estat: pick(Object.keys(STATUS).map(value => ({ value })), query.estat), tipus: pick(TYPES, query.tipus),
-    modul: vista === 'totes' ? pick(MODULES, query.modul) : '' };
+    modul: vista === 'totes' ? pick(MODULES, query.modul) : '', entorn: vista === 'totes' ? pick(ENVIRONMENTS, query.entorn) : '' };
 }
 export function apiQuery(filters) {
   const params = new URLSearchParams({ vista: filters.vista });
   if (filters.estat) params.set('status', filters.estat);
   if (filters.tipus) params.set('type', filters.tipus);
   if (filters.modul) params.set('module', filters.modul);
+  if (filters.entorn) params.set('environment', filters.entorn);
   return params.toString();
 }
 

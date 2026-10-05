@@ -244,7 +244,7 @@ export async function acceptAdmission(db, context, requestId, id, input, now = D
       await db.batch([
         ...(row.match_status !== 'AMBIGUOUS' ? [db.prepare("UPDATE admission_request SET match_status='AMBIGUOUS' WHERE id=? AND version=?").bind(id, expected)] : []),
         ...openSystemIncidentStatements(db, { key: ambiguityKey(id), type: 'DATA', title: 'Coincidència ambigua en una sol·licitud d’alta',
-          module: 'participants', resourceType: 'admission_request', resourceId: id, requestId }, now)]);
+          module: 'participants', resourceType: 'admission_request', resourceId: id, requestId, environment: context.environment }, now)]);
       throw new AppError(409, 'admission_match_ambiguous');
     }
     if (found.status === 'CLEAR') target = found.participant;

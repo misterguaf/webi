@@ -57,6 +57,7 @@ const REQUIRED_OBJECTS=[
   'trigger:admission_request_event_no_update','trigger:admission_request_event_no_delete',
   // 3.5H.3 (0046): incident workflow guards.
   'trigger:work_incident_insert_guard','trigger:work_incident_transition','trigger:work_incident_no_delete',
+  'trigger:work_incident_environment_immutable',
   'trigger:session_user_must_be_active','trigger:revoke_session_on_account_block',
   'trigger:role_recipient_must_be_active','trigger:permission_recipient_must_be_active',
   'trigger:health_recipient_must_be_active','index:activity_registration_member_unique',

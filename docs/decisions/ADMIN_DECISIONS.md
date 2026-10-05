@@ -151,3 +151,18 @@ Implementation: migration 0044, `gestio/src/services/admissions-service.js`, `Po
 9. Activitat shows «X ha reportat / començat / resolt una incidència»; titles and descriptions never reach it.
 10. Out of scope: notifications, Health (Phase 5), retention of incidents and of the activity projection beyond the audit's
     own (LEGAL DECISION REQUIRED, as for audit retention).
+11. **Incident environment (CLOSED).** Every work incident records, from server configuration only, the deployment
+    that created it: `LOCAL / STAGING / PRODUCTION` (`environment-policy.js` `deploymentEnvironment`: development/test
+    runtimes are LOCAL; a production runtime is PRODUCTION unless its deployment declares
+    `DEPLOYMENT_ENVIRONMENT="STAGING"`; contradictory values fail closed). Users never choose or submit it (an
+    `environment` field in a report is rejected); SYSTEM incidents use the same value. Immutable after creation
+    (migration 0047; legacy rows are LOCAL, the only place Gestió has run). Managers see a discreet badge
+    (PRODUCCIÓ / PROVES / LOCAL) and can filter by it; reporters see it only in their own detail. **Real staging
+    infrastructure is future infrastructure/hardening work.**
+
+## Phase H boundary and pending reviews
+
+- Phase H implementation spans `5e56046c0e5fd86ae7e8f5b6d5d01d914f50b96b..` the final `phase/3.5h-admin` SHA (tag
+  `phase-3.5h-complete`). **Independent audit: PENDING.**
+- Legal retention periods for admissions (rejected/withdrawn intake data), work incidents and the audit that Activitat
+  projects remain **pending legal/hardening review** (LEGAL DECISION REQUIRED).
