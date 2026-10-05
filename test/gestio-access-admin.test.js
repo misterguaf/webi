@@ -70,8 +70,14 @@ test('account provisioning: Secretaria and Coordinació general yes; Tresoreria,
       'Secretaria provisions accounts');
     assert.equal((await s.provision(101, { displayName: 'Altra Persona (fictícia)' })).status, 201, 'Coordinació general provisions accounts');
     for (const user of [104, 102, 107]) assert.equal((await s.provision(user, { displayName: 'Intent Demo (fictici)' })).status, 403, `user ${user}`);
+    // Capability-based (3.5H.2 correction): Secretaria may assign an elevated role, but only grant what it holds itself.
     assert.equal((await s.provision(105, { displayName: 'Tresorer Demo (fictici)', roles: [{ roleCode: 'TREASURY' }] })).data.error,
-      'elevated_role_requires_group_coordinator');
+      'grant_exceeds_authority', 'Secretaria holds no finance permission to grant');
+    const sec = await s.provision(105, { displayName: 'Admin Secretaria (fictícia)', roles: [{ roleCode: 'TECH_ADMIN', permissions: ['auth.user.manage'] }] });
+    assert.equal(sec.status, 201, 'an administrator assigns only authority they hold: here user administration');
+    await s.loginAs('sa', sec.data.id);
+    assert.equal(await s.can('sa', 'auth.user.manage'), true);
+    assert.equal(await s.can('sa', 'auth.permission.provision'), false, 'nothing beyond what was granted');
     // TECH_ADMIN is not a functional superuser.
     for (const path of ['/api/participants', '/api/finance/rounds', `/api/admin/ratifications`]) assert.equal((await s.call(107, path)).status, 403, path);
     assert.equal(await s.can(107, 'participants.profile.read', { mode: 'list' }), false);

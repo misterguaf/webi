@@ -16,9 +16,10 @@ const ROLES=new Set(['GROUP_COORDINATOR','SECTION_COORDINATOR','SECTION_DELEGATE
 const RETIRED_ROLES=new Set(['CRM_MANAGER']);
 const SEVERITIES=new Set(['LOW','MEDIUM','HIGH','CRITICAL']);
 const SUMMARY_CODES=new Set(['TEST_SCENARIO','ACCOUNT_SUSPICION','UNEXPECTED_ACCESS','OTHER_TECHNICAL']);
-// M3 conservative policy for elevated roles (see docs/PHASE_3_5_AUDIT_REMEDIATION.md):
-// only a current GROUP_COORDINATOR assigns them, assignments are audited as ELEVATED_ROLE, and the
-// last active GROUP_COORDINATOR cannot be removed or disabled (security suspension stays possible).
+// Elevated roles (see docs/PHASE_3_5_AUDIT_REMEDIATION.md) are audited as ELEVATED_ROLE and the last active
+// GROUP_COORDINATOR cannot be removed or disabled (security suspension stays possible). 3.5H.2 correction:
+// assigning them is capability-based (auth.role.manage) like any role; what a role assignment grants is
+// limited by the origin-authority rule below (nobody grants what they do not hold), never by a role name.
 const ELEVATED_ROLES=new Set(['GROUP_COORDINATOR','TREASURY','TECH_ADMIN']);
 export async function holdsRole(db,userId,roleCode,now) {
   return !!await db.prepare(`SELECT 1 FROM user_role WHERE user_id=? AND role_code=? AND revoked_at IS NULL
@@ -88,7 +89,6 @@ export async function roleAssignmentStatements(db,context,requestId,{userId,role
   if (scoped!==Boolean(sectionId) || !await organization.roleExists(db,roleCode,sectionId)) throw new AppError(400,'invalid_scope');
   if (!newUser && (await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(404,'not_found');
   const elevated=ELEVATED_ROLES.has(roleCode);
-  if (elevated && !await holdsRole(db,context.userId,'GROUP_COORDINATOR',now)) throw new AppError(403,'elevated_role_requires_group_coordinator');
   const ceiling=(await db.prepare('SELECT permission_code FROM role_permission WHERE role_code=? ORDER BY permission_code').bind(roleCode).all()).results.map(row=>row.permission_code);
   let granted=[];
   if (permissions!==undefined) {

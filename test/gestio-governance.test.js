@@ -99,7 +99,7 @@ test('self-delegation and forged confirmations are refused by the service and by
   } finally { f.close(); }
 });
 
-test('elevated roles: only a group coordinator assigns them, audited; the last coordinator cannot be removed or disabled', async () => {
+test('elevated roles: capability-based assignment limited by origin authority, audited; the last coordinator cannot be removed or disabled', async () => {
   const f = fixture();
   try {
     // Misconfiguration on purpose: TREASURY also manages roles and users, but is not a coordinator.
@@ -107,7 +107,9 @@ test('elevated roles: only a group coordinator assigns them, audited; the last c
       INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,justification) VALUES
       ('${id(9910)}','${id(104)}','auth.role.manage',1,'Fixture'),('${id(9911)}','${id(104)}','auth.user.manage',1,'Fixture')`);
     for (const user of [101, 104]) await f.login(user);
-    assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'TECH_ADMIN' } })).status, 403);
+    // 3.5H.2 correction: no role name gates the assignment; what it grants is limited by what the actor holds.
+    assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'TECH_ADMIN', permissions: ['auth.permission.provision'] } })).data.error,
+      'grant_exceeds_authority', 'the actor does not hold the authority it would grant');
     assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'SECTION_COORDINATOR', sectionId: TROPA } })).status, 201,
       'non-elevated roles follow the ordinary permission');
     assert.equal((await f.request(104, `/api/users/${id(105)}/roles`, { method: 'POST', body: { roleCode: 'CRM_MANAGER' } })).status, 409,

@@ -56,7 +56,7 @@ test('new-account request: name, roles with expiry, scoped grants; delegation ex
 });
 
 test('error copy is human and the expected rejections are explained', () => {
-  for (const code of ['grant_exceeds_authority', 'self_change_forbidden', 'role_derived_permission', 'separation_of_duties', 'elevated_role_requires_group_coordinator',
+  for (const code of ['grant_exceeds_authority', 'self_change_forbidden', 'role_derived_permission', 'separation_of_duties',
     'unauthorized_delegation', 'fresh_session_required'])
     assert.doesNotMatch(model.errorCopy({ code }), /_|[A-Z]{4,}/, code);
   assert.equal(model.errorCopy({ status: 403 }), 'No tens permís per fer aquesta acció.');

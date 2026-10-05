@@ -98,7 +98,6 @@ const ERRORS = {
   self_change_forbidden: 'Ningú pot canviar el seu propi accés.',
   separation_of_duties: 'Qui tramita o rep un canvi no el pot ratificar ni autoritzar.',
   grant_exceeds_authority: 'No pots concedir un permís que tu mateix no tens (o en un abast més ampli que el teu).',
-  elevated_role_requires_group_coordinator: 'Només Coordinació general assigna Coordinació general, Tresoreria o Administració tècnica.',
   role_derived_permission: 'Aquest permís ve d’un rol: canvia el rol per a retirar-lo.',
   invalid_scope: 'L’abast no és vàlid per a aquest rol o permís.',
   invalid_permission: 'El permís no és vàlid o no està dins de cap rol de la persona.',

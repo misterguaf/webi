@@ -34,8 +34,9 @@ Status: CLOSED for H.1 (product decisions from the 3.5H.1 brief). Implementation
 9. Identity stays with Cloudflare Access: an account is created in Gestió and invited by verified e-mail; Gestió has no
    passwords.
 10. **Origin authority**: nobody grants a permission they do not hold themselves (role + grant, never through a
-    delegation) over a scope at least as wide. Coordinació general is the group's originating authority. Elevated roles
-    (Coordinació general, Tresoreria, Administració tècnica) are assigned only by Coordinació general.
+    delegation) over a scope at least as wide. Coordinació general is the group's originating authority. **3.5H.2
+    correction:** no role name gates who assigns a role (elevated roles included); assignment is capability-based
+    (`auth.role.manage`) and limited only by origin authority. Elevated assignments stay audited as `ELEVATED_ROLE`.
 11. **No self-escalation**: nobody changes their own roles, grants or delegations (server-side).
 12. `authorized_by` (whose authority justifies the act) ≠ `granted_by`/`provisioned_by` (who performs it); both are kept.
 
@@ -52,7 +53,7 @@ Status: CLOSED for H.1 (product decisions from the 3.5H.1 brief). Implementation
 15. Administració → Ratificacions lists pending acts; authorised people **RATIFY** (with the Council act reference) or
     **REVOKE**. Nobody ratifies an act they provisioned or that benefits them.
 16. **Nothing is revoked automatically for lack of ratification**: pending acts older than 90 days are flagged as
-    overdue. Gestió does not judge whether a Council meeting was valid. Temporary delegations still expire on their date.
+    overdue — a UI attention signal only, with no effect on authority and no legal meaning. Gestió does not judge whether a Council meeting was valid. Temporary delegations still expire on their date.
 
 ## Revocation and sessions
 
