@@ -110,7 +110,7 @@ test('dashboard uses scoped server rows, omits forbidden finance, and keeps crea
     assert.equal(h.node('dashboardFeesPanel').hidden,true);
     assert.equal(h.node('dashboardNewActivity').hidden,true);
     assert.match(h.node('dashboardActivities').textContent,/Eixida Tropa/);
-    assert.doesNotMatch(h.node('dashboardActivities').textContent,/Escolta|quota|PENDING_REVIEW/);
+    assert.doesNotMatch(h.node('dashboardActivities').textContent,/Esculta|Escolta|quota|PENDING_REVIEW/);
     assert.match(h.node('dashboardPhrase').textContent,/una cosa/);
     await h.node('dashboardAttention').children[0].children[0].click();
     assert.deepEqual(h.opened,[['registrations','tropa',true,'Eixida Tropa']]);

@@ -14,7 +14,7 @@ export const FILTERS = [
   { value: '', label: 'Obertes' }, { value: 'PENDING', label: 'Pendents' }, { value: 'IN_REVIEW', label: 'En revisió' },
   { value: 'WAITLISTED', label: 'Llista d’espera' }, { value: 'ACCEPTED', label: 'Acceptades' }, { value: 'REJECTED', label: 'Rebutjades' },
   { value: 'WITHDRAWN', label: 'Retirades' }];
-export const SECTIONS = [{ value: 'MANADA', label: 'Manada' }, { value: 'TROPA', label: 'Tropa' }, { value: 'ESCOLTA', label: 'Escolta' }, { value: 'CLAN', label: 'Clan' }];
+export const SECTIONS = [{ value: 'MANADA', label: 'Manada' }, { value: 'TROPA', label: 'Tropa' }, { value: 'ESCOLTA', label: 'Esculta' }, { value: 'CLAN', label: 'Clan' }];
 export const sectionLabel = code => SECTIONS.find(item => item.value === code)?.label ?? 'Sense secció';
 export const REJECTIONS = [{ value: 'NO_PLACES', label: 'No hi ha places' }, { value: 'AGE_OR_SECTION', label: 'Edat o secció' },
   { value: 'DUPLICATE', label: 'Sol·licitud duplicada' }, { value: 'OTHER', label: 'Altres motius' }];

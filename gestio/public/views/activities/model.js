@@ -4,7 +4,7 @@
 // are advisory, and every rule mirrored here is still enforced server-side.
 
 export const DAY = 86400000;
-export const SECTION_LABELS = Object.freeze({ MANADA: 'Manada', TROPA: 'Tropa', ESCOLTA: 'Escolta', CLAN: 'Clan' });
+export const SECTION_LABELS = Object.freeze({ MANADA: 'Manada', TROPA: 'Tropa', ESCOLTA: 'Esculta', CLAN: 'Clan' });
 export const SECTION_ORDER = Object.freeze(['MANADA', 'TROPA', 'ESCOLTA', 'CLAN']);
 export const GENERAL_FILTER = 'tot-el-grup';
 export const MAX_CENTS = 1000000;

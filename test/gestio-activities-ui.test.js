@@ -84,7 +84,7 @@ test('signals: at most two, by priority; partial counts are labelled; unknown co
   assert.equal(model.signals(row('h', { registration_deadline: NOW + DAY }), NOW)[0].tone, 'warning');
   assert.deepEqual(texts(row('s', { registration_deadline: NOW + 30 * 3600000, registrations: summary(20, { needsReview: 6 }) })),
     ['6 per revisar', 'Termini en 2 dies'], 'a deadline under 48h is never hidden behind the count');
-  assert.equal(model.registrationsText({ ...summary(4), scope: 'PARTIAL', sections: ['TROPA', 'ESCOLTA'] }), '4 inscripcions de Tropa i Escolta');
+  assert.equal(model.registrationsText({ ...summary(4), scope: 'PARTIAL', sections: ['TROPA', 'ESCOLTA'] }), '4 inscripcions de Tropa i Esculta');
   assert.equal(model.registrationsText(null), null);
   assert.match(model.accessibleRowName(row('i', { registrations: summary(12) }), NOW), /^Activitat i, Publicada, Tropa, .*, 12 inscripcions$/);
 });
@@ -112,7 +112,7 @@ test('capabilities: manage mirrors the server rule; GENERAL read never implies m
   assert.equal(model.scopeSubtitle(delegate), 'Tropa i activitats de tot el grup · només lectura');
   assert.equal(model.scopeSubtitle(caps({ read: { all: true, sections: [] } })), null);
   assert.deepEqual(model.sectionCodes(row('x', { sections: 'ESCOLTA, TROPA' })), ['TROPA', 'ESCOLTA']);
-  assert.equal(model.scopeLabel(mixed), 'Tropa · Escolta');
+  assert.equal(model.scopeLabel(mixed), 'Tropa · Esculta');
 });
 
 test('editor: euros, inline rules mirroring the backend and family transport fixed at 0 €', () => {

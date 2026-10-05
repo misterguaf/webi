@@ -104,5 +104,5 @@ export function createRegistrationsView({ call, reportLoadError, routes, setPage
     refreshBadge
   };
 }
-const SECTION_NAMES = { MANADA: 'Manada', TROPA: 'Tropa', ESCOLTA: 'Escolta', CLAN: 'Clan' };
+const SECTION_NAMES = { MANADA: 'Manada', TROPA: 'Tropa', ESCOLTA: 'Esculta', CLAN: 'Clan' };
 const sectionLabel = code => SECTION_NAMES[code] ?? code;

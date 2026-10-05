@@ -39,7 +39,7 @@ export function summaryAttention(activity) {
 // Registration count for a card: partial scopes are labelled ("12 inscripcions de Tropa"); unknown is null.
 export function registrationCountLabel(summary) {
   if(!summary)return null;
-  const labels={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Escolta',CLAN:'Clan'};
+  const labels={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Esculta',CLAN:'Clan'};
   const base=`${summary.total} ${summary.total===1?'inscripció':'inscripcions'}`;
   const sections=summary.scope==='PARTIAL'?(summary.sections||[]).map(code=>labels[code]).filter(Boolean):[];
   return sections.length?`${base} de ${sections.join(' i ')}`:base;
@@ -75,7 +75,7 @@ export function deadlineLabel(deadline,now=Date.now()) {
 
 export function sectionLabel(activity) {
   if(activity.audience==='GENERAL')return 'Tot el grup';
-  const labels={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Escolta',CLAN:'Clan'};
+  const labels={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Esculta',CLAN:'Clan'};
   return String(activity.sections||'').split(',').map(code=>labels[code.trim()]||'Secció').join(' · ');
 }
 

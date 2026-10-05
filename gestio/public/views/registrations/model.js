@@ -2,7 +2,7 @@
 // queue: labels, filters, capability checks and derived values. No DOM, no fetch. Every rule mirrored
 // here is enforced server-side; capabilities only avoid pointless requests and actions.
 
-export const SECTION_LABELS = Object.freeze({ MANADA: 'Manada', TROPA: 'Tropa', ESCOLTA: 'Escolta', CLAN: 'Clan' });
+export const SECTION_LABELS = Object.freeze({ MANADA: 'Manada', TROPA: 'Tropa', ESCOLTA: 'Esculta', CLAN: 'Clan' });
 export const sectionCodeOf = (id, sections) => sections.find(section => section.id === id)?.code ?? null;
 export const sectionLabelOf = (id, sections) => SECTION_LABELS[sectionCodeOf(id, sections)] ?? null;
 

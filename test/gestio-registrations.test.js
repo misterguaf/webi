@@ -120,9 +120,9 @@ test('historical section: a later section change of the participant moves neithe
 test('escalation: a match in another section goes to global review without disclosure; correction and link by a global reviewer', async () => {
   const { f, call } = await setup();
   try {
-    const result = await intake(f, { participantName: 'Participante Escolta A (ficticio)', birthDate: '2009-04-26', sectionCode: 'TROPA' });
+    const result = await intake(f, { participantName: 'Participante Esculta A (ficticio)', birthDate: '2009-04-26', sectionCode: 'TROPA' });
     assert.deepEqual(result, { ok: true }, 'the portal answer is unchanged');
-    const reg = latest(f, 'Participante Escolta A (ficticio)');
+    const reg = latest(f, 'Participante Esculta A (ficticio)');
     assert.deepEqual([reg.status, reg.review_level, reg.escalation_reason, reg.registration_section_id, reg.participant_id],
       ['NEEDS_PARTICIPANT_REVIEW', 'GLOBAL', 'POSSIBLE_OTHER_SECTION', TROPA, null]);
     assert.equal(auditRows(f, 'REGISTRATION_ESCALATED', reg.id).length, 1);
@@ -263,7 +263,7 @@ test('payment projection: purpose-limited fields, server-side activity filter, i
     assert.deepEqual(Object.keys(list[0].activity).sort(), ['id', 'name', 'startsAt']);
     assert.deepEqual((await call(104, `/api/payments?activityId=${FREE_TROPA}`)).data.payments, []);
     const withProfile = (await call(101, `/api/payments?activityId=${PAID_ESCOLTA}`)).data.payments[0];
-    assert.deepEqual(withProfile.participant, { id: id(504), name: 'Participante Escolta A (ficticio)' });
+    assert.deepEqual(withProfile.participant, { id: id(504), name: 'Participante Esculta A (ficticio)' });
     assert.equal((await call(104, '/api/payments?vista=x')).status, 400);
     // Incidence: listed under incidències, evidence still viewable, later verified.
     assert.equal((await payReview(call, 104, EVIDENCE, { decision: 'ISSUE' })).data.status, 'ISSUE');
@@ -398,8 +398,8 @@ test('review needs expectedVersion: missing → 400, stale → 409, current → 
 test('in global review: section reviewers cannot reveal the contact; global reviewers can, audited', async () => {
   const { f, call } = await setup();
   try {
-    await intake(f, { participantName: 'Participante Escolta A (ficticio)', birthDate: '2009-04-26', sectionCode: 'TROPA', receiptEmail: 'escalat@example.test' });
-    const reg = latest(f, 'Participante Escolta A (ficticio)');
+    await intake(f, { participantName: 'Participante Esculta A (ficticio)', birthDate: '2009-04-26', sectionCode: 'TROPA', receiptEmail: 'escalat@example.test' });
+    const reg = latest(f, 'Participante Esculta A (ficticio)');
     assert.equal(reg.review_level, 'GLOBAL');
     const blocked = await call(102, `/api/registrations/${reg.id}/contact`);
     assert.deepEqual([blocked.status, blocked.data.error], [403, 'global_review_required'], 'Tropa holds contact.read but the case is in global review');

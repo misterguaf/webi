@@ -3,7 +3,7 @@ import { fetchAllPages } from './api.js';
 export function setupFeeStatus({call,reportLoadError=()=>{}}){
   const $=id=>document.getElementById(id);
   const labels={PAID:'Pagada',PARTIAL:'Parcial',PENDING:'Pendent',ISSUE:'Incidència'};
-  const sections={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Escolta',CLAN:'Clan'};
+  const sections={MANADA:'Manada',TROPA:'Tropa',ESCOLTA:'Esculta',CLAN:'Clan'};
   let selected='';
   const option=(value,label)=>{const node=document.createElement('option');node.value=value;node.textContent=label;return node;};
   async function load(resetSelection=false){

@@ -69,7 +69,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const evidenceKeys = new Set(['fixture-only/no-binary']); // Repair the canonical synthetic 3A evidence link locally.
   const participants = [501, 502, 503, 504, 505].map((number, index) => ({id:id(number), number,
     name:['Participante Manada A (ficticio)','Participante Tropa A (ficticio)','Participante Tropa B (ficticio)',
-      'Participante Escolta A (ficticio)','Participante Clan A (ficticio)'][index],
+      'Participante Esculta A (ficticio)','Participante Clan A (ficticio)'][index],
     section:[1,2,2,3,4][index], birth:['2017-06-12','2013-05-18','2012-11-03','2009-04-26','2007-08-09'][index]}));
   const familySizes = [1,1,1,1,1,2,2,2,3,3,3,3,4,4,4];
   const families = [];
@@ -110,15 +110,15 @@ export function buildDemoData({ now = Date.now() } = {}) {
     // D6 published, in progress.
     {n:11009,code:'DEMO-CLAN-NOW',name:'Campament Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:T-DAY,end:T+DAY,deadline:T-3*DAY},
     // D7 published, ended, pending close.
-    {n:11010,code:'DEMO-ESCOLTA-ENDED',name:'Ruta Demo · Escolta',status:'PUBLISHED',audience:'SECTIONS',sections:[3],price:0,start:day(-10,9),end:day(-9,18),deadline:day(-14,20)},
+    {n:11010,code:'DEMO-ESCOLTA-ENDED',name:'Ruta Demo · Esculta',status:'PUBLISHED',audience:'SECTIONS',sections:[3],price:0,start:day(-10,9),end:day(-9,18),deadline:day(-14,20)},
     // D8 closed, past, with registrations (a historical Tropa intake whose participant is now in Escolta).
     {n:11005,code:'DEMO-TROPA-PAST',name:'Campament d’estiu Demo · Tropa',status:'CLOSED',audience:'SECTIONS',sections:[2],price:1200,start:day(-60,9),end:day(-58,17),deadline:day(-67,20)},
-    {n:11006,code:'DEMO-ESCOLTA-PAST',name:'Ruta d’hivern Demo · Escolta',status:'CLOSED',audience:'SECTIONS',sections:[3],price:0,start:day(-120,9),end:day(-119,17),deadline:day(-127,20)},
+    {n:11006,code:'DEMO-ESCOLTA-PAST',name:'Ruta d’hivern Demo · Esculta',status:'CLOSED',audience:'SECTIONS',sections:[3],price:0,start:day(-120,9),end:day(-119,17),deadline:day(-127,20)},
     // D10 paid with group transport supplement (GROUP +3 €, FAMILY 0 €).
     {n:11007,code:'DEMO-CLAN-PAID',name:'Projecte Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:day(15,9),end:day(17,17),deadline:day(7,20),
       transport:[['GROUP',300],['FAMILY',0]]},
     // D11 mixed Tropa + Escolta (read-only for a Tropa-only coordinator).
-    {n:11011,code:'DEMO-MIXED-OPEN',name:'Excursió Demo · Tropa i Escolta',status:'PUBLISHED',audience:'SECTIONS',sections:[2,3],price:0,start:day(25,8),end:day(25,19),deadline:day(15,20)}
+    {n:11011,code:'DEMO-MIXED-OPEN',name:'Excursió Demo · Tropa i Esculta',status:'PUBLISHED',audience:'SECTIONS',sections:[2,3],price:0,start:day(25,8),end:day(25,19),deadline:day(15,20)}
   ];
   const activityRows=activities.map(a=>[id(a.n),a.code,a.name,a.status,a.audience,'Espai fictici',a.start,a.end,a.deadline,a.price,'EUR',
     a.description??'Contingut sintètic per a proves de Gestió.','Material de demostració.','',coordinator,
@@ -187,7 +187,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   addReg(11011,free(11011,2).number,'CONFIRMED','RESOLVED',{reviewed:true});
   const escolta=free(11002,3);
   addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:escolta.name,section:2,birth:escolta.birth,escalation:'POSSIBLE_OTHER_SECTION'});
-  addReg(11003,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Diu la família que és d’Escolta',section:2,birth:'2010-03-03',escalation:'REVIEWER_REQUEST'});
+  addReg(11003,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Diu la família que és d’Esculta',section:2,birth:'2010-03-03',escalation:'REVIEWER_REQUEST'});
   addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Secció corregida',section:2,birth:'2006-05-05',correctedTo:4});
   const registrationRows=regs.map(r=>[id(r.number),id(r.activityNumber),r.person?.id??null,r.name,
     r.name.toLocaleLowerCase('ca').normalize('NFD').replace(/[̀-ͯ]/g,''),section(r.sectionNumber),
