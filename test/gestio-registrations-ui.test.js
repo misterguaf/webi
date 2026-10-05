@@ -51,14 +51,14 @@ test('rows: linked participant name, declared section, withdrawal date; accessib
   const r = row({ status: 'WITHDRAWN', withdrawn_at: 1, declared_section_id: 's3', participant: { id: 'p', name: 'Aina Fictícia' }, transport_code: 'GROUP' });
   assert.equal(model.displayName(r), 'Aina Fictícia');
   assert.equal(model.secondaryLine(r, { audience: 'GENERAL' }, S, short),
-    'Sol·licitada el 1 d’oct. · Tropa · Declarada a Escolta · Transport del grup · Retirada el 1 d’oct.');
+    'Sol·licitada el 1 d’oct. · Tropa · Declarada a Esculta · Transport del grup · Retirada el 1 d’oct.');
   assert.equal(model.accessibleRowName({ ...r, review_level: 'GLOBAL' }), 'Aina Fictícia, Retirada, en revisió global');
 });
 
 test('confirmed list grouped by section with transport totals', () => {
   const rows = [{ name: 'Zoe', registration_section_id: 's3', transport_code: 'GROUP' }, { name: 'Ana', registration_section_id: 's2', transport_code: 'FAMILY' },
     { name: 'Bru', registration_section_id: 's2', transport_code: 'GROUP' }];
-  assert.deepEqual(model.groupConfirmed(rows, S).map(g => [g.label, g.rows.map(r => r.name)]), [['Tropa', ['Ana', 'Bru']], ['Escolta', ['Zoe']]]);
+  assert.deepEqual(model.groupConfirmed(rows, S).map(g => [g.label, g.rows.map(r => r.name)]), [['Tropa', ['Ana', 'Bru']], ['Esculta', ['Zoe']]]);
   assert.deepEqual(model.transportTotals(rows), { group: 2, family: 1 });
 });
 
