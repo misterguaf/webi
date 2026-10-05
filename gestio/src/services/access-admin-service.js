@@ -119,11 +119,12 @@ export async function userAccess(db, context, requestId, userId, now = Date.now(
       effective: holders.length > 0, expiresAt: grant.expires_at, ratificationStatus: grant.ratification_status, grantId: grant.id, removable: true });
   }
   for (const delegation of delegations) items.push({ permission: delegation.permission_code, origin: 'DELEGATION', scope: section(delegation),
-    expiresAt: delegation.expires_at, ratificationStatus: delegation.ratification_status, authorised: !!delegation.confirmed_at,
-    effective: !!delegation.confirmed_at, delegationId: delegation.id, removable: true });
+    expiresAt: delegation.expires_at, ratificationStatus: delegation.ratification_status,
+    authorised: !!delegation.confirmed_at || delegation.ratification_status === 'RATIFIED',
+    effective: !!delegation.confirmed_at || delegation.ratification_status === 'RATIFIED', delegationId: delegation.id, removable: true });
   const effective = await effectiveGrants(db, userId, now);
   const summary = MODULES.map(module => ({ module: module.id, label: module.label,
-    permissions: [...effective.keys()].filter(code => module.match(code) && PERMISSIONS[code] && !PERMISSIONS[code].reserved).sort()
+    permissions: [...effective.keys()].filter(code => moduleOf(code) === module.id && PERMISSIONS[code] && !PERMISSIONS[code].reserved).sort()
       .map(code => ({ code, label: permissionLabel(code), group: effective.get(code).includes(null),
         sections: [...new Set(effective.get(code).filter(Boolean))] })) })).filter(module => module.permissions.length);
   return { user, roles: roles.map(role => ({ ...role, label: ROLES[role.role_code]?.label ?? role.role_code })), items, summary };
@@ -134,15 +135,15 @@ export async function listRatifications(db, context, requestId, now = Date.now()
   await requirePermission(db, context, requestId, 'auth.permission.ratify', { resourceType: 'app_user' });
   const name = column => `(SELECT display_name FROM app_user WHERE id=${column})`;
   const roles = (await db.prepare(`SELECT 'role' AS kind,ur.id,ur.user_id,${name('ur.user_id')} AS user_name,ur.role_code AS subject,s.code AS section_code,
-      ${name('ur.authorized_by')} AS authorized_by_name,${name('ur.granted_by')} AS provisioned_by_name,ur.valid_from AS granted_at,ur.expires_at,1 AS authorised
+      ${name('ur.authorized_by')} AS authorized_by_name,${name('ur.granted_by')} AS provisioned_by_name,ur.granted_by AS provisioned_by,ur.valid_from AS granted_at,ur.expires_at,1 AS authorised
     FROM user_role ur LEFT JOIN section s ON s.id=ur.section_id WHERE ur.ratification_status='PENDING_RATIFICATION' AND ur.revoked_at IS NULL
       AND (ur.expires_at IS NULL OR ur.expires_at>?)`).bind(now).all()).results;
   const grants = (await db.prepare(`SELECT 'grant' AS kind,g.id,g.user_id,${name('g.user_id')} AS user_name,g.permission_code AS subject,s.code AS section_code,
-      ${name('g.authorized_by')} AS authorized_by_name,${name('g.granted_by')} AS provisioned_by_name,g.valid_from AS granted_at,g.expires_at,1 AS authorised
+      ${name('g.authorized_by')} AS authorized_by_name,${name('g.granted_by')} AS provisioned_by_name,g.granted_by AS provisioned_by,g.valid_from AS granted_at,g.expires_at,1 AS authorised
     FROM user_permission_grant g LEFT JOIN section s ON s.id=g.section_id WHERE g.ratification_status='PENDING_RATIFICATION' AND g.revoked_at IS NULL
       AND g.source_role_id IS NULL AND (g.expires_at IS NULL OR g.expires_at>?)`).bind(now).all()).results;
   const delegations = (await db.prepare(`SELECT 'delegation' AS kind,d.id,d.user_id,${name('d.user_id')} AS user_name,d.permission_code AS subject,s.code AS section_code,
-      ${name('d.authorized_by')} AS authorized_by_name,${name('d.provisioned_by')} AS provisioned_by_name,d.granted_at,d.expires_at,
+      ${name('d.authorized_by')} AS authorized_by_name,${name('d.provisioned_by')} AS provisioned_by_name,d.provisioned_by,d.granted_at,d.expires_at,
       (c.delegation_id IS NOT NULL) AS authorised FROM delegated_permission d LEFT JOIN section s ON s.id=d.section_id
       LEFT JOIN delegated_permission_confirmation c ON c.delegation_id=d.id
     WHERE d.ratification_status='PENDING_RATIFICATION' AND d.revoked_at IS NULL AND (d.expires_at IS NULL OR d.expires_at>?)`).bind(now).all()).results;

@@ -15,7 +15,7 @@ const DAY=24*60*60*1000;
 // 3.5H.1 lifecycle shown to people (derived): authorised delegations are effective while pending ratification.
 export const delegationState=(row,now)=>row.ratification_status==='REVOKED'?'REVOKED'
   :row.expires_at!==null && row.expires_at<=now?'EXPIRED'
-    :!row.authorization_confirmed_at?'PENDING_AUTHORISATION'
+    :!row.authorization_confirmed_at && row.ratification_status!=='RATIFIED'?'PENDING_AUTHORISATION'
       :row.expires_at!==null && row.expires_at-now<=14*DAY?'EXPIRING'
         :row.ratification_status==='PENDING_RATIFICATION'?'ACTIVE_PENDING_RATIFICATION':'ACTIVE';
 export const DELEGATION_DEFAULT_MS=90*DAY, DELEGATION_MAX_MS=365*DAY;

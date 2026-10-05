@@ -127,8 +127,8 @@ moreButton.addEventListener('click',()=>{
   $('moreSheet').hidden=!opening;moreButton.setAttribute('aria-expanded',String(opening));
   if(opening)$('moreSheet').querySelector('button')?.focus();
 });
-$('profileAccount').addEventListener('click',()=>{closeProfile();navigateTo('administracio');$('account').querySelector('h2')?.focus()});
-$('profileSessions').addEventListener('click',()=>{closeProfile();navigateTo('administracio');$('sessions').querySelector('h2')?.focus()});
+$('profileAccount').addEventListener('click',()=>{closeProfile();navigateTo('administracio',{path:['compte']});$('account').querySelector('h2')?.focus()});
+$('profileSessions').addEventListener('click',()=>{closeProfile();navigateTo('administracio',{path:['sessions']});$('sessions').querySelector('h2')?.focus()});
 $('moreSearch').addEventListener('click',()=>closeMore());
 $('moreProfile').addEventListener('click',()=>{closeMore();toggleProfile(moreButton)});
 document.addEventListener('pointerdown',event=>{

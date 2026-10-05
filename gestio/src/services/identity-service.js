@@ -6,6 +6,7 @@ import { conditionalStatement, statement } from '../domains/audit/repository.js'
 import { identityIssuer, synthetic } from '../environment-policy.js';
 import { afterClause, pageRequest, pageResult } from '../pagination.js';
 import { AppError, requireFresh, requirePermission, requireUuid } from './common.js';
+import { authorize } from '../policy.js';
 
 const DAY = 24 * 60 * 60 * 1000;
 const audit = (db, context, requestId, action, resourceType, resourceId, now) => statement(db, { requestId,
@@ -27,8 +28,13 @@ export async function createUser(db, context, session, requestId, input, now = D
   return { id, status: 'ACTIVE' };
 }
 
+// 3.5H.1: the name list (id, name, status) also serves people who provision delegations, ratify or
+// revoke sessions; it carries no roles, grants, identities or contact data.
+const LIST_PERMISSIONS = ['auth.permission.provision', 'auth.permission.ratify', 'auth.session.revoke'];
 export async function listUsers(db, context, requestId, params) {
-  await manage(db, context, requestId);
+  let allowed = false;
+  for (const permission of LIST_PERMISSIONS) if ((await authorize(db, context, { permission })).allow) { allowed = true; break; }
+  if (!allowed) await manage(db, context, requestId);
   const page = pageRequest(params, ['string', 'string']);
   const after = afterClause(['display_name', 'id'], 'ASC');
   const rows = (await db.prepare(`SELECT id,display_name,status,created_at FROM app_user

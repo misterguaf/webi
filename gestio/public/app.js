@@ -6,7 +6,7 @@ import { navigateTo, onNavigate, routes, setContextAction, setNavAvailable, setN
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
-import { createAccountView, createDashboardView, createFeeStatusView, createFeesView } from './views/simple-views.js';
+import { createAccountView, createAdministrationView, createDashboardView, createFeeStatusView, createFeesView } from './views/simple-views.js';
 import { createParticipantsView } from './views/participants.js';
 import { createTreasuryView } from './views/treasury.js';
 import { createFamilyGroupsView } from './views/family-groups.js';
@@ -40,6 +40,7 @@ const dashboard = setupDashboard({ call, navigateTo,
 const views = createViewRegistry([
   createDashboardView(dashboard),
   createAccountView({ call, message, reportLoadError, reload: () => refresh() }),
+  createAdministrationView({ call, reportLoadError, routes, setPageHeader }),
   createParticipantsView({ call, reportLoadError, routes, setPageHeader, setContextAction }),
   activities,
   registrations,

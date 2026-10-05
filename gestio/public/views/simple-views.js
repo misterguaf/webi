@@ -6,6 +6,8 @@ import { setupFeeStatus } from '../fee-status.js';
 const $ = id => document.getElementById(id);
 const FEE_LISTS = ['feeRoundRevisions', 'feeMetrics', 'feeSearchResults', 'feeGroups', 'feeObligations', 'feePayments', 'feeIssues', 'feeObligationDetail', 'feePaymentDetail'];
 
+// 3.5H.1 Administració tabs (Usuaris, Rols i permisos, Delegacions, Ratificacions, Sessions).
+export { createAdministrationView } from './administration.js';
 export function createAccountView({ call, message, reportLoadError, reload }) {
   async function load(me) {
     $('account').hidden = false; $('sessions').hidden = false;
