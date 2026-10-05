@@ -94,7 +94,9 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
         ...(installmentPlan?{replacesPlanId:installmentPlan.id,reason:reason.value.trim()}:{}),
       }))));
     const amount=input('number','Nou import degut en cèntims');
-    box.append(amount,button('Canvia import degut',()=>act(()=>send(`/api/fees/obligations/${id}`,'PATCH',{amountDueCents:Number(amount.value)}))));
+    const amountReason=input('text','Motiu del canvi si hi ha pagaments');
+    box.append(amount,amountReason,button('Canvia import degut',()=>act(()=>send(`/api/fees/obligations/${id}`,'PATCH',
+      {amountDueCents:Number(amount.value),reason:amountReason.value.trim()}))));
     box.append(button('Obri incidència',()=>act(()=>send('/api/fees/issues','POST',{obligationId:id,code:'DISCREPANCY'}))));
     for(const issue of issues){const line=document.createElement('p');line.textContent=`Incidència ${issue.code} · ${issue.status} `;
       if(issue.status==='OPEN')line.append(button('Resol',()=>act(()=>send(`/api/fees/issues/${issue.id}/resolve`,'POST',{}))));box.append(line);}

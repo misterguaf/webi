@@ -614,6 +614,36 @@ test('G.3: changing a paid second child to third corrects due 100 to 50 and isol
   } finally { s.f.close(); }
 });
 
+test('G.3: later fee amount overrides preserve earlier claims and create only the new excess', async () => {
+  const s = await setup();
+  try {
+    s.f.sql.exec(buildDemoData().sql);
+    const obligationId = id(3002);
+    const source = s.f.sql.prepare(`SELECT p.id FROM annual_fee_payment p JOIN annual_fee_allocation a
+      ON a.payment_id=p.id WHERE a.obligation_id=?`).get(obligationId);
+    const group = await s.call(104, '/api/fees/groups', 'POST', {
+      roundId: id(901), reference: 'DEMO-G3-OVERRIDE', participantIds: [id(501), id(503), id(502)],
+      reason: 'Ordre familiar corregit'
+    });
+    assert.equal(group.status, 201, JSON.stringify(group.data));
+    assert.equal((await s.call(104, `/api/fees/obligations/${obligationId}`, 'PATCH',
+      { amountDueCents: 10000 })).status, 400);
+    assert.equal((await s.call(104, `/api/fees/obligations/${obligationId}`, 'PATCH',
+      { amountDueCents: 10000, reason: 'Import revisat' })).status, 200);
+    const second = await s.call(104, `/api/fees/obligations/${obligationId}`, 'PATCH',
+      { amountDueCents: 2500, reason: 'Import final corregit' });
+    assert.equal(second.status, 200, JSON.stringify(second.data));
+    assert.equal(second.data.overpaymentIds.length, 1);
+    assert.equal(s.f.sql.prepare('SELECT sum(amount_cents) AS cents FROM finance_overpayment WHERE fee_obligation_id=?')
+      .get(obligationId).cents, 7500);
+    assert.deepEqual({ ...s.f.sql.prepare('SELECT amount_due_cents,allocated_cents,status FROM annual_fee_obligation_status WHERE id=?')
+      .get(obligationId) }, { amount_due_cents: 2500, allocated_cents: 2500, status: 'PAID' });
+    assert.equal(s.f.sql.prepare('SELECT sum(amount_cents) AS cents FROM annual_fee_allocation WHERE payment_id=?')
+      .get(source.id).cents, 10000);
+    assert.deepEqual(s.f.sql.prepare('PRAGMA foreign_key_check').all(), []);
+  } finally { s.f.close(); }
+});
+
 test('migration 0039 preserves a populated legacy activity overpayment and every foreign key', () => {
   const sql = new DatabaseSync(':memory:');
   try {

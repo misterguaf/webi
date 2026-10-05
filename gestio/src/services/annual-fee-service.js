@@ -315,23 +315,59 @@ export async function createObligation(db,context,requestId,input,now=Date.now()
 }
 export async function overrideAmount(db,context,requestId,id,input,now=Date.now()) {
   requireUuid(id);
-  if (!keysOnly(input,['amountDueCents']) || !cents(input.amountDueCents) || input.amountDueCents>1000000) fail('invalid_fee_amount');
-  const row=await db.prepare(`SELECT o.*,p.current_section_id FROM annual_fee_obligation o JOIN participant p ON p.id=o.participant_id WHERE o.id=?`).bind(id).first();
+  if (!keysOnly(input,['amountDueCents','reason']) || !cents(input.amountDueCents) || input.amountDueCents>1000000) fail('invalid_fee_amount');
+  const row=await db.prepare(`SELECT o.*,p.current_section_id,
+    COALESCE((SELECT sum(a.amount_cents) FROM annual_fee_allocation a WHERE a.obligation_id=o.id),0) AS allocated_cents
+    FROM annual_fee_obligation o JOIN participant p ON p.id=o.participant_id WHERE o.id=?`).bind(id).first();
   if (!row) throw new AppError(404,'not_found');
   await requirePermission(db,context,requestId,'finance.fee.manage',
     {sectionId:row.current_section_id,resourceType:'annual_fee_obligation',resourceId:id});
   if (await db.prepare('SELECT 1 FROM annual_fee_installment_plan WHERE obligation_id=?').bind(id).first())
     throw new AppError(409,'installment_plan_exists');
   if (row.amount_due_cents===input.amountDueCents) throw new AppError(409,'unchanged_fee_amount');
+  if (row.allocated_cents>0 && (typeof input.reason!=='string' || input.reason.trim().length<3 ||
+    input.reason.trim().length>240)) fail('fee_correction_reason_required');
+  const previousClaims=await db.prepare('SELECT COALESCE(sum(amount_cents),0) AS cents FROM finance_overpayment WHERE fee_obligation_id=?')
+    .bind(id).first();
+  let excess=row.allocated_cents-previousClaims.cents-input.amountDueCents;
+  const claims=[];
+  if (excess>0) {
+    const financeRound=await db.prepare('SELECT id FROM finance_round WHERE annual_fee_round_id=?').bind(row.round_id).first();
+    if (!financeRound) throw new AppError(409,'finance_round_required');
+    const sources=(await db.prepare(`SELECT p.id,p.receipt_email,p.review_status,a.amount_cents,
+      COALESCE((SELECT sum(o.amount_cents) FROM finance_overpayment o WHERE o.fee_payment_id=p.id
+        AND o.fee_obligation_id=a.obligation_id),0) AS claimed_cents
+      FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id
+      WHERE a.obligation_id=? ORDER BY a.created_at DESC,a.id DESC`).bind(id).all()).results;
+    if (sources.some(source=>source.review_status!=='VERIFIED')) throw new AppError(409,'family_payment_review_required');
+    for (const source of sources) {
+      if (!excess) break;
+      const amount=Math.min(excess,source.amount_cents-source.claimed_cents);
+      if (amount<=0) continue;
+      claims.push({id:uuid(),roundId:financeRound.id,paymentId:source.id,email:source.receipt_email,amount});
+      excess-=amount;
+    }
+    if (excess>0) throw new AppError(409,'family_allocation_conflict');
+  }
   await db.batch([
+    ...(row.allocated_cents>0 && input.amountDueCents<row.amount_due_cents ? [db.prepare(`INSERT INTO finance_fee_correction_gate
+      (obligation_id,target_due_cents,reason,opened_by,opened_at) VALUES(?,?,?,?,?)`)
+      .bind(id,input.amountDueCents,input.reason.trim(),context.userId,now)] : []),
+    ...claims.map(claim=>db.prepare(`INSERT INTO finance_overpayment
+      (id,round_id,fee_payment_id,fee_obligation_id,recipient_email,cause,amount_cents,created_by,created_at)
+      VALUES(?,?,?,?,?,'PRICE_CORRECTION',?,?,?)`).bind(claim.id,claim.roundId,claim.paymentId,id,claim.email,
+        claim.amount,context.userId,now)),
     db.prepare('UPDATE annual_fee_obligation SET amount_due_cents=?,override_by=?,override_at=?,updated_at=? WHERE id=?')
       .bind(input.amountDueCents,context.userId,now,now,id),
     db.prepare(`INSERT INTO annual_fee_amount_revision
       (id,obligation_id,previous_amount_cents,new_amount_cents,changed_by,changed_at) VALUES(?,?,?,?,?,?)`)
       .bind(uuid(),id,row.amount_due_cents,input.amountDueCents,context.userId,now),
-    audit(db,context,requestId,'FEE_AMOUNT_OVERRIDDEN','annual_fee_obligation',id,now)
+    audit(db,context,requestId,'FEE_AMOUNT_OVERRIDDEN','annual_fee_obligation',id,now),
+    ...claims.map(claim=>audit(db,context,requestId,'FAMILY_OVERPAYMENT_CREATED','finance_overpayment',claim.id,now)),
+    ...(row.allocated_cents>0 && input.amountDueCents<row.amount_due_cents ?
+      [db.prepare('DELETE FROM finance_fee_correction_gate WHERE obligation_id=?').bind(id)] : [])
   ]);
-  return {id};
+  return {id,overpaymentIds:claims.map(claim=>claim.id)};
 }
 
 async function payloadHash(value) {

@@ -8,7 +8,7 @@ export async function createOverpayment(db, context, requestId, input, now = Dat
   await allow(db, context, requestId, 'finance.movement.classify', 'finance_overpayment');
   if (!keysOnly(input, ['feePaymentId','registrationId','amountCents','cause']) ||
       Number(!!input.feePaymentId) + Number(!!input.registrationId) !== 1 ||
-      !cents(input.amountCents) || !['PAYMENT_EXCESS','PRICE_CORRECTION'].includes(input.cause) ||
+      !cents(input.amountCents) || input.cause !== 'PAYMENT_EXCESS' ||
       (input.feePaymentId && !validUuid(input.feePaymentId)) ||
       (input.registrationId && !validUuid(input.registrationId))) fail('invalid_family_overpayment');
   let source;
