@@ -5,6 +5,8 @@ import * as health from '../domains/health/repository.js';
 import * as security from '../domains/security/repository.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireFresh, requirePermission, requireUuid, validUuid } from './common.js';
+import { PERMISSIONS } from '../permissions.js';
+import { roleDefaults } from '../access-model.js';
 
 const ROLES=new Set(['GROUP_COORDINATOR','SECTION_COORDINATOR','SECTION_DELEGATE','TREASURY','SECRETARY','TECH_ADMIN']);
 // 3.5E: SECRETARY absorbs the CRM manager function. CRM_MANAGER is retired — it can no longer be
@@ -18,7 +20,7 @@ const SUMMARY_CODES=new Set(['TEST_SCENARIO','ACCOUNT_SUSPICION','UNEXPECTED_ACC
 // only a current GROUP_COORDINATOR assigns them, assignments are audited as ELEVATED_ROLE, and the
 // last active GROUP_COORDINATOR cannot be removed or disabled (security suspension stays possible).
 const ELEVATED_ROLES=new Set(['GROUP_COORDINATOR','TREASURY','TECH_ADMIN']);
-async function holdsRole(db,userId,roleCode,now) {
+export async function holdsRole(db,userId,roleCode,now) {
   return !!await db.prepare(`SELECT 1 FROM user_role WHERE user_id=? AND role_code=? AND revoked_at IS NULL
     AND valid_from<=? AND (expires_at IS NULL OR expires_at>?) LIMIT 1`).bind(userId,roleCode,now,now).first();
 }
@@ -31,7 +33,7 @@ function notSelf(context,targetId) { if (context.userId===targetId) throw new Ap
 // 3.5E: role assignments may run up to a year, matching the maximum delegation duration, so a
 // SECTION_DELEGATE role never expires before a valid delegation that relies on it.
 const ROLE_EXPIRY_MAX_MS=365*24*60*60*1000;
-function expiry(value,now,{required=false,maxMs=ROLE_EXPIRY_MAX_MS}={}) {
+export function expiry(value,now,{required=false,maxMs=ROLE_EXPIRY_MAX_MS}={}) {
   if (value==null && !required) return null;
   if (!Number.isSafeInteger(value) || value<=now || value>now+maxMs) throw new AppError(400,'invalid_expiry');
   return value;
@@ -59,59 +61,122 @@ export async function setUserEnabled(db,context,session,requestId,targetId,enabl
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,
       action:enabled?'USER_ENABLED':'USER_DISABLED',resourceType:'app_user',resourceId:targetId,occurredAt:now})]);
 }
-export async function assignRole(db,context,session,requestId,input,now=Date.now()) {
-  await requirePermission(db,context,requestId,'auth.role.manage'); requireFresh(session,now);
-  const {userId,roleCode,sectionId=null}=input??{};
-  requireUuid(userId); notSelf(context,userId);
+// 3.5H.1 origin authority: nobody grants what they do not hold themselves (role + grant only, never through
+// a delegation), over a scope at least as wide as the one granted. Coordinació general is the group's
+// originating authority and may grant inside the recipient's ceiling (G.1A, unchanged).
+export async function assertCanGrant(db,actorId,permissionCode,sectionId,now) {
+  if (await holdsRole(db,actorId,'GROUP_COORDINATOR',now)) return;
+  const held=await organization.roleGrantSections(db,actorId,permissionCode,now);
+  if (!held.includes(null) && !(sectionId!==null && held.includes(sectionId))) throw new AppError(403,'grant_exceeds_authority');
+}
+// The person whose authority justifies the act (authorized_by) may differ from the provisioner (granted_by).
+async function authorizer(db,context,input,permission,targetId,now) {
+  const id=input?.authorizedBy??context.userId;
+  if (!validUuid(id) || id===targetId) throw new AppError(403,'separation_of_duties');
+  if (id!==context.userId && !(await organization.roleGrantSections(db,id,permission,now)).includes(null)) throw new AppError(403,'unauthorized_authorizer');
+  return id;
+}
+/**
+ * Statements for one role assignment. `permissions` (3.5H.1, optional): the permissions of the role ceiling
+ * granted with it — 'DEFAULTS' or a list. Role-sourced grants end with the role. Without it the legacy
+ * contract stays: the role is only a ceiling and grants are separate acts.
+ */
+export async function roleAssignmentStatements(db,context,requestId,{userId,roleCode,sectionId=null,expiresAt=null,permissions,authorizedBy},now,{newUser=false}={}) {
   if (RETIRED_ROLES.has(roleCode)) throw new AppError(409,'role_retired');
   if (!ROLES.has(roleCode) || (sectionId!==null && !validUuid(sectionId))) throw new AppError(400,'invalid_role');
   const scoped=roleCode==='SECTION_COORDINATOR'||roleCode==='SECTION_DELEGATE';
   if (scoped!==Boolean(sectionId) || !await organization.roleExists(db,roleCode,sectionId)) throw new AppError(400,'invalid_scope');
-  if ((await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(404,'not_found');
+  if (!newUser && (await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(404,'not_found');
   const elevated=ELEVATED_ROLES.has(roleCode);
   if (elevated && !await holdsRole(db,context.userId,'GROUP_COORDINATOR',now)) throw new AppError(403,'elevated_role_requires_group_coordinator');
-  const expiresAt=expiry(input.expiresAt??null,now,{required:roleCode==='SECTION_DELEGATE'});
-  const id=crypto.randomUUID();
-  try {
-    await db.batch([organization.assignRoleStatement(db,{id,userId,roleCode,sectionId,validFrom:now,expiresAt,actorId:context.userId,justification:synthetic.adminJustification}),
-      statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_ASSIGNED',
-        resourceType:'user_role',resourceId:id,reasonCode:elevated?'ELEVATED_ROLE':null,occurredAt:now})]);
-  } catch(error) {
+  const ceiling=(await db.prepare('SELECT permission_code FROM role_permission WHERE role_code=? ORDER BY permission_code').bind(roleCode).all()).results.map(row=>row.permission_code);
+  let granted=[];
+  if (permissions!==undefined) {
+    granted=permissions==='DEFAULTS'?roleDefaults(roleCode,ceiling):permissions;
+    if (!Array.isArray(granted) || granted.length>80 || new Set(granted).size!==granted.length ||
+        granted.some(code=>typeof code!=='string' || !ceiling.includes(code) || PERMISSIONS[code]?.reserved)) throw new AppError(400,'invalid_permission');
+    for (const code of granted) await assertCanGrant(db,context.userId,code,sectionId,now);
+  }
+  const id=crypto.randomUUID(), validated=expiry(expiresAt,now,{required:roleCode==='SECTION_DELEGATE'});
+  const statements=[organization.assignRoleStatement(db,{id,userId,roleCode,sectionId,validFrom:now,expiresAt:validated,actorId:context.userId,
+      justification:synthetic.adminJustification,authorizedBy,ratificationStatus:'PENDING_RATIFICATION'}),
+    statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_ASSIGNED',
+      resourceType:'user_role',resourceId:id,reasonCode:elevated?'ELEVATED_ROLE':null,occurredAt:now}),
+    ...granted.map(permissionCode=>organization.grantPermissionStatement(db,{id:crypto.randomUUID(),userId,permissionCode,validFrom:now,
+      expiresAt:validated,actorId:context.userId,justification:synthetic.adminJustification,authorizedBy,sourceRoleId:id}))];
+  return {id,statements,granted};
+}
+export async function assignRole(db,context,session,requestId,input,now=Date.now()) {
+  await requirePermission(db,context,requestId,'auth.role.manage'); requireFresh(session,now);
+  const {userId}=input??{};
+  requireUuid(userId); notSelf(context,userId);
+  if (Object.keys(input).some(key=>!['userId','roleCode','sectionId','expiresAt','permissions','authorizedBy'].includes(key))) throw new AppError(400,'invalid_role');
+  const authorizedBy=await authorizer(db,context,input,'auth.role.manage',userId,now);
+  const {id,statements,granted}=await roleAssignmentStatements(db,context,requestId,{...input,sectionId:input.sectionId??null,authorizedBy},now);
+  try { await db.batch(statements); }
+  catch(error) {
     // Regression (audit remediation): a duplicate active assignment is a conflict, not a server error.
     if (/UNIQUE/.test(error?.message??'')) throw new AppError(409,'role_already_assigned');
     throw error;
   }
-  return {id};
+  return {id,grantedPermissions:granted,ratificationStatus:'PENDING_RATIFICATION'};
 }
 export async function removeRole(db,context,session,requestId,userId,assignmentId,now=Date.now()) {
   requireUuid(userId);requireUuid(assignmentId);
   await requirePermission(db,context,requestId,'auth.role.manage'); requireFresh(session,now);notSelf(context,userId);
+  return revokeRoleAssignment(db,context,requestId,userId,assignmentId,now);
+}
+/** Ends a role and the grants that came with it: effective on the next request (authority is read per request). */
+export async function revokeRoleAssignment(db,context,requestId,userId,assignmentId,now) {
   const role=await organization.activeRole(db,assignmentId,userId);
   if (!role) throw new AppError(404,'not_found');
   if (role.role_code==='GROUP_COORDINATOR' && !await otherActiveCoordinators(db,userId,now)) throw new AppError(409,'last_group_coordinator');
-  await db.batch([organization.revokeRoleStatement(db,assignmentId,userId,now),
+  await db.batch([organization.revokeRoleStatement(db,assignmentId,userId,now,context.userId),
+    organization.revokeRoleGrantsStatement(db,assignmentId,userId,now,context.userId),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'ROLE_REMOVED',
       resourceType:'user_role',resourceId:assignmentId,occurredAt:now})]);
 }
+/** A direct (individual) grant: inside a role ceiling of the recipient, optionally scoped to one section. */
+export async function directGrantStatements(db,context,requestId,{userId,permissionCode,sectionId=null,expiresAt=null,authorizedBy},now,{ceilings=null}={}) {
+  const definition=PERMISSIONS[permissionCode];
+  if (typeof permissionCode!=='string' || !definition || definition.reserved || !await organization.permissionExists(db,permissionCode)) throw new AppError(400,'invalid_permission');
+  if (sectionId!==null && (!validUuid(sectionId) || definition.kind==='GLOBAL' || !await db.prepare('SELECT 1 FROM section WHERE id=?').bind(sectionId).first()))
+    throw new AppError(400,'invalid_scope');
+  // Ceiling: a current role of the recipient that includes the permission and covers the section.
+  const roles=ceilings??(await db.prepare(`SELECT ur.section_id FROM user_role ur JOIN role_permission rp ON rp.role_code=ur.role_code
+    WHERE ur.user_id=? AND rp.permission_code=? AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)`)
+    .bind(userId,permissionCode,now,now).all()).results.map(row=>row.section_id);
+  if (!roles.some(scope=>scope===null || (sectionId!==null && scope===sectionId))) throw new AppError(400,'invalid_permission');
+  await assertCanGrant(db,context.userId,permissionCode,sectionId,now);
+  const id=crypto.randomUUID();
+  return {id,statements:[organization.grantPermissionStatement(db,{id,userId,permissionCode,validFrom:now,expiresAt:expiry(expiresAt,now),
+      actorId:context.userId,justification:synthetic.adminJustification,authorizedBy,ratificationStatus:'PENDING_RATIFICATION',sectionId}),
+    statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'PERMISSION_GRANTED',
+      resourceType:'user_permission_grant',resourceId:id,occurredAt:now})]};
+}
 export async function grantPermission(db,context,session,requestId,input,now=Date.now()) {
   await requirePermission(db,context,requestId,'auth.permission.manage'); requireFresh(session,now);
-  const {userId,permissionCode}=input??{};
+  const {userId}=input??{};
   requireUuid(userId);notSelf(context,userId);
-  if (typeof permissionCode!=='string' || !await organization.permissionExists(db,permissionCode) ||
-      (await auth.getUser(db,userId))?.status!=='ACTIVE' ||
-      !await organization.roleAllowsPermission(db,userId,permissionCode,now)) throw new AppError(400,'invalid_permission');
-  const expiresAt=expiry(input.expiresAt??null,now);
-  const id=crypto.randomUUID();
-  await db.batch([organization.grantPermissionStatement(db,{id,userId,permissionCode,validFrom:now,expiresAt,actorId:context.userId,justification:synthetic.adminJustification}),
-    statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'PERMISSION_GRANTED',
-      resourceType:'user_permission_grant',resourceId:id,occurredAt:now})]);
-  return {id};
+  if (Object.keys(input).some(key=>!['userId','permissionCode','sectionId','expiresAt','authorizedBy'].includes(key))) throw new AppError(400,'invalid_permission');
+  if ((await auth.getUser(db,userId))?.status!=='ACTIVE') throw new AppError(400,'invalid_permission');
+  const authorizedBy=await authorizer(db,context,input,'auth.permission.manage',userId,now);
+  const {id,statements}=await directGrantStatements(db,context,requestId,{...input,sectionId:input.sectionId??null,authorizedBy},now);
+  try { await db.batch(statements); }
+  catch(error) { if (/UNIQUE/.test(error?.message??'')) throw new AppError(409,'permission_already_granted'); throw error; }
+  return {id,ratificationStatus:'PENDING_RATIFICATION'};
 }
 export async function revokePermission(db,context,session,requestId,userId,grantId,now=Date.now()) {
   requireUuid(userId);requireUuid(grantId);
   await requirePermission(db,context,requestId,'auth.permission.manage');requireFresh(session,now);notSelf(context,userId);
-  if (!await organization.activePermissionGrant(db,grantId,userId)) throw new AppError(404,'not_found');
-  await db.batch([organization.revokePermissionStatement(db,grantId,userId,now),
+  return revokeDirectGrant(db,context,requestId,userId,grantId,now);
+}
+export async function revokeDirectGrant(db,context,requestId,userId,grantId,now) {
+  const grant=await organization.activePermissionGrant(db,grantId,userId);
+  if (!grant) throw new AppError(404,'not_found');
+  // A permission that comes with a role is changed by changing the role (no negative overrides in v1).
+  if (grant.source_role_id) throw new AppError(409,'role_derived_permission');
+  await db.batch([organization.revokePermissionStatement(db,grantId,userId,now,context.userId),
     statement(db,{requestId,actorUserId:context.userId,sessionId:context.sessionId,action:'PERMISSION_REVOKED',
       resourceType:'user_permission_grant',resourceId:grantId,occurredAt:now})]);
 }

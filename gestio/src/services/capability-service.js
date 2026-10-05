@@ -101,6 +101,7 @@ export async function capabilities(db, context, now = Date.now()) {
       managePermissions: global('auth.permission.manage'),
       provisionDelegations: global('auth.permission.provision'),
       ratifyDelegations: global('auth.permission.ratify'),
+      revokeSessions: global('auth.session.revoke'),
       manageHealthGrants: global('health.grant.manage'),
       manageIncidents: global('security.incident.manage')
     }

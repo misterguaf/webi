@@ -16,6 +16,7 @@ import * as feeMetrics from './src/services/annual-fee-metrics.js';
 import { scopedFeeStatus } from './src/services/annual-fee-status.js';
 import * as capabilityService from './src/services/capability-service.js';
 import * as identityService from './src/services/identity-service.js';
+import * as accessAdmin from './src/services/access-admin-service.js';
 import { AppError } from './src/services/common.js';
 import { financeRoute } from './src/domains/finance/routes.js';
 import { devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
@@ -260,6 +261,19 @@ async function api(request,env,url,requestId) {
     if (response) return response;
   }
 
+  // 3.5H.1 Administració (docs/decisions/ADMIN_DECISIONS.md).
+  if (path==='/api/admin/catalog' && method==='GET') return json({...await accessAdmin.catalog(db,context,requestId),requestId});
+  if (path==='/api/admin/users' && method==='POST') return json({...await accessAdmin.provisionUser(db,context,session,requestId,await readJson(request,8192)),requestId},201);
+  if (path==='/api/admin/ratifications' && method==='GET') return json({...await accessAdmin.listRatifications(db,context,requestId),requestId});
+  match=path.match(/^\/api\/admin\/ratifications\/(role|grant|delegation)\/([^/]+)\/(ratify|revoke)$/);
+  if (match && method==='POST') return json({...await accessAdmin.decideRatification(db,context,session,requestId,match[1],match[2],match[3],
+    match[3]==='ratify'?await readJson(request):null),requestId});
+  match=path.match(/^\/api\/admin\/users\/([^/]+)\/access$/);
+  if (match && method==='GET') return json({...await accessAdmin.userAccess(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/admin\/users\/([^/]+)\/sessions$/);
+  if (match && method==='GET') return json({...await accessAdmin.userSessions(db,context,requestId,match[1]),requestId});
+  match=path.match(/^\/api\/admin\/users\/([^/]+)\/sessions\/revoke-all$/);
+  if (match && method==='POST') return json({...await accessAdmin.revokeUserSessions(db,context,session,requestId,match[1]),requestId});
   if (path==='/api/users' && method==='GET') return json({...await identityService.listUsers(db,context,requestId,url.searchParams),requestId});
   if (path==='/api/users' && method==='POST') return json({...await identityService.createUser(db,context,session,requestId,await readJson(request)),requestId},201);
   match=path.match(/^\/api\/users\/([^/]+)$/);

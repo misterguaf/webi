@@ -79,6 +79,7 @@ export const PERMISSIONS = Object.freeze({
   'auth.permission.authorize': { kind: 'SCOPED', note: 'Authority named in a delegation; must cover its section.' },
   'auth.permission.provision': { kind: 'GLOBAL' },
   'auth.permission.ratify': { kind: 'GLOBAL' },
+  'auth.session.revoke': { kind: 'GLOBAL', note: 'Revoke another person\'s sessions (3.5H.1); never access to their data.' },
   'health.grant.manage': { kind: 'GLOBAL' },
   'security.incident.manage': { kind: 'GLOBAL' },
 

@@ -300,3 +300,13 @@ SELECT column1,column2,'finance.activity.installment.authorize',1700000000000,NU
   ('00000000-0000-4000-8000-000000000510','00000000-0000-4000-8000-000000000101'),
   ('00000000-0000-4000-8000-000000000511','00000000-0000-4000-8000-000000000104'))
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='finance.activity.installment.authorize');
+
+-- 3.5H.1 access administration (mirrors migration 0043): Secretaria provisions accounts; Coordinació general
+-- also revokes other people's sessions. TECH_ADMIN receives nothing by holding the role.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,granted_by,justification)
+SELECT column1,column2,column3,1700000000000,NULL,'Fixture sintético' FROM (VALUES
+  ('00000000-0000-4000-8000-000000000520','00000000-0000-4000-8000-000000000105','auth.user.manage'),
+  ('00000000-0000-4000-8000-000000000521','00000000-0000-4000-8000-000000000105','auth.role.manage'),
+  ('00000000-0000-4000-8000-000000000522','00000000-0000-4000-8000-000000000105','auth.permission.manage'),
+  ('00000000-0000-4000-8000-000000000523','00000000-0000-4000-8000-000000000101','auth.session.revoke'))
+WHERE EXISTS(SELECT 1 FROM permission WHERE code='auth.session.revoke');

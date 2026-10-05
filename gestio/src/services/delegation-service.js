@@ -1,6 +1,6 @@
 import { pageRequest, pageResult } from '../pagination.js';
 import { synthetic } from '../environment-policy.js';
-import { effectiveSections } from '../domains/organization/repository.js';
+import { effectiveSections, roleGrantSections } from '../domains/organization/repository.js';
 import { statement } from '../domains/audit/repository.js';
 import { AppError, requireFresh, requirePermission, requireUuid, validUuid } from './common.js';
 import { FINANCIAL_DELEGATIONS, permissionDefinition } from '../permissions.js';
@@ -12,6 +12,12 @@ const DELEGABLE=new Set(['activities.registration.review','activities.registrati
 // 3.5E delegation duration: 90 days by default, up to 365 days, always with an expiry. Never indefinite.
 // The maximum matches the delegate-role expiry cap (security-service) so the role never expires first.
 const DAY=24*60*60*1000;
+// 3.5H.1 lifecycle shown to people (derived): authorised delegations are effective while pending ratification.
+export const delegationState=(row,now)=>row.ratification_status==='REVOKED'?'REVOKED'
+  :row.expires_at!==null && row.expires_at<=now?'EXPIRED'
+    :!row.authorization_confirmed_at?'PENDING_AUTHORISATION'
+      :row.expires_at!==null && row.expires_at-now<=14*DAY?'EXPIRING'
+        :row.ratification_status==='PENDING_RATIFICATION'?'ACTIVE_PENDING_RATIFICATION':'ACTIVE';
 export const DELEGATION_DEFAULT_MS=90*DAY, DELEGATION_MAX_MS=365*DAY;
 const reference=value=>synthetic.reference(value);
 async function active(db,id) {
@@ -42,12 +48,7 @@ export async function grantDelegation(db,context,session,requestId,input,now=Dat
     // Financial delegation (TREASURY.md §25.3): no role of the recipient grants or limits it. Nobody
     // delegates financial authority they do not hold: the named authoriser must currently hold the same
     // capability over the delegated scope (role + grant only, never through a delegation of their own).
-    const held=(await db.prepare(`SELECT ur.section_id FROM user_role ur
-      JOIN role_permission rp ON rp.role_code=ur.role_code AND rp.permission_code=?
-      JOIN user_permission_grant up ON up.user_id=ur.user_id AND up.permission_code=rp.permission_code
-      WHERE ur.user_id=? AND ur.revoked_at IS NULL AND ur.valid_from<=? AND (ur.expires_at IS NULL OR ur.expires_at>?)
-      AND up.revoked_at IS NULL AND up.valid_from<=? AND (up.expires_at IS NULL OR up.expires_at>?)`)
-      .bind(input.permissionCode,input.authorizedBy,now,now,now,now).all()).results.map(row=>row.section_id);
+    const held=await roleGrantSections(db,input.authorizedBy,input.permissionCode,now);
     if (!covers(held)) throw new AppError(403,'unauthorized_delegation');
   } else {
     const role=(await db.prepare(`SELECT ur.section_id FROM user_role ur JOIN role_permission rp ON rp.role_code=ur.role_code
@@ -114,9 +115,10 @@ export async function ratifyDelegation(db,context,session,requestId,id,input,now
   ]);
   return {id,ratificationStatus:'RATIFIED'};
 }
-export async function revokeDelegation(db,context,session,requestId,id,now=Date.now()) {
+// Revocation is immediate. The ratification inbox (3.5H.1) revokes with auth.permission.ratify instead.
+export async function revokeDelegation(db,context,session,requestId,id,now=Date.now(),{asRatifier=false}={}) {
   requireUuid(id);
-  await requirePermission(db,context,requestId,'auth.permission.provision',{resourceType:'delegated_permission',resourceId:id});
+  await requirePermission(db,context,requestId,asRatifier?'auth.permission.ratify':'auth.permission.provision',{resourceType:'delegated_permission',resourceId:id});
   requireFresh(session,now);
   const row=await db.prepare('SELECT ratification_status,permission_code FROM delegated_permission WHERE id=?').bind(id).first();
   if (!row) throw new AppError(404,'not_found');
@@ -140,5 +142,11 @@ export async function listDelegations(db,context,requestId,params) {
     ${page.after?'WHERE (d.granted_at<? OR (d.granted_at=? AND d.id<?))':''}
     ORDER BY d.granted_at DESC,d.id DESC LIMIT ?`).bind(...(page.after?[page.after[0],page.after[0],page.after[1]]:[]),page.limit+1).all()).results;
   const result=pageResult(rows,page.limit,row=>[row.granted_at,row.id]);
-  return {delegations:result.items,nextCursor:result.nextCursor};
+  const now=Date.now();
+  const names=new Map((await Promise.all([...new Set(result.items.flatMap(row=>[row.user_id,row.authorized_by,row.provisioned_by]))]
+    .map(async id=>[id,(await db.prepare('SELECT display_name FROM app_user WHERE id=?').bind(id).first())?.display_name??null]))));
+  const sections=new Map((await db.prepare('SELECT id,code FROM section').all()).results.map(row=>[row.id,row.code]));
+  return {delegations:result.items.map(row=>({...row,state:delegationState(row,now),user_name:names.get(row.user_id),
+    authorized_by_name:names.get(row.authorized_by),provisioned_by_name:names.get(row.provisioned_by),section_code:sections.get(row.section_id)??null})),
+    nextCursor:result.nextCursor};
 }
