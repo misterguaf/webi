@@ -145,9 +145,11 @@ export async function queryAuthorized(db, input={}) {
 // 3.5H.3 Activitat: the safe projection reads only successful events of an explicit action whitelist, and only
 // the columns it needs (never metadata, session or request ids). Redaction happens in the activity service.
 export async function queryForActivity(db, { actions, actorId=null, from=null, to=null, cursor=null, limit=50 }) {
-  if (!Array.isArray(actions) || !actions.length || actions.some(action => !ACTIONS.has(action))) throw new Error('INVALID_AUDIT_FILTER');
+  if (!Array.isArray(actions) || !actions.length || actions.some(action => !ACTIONS.has(action) || !/^[A-Z0-9_]+$/.test(action))) throw new Error('INVALID_AUDIT_FILTER');
   if (!Number.isInteger(limit) || limit<1 || limit>100) throw new Error('INVALID_AUDIT_FILTER');
-  const clauses=[`action IN (${actions.map(()=>'?').join(',')})`,"result='SUCCESS'"], values=[...actions];
+  // The whitelist is inlined as literals (each one checked above against the closed ACTIONS catalogue): D1
+  // accepts at most 100 bound parameters per statement and the catalogue is larger than that.
+  const clauses=[`action IN (${actions.map(action=>`'${action}'`).join(',')})`,"result='SUCCESS'"], values=[];
   if (actorId!==null) { if (!UUID.test(actorId)) throw new Error('INVALID_AUDIT_FILTER'); clauses.push('actor_user_id=?'); values.push(actorId); }
   for (const [value,operator] of [[from,'>='],[to,'<']]) {
     if (value===null) continue;

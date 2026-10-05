@@ -132,3 +132,14 @@ test('pagination: a stable cursor walks the whole projection without repeats', a
     assert.equal(second.nextCursor, null);
   } finally { s.f.close(); }
 });
+
+test('D1 limit: the projection query binds at most 100 parameters and only catalogued actions', async () => {
+  const { queryForActivity } = await import('../gestio/src/domains/audit/repository.js');
+  const { ACTIONS } = await import('../gestio/src/domains/audit/repository.js');
+  let bound = null, sql = '';
+  const db = { prepare(query) { sql = query; return { bind(...values) { bound = values; return { all: async () => ({ results: [] }) }; } }; } };
+  await queryForActivity(db, { actions: [...ACTIONS], actorId: '00000000-0000-4000-8000-000000000105', from: 1, to: 2, limit: 50 });
+  assert.ok(bound.length <= 100, `bound ${bound.length}`);
+  assert.match(sql, /action IN \('AUTH_LOGIN_SUCCESS'/);
+  await assert.rejects(queryForActivity(db, { actions: ["X') OR 1=1 --"] }), /INVALID_AUDIT_FILTER/);
+});
