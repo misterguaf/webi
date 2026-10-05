@@ -46,5 +46,8 @@
     "eslint": "10.11.0",
     "typescript": "7.0.2",
     "wrangler": "4.144.0"
+  },
+  "dependencies": {
+    "fflate": "0.8.3"
   }
 }
