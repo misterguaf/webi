@@ -1,3 +1,10 @@
 # False positive (generic-api-key on a synthetic test idempotency key, entropy just above the threshold)
 # in commit 51c07c1; the value was replaced by a lower-entropy synthetic key in the next commit.
 51c07c16de77f9c7c031795099292c3cf3b1b73f:test/portal-evidence-optimizer.test.js:generic-api-key:74
+# False positive (generic-api-key: the keyword "access" in '0043_access_administration.sql' followed by a comma and the
+# migration file name '0044_admissions.sql', entropy just above the threshold) in the recovery test's migration list.
+# The list is split across lines from the 3.5H integration gate onwards so the pattern no longer occurs.
+67bc038ac6582064ccbeff4982801a533a5033da:test/gestio-recovery.test.js:generic-api-key:259
+d916cee5ff42644cb436bcd0db39df3f3a76e575:test/gestio-recovery.test.js:generic-api-key:259
+69f57e451ffb602527e9dc051647219d4dd2fc28:test/gestio-recovery.test.js:generic-api-key:259
+bd1afcc71793fe2674052312ff8e31b1715ac9ce:test/gestio-recovery.test.js:generic-api-key:259
