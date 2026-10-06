@@ -107,7 +107,7 @@ test('Quotes issue list: no "Resol" for ALLOCATION_UNCLEAR while euros remain un
     const rows = nodes.get('feeIssues').children;
     const labels = row => row.children.filter(child => typeof child === 'object').map(child => child.textContent);
     assert.deepEqual(labels(rows[0]), ['Revisa el pagament']);
-    assert.match(rows[0].children.find(child => typeof child === 'string'), /30\.00 € verificats sense assignar/);
+    assert.match(rows[0].children.find(child => typeof child === 'string'), /30,00\s€ verificats sense assignar/);
     assert.deepEqual(labels(rows[1]), ['Resol'], 'nothing left unassigned: it can be resolved');
     assert.deepEqual(labels(rows[2]), ['Resol'], 'other issues keep their action');
     await rows[0].children.find(child => child.textContent === 'Revisa el pagament').listeners.click();
