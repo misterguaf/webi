@@ -128,7 +128,7 @@ test('cross-module links only from server-included data or usable pages; every m
   assert.match(source('activities.css'), /\.detail-actions \.btn\{min-height:44px;min-width:0;white-space:normal/);
 });
 
-test('a late answer from an ended session is dropped: never painted into the next session, never shown as an error', async () => {
+test('late data from an ended session is dropped (never painted into the next one); errors still finish their flow', async () => {
   const { createClient } = await import('../gestio/public/http.js');
   const original = globalThis.fetch;
   const pending = [];
@@ -142,7 +142,7 @@ test('a late answer from an ended session is dropped: never painted into the nex
     pending[0]({ ok: true, status: 200, json: async () => ({ participants: ['previous person'] }) });
     pending[1]({ ok: false, status: 500, json: async () => ({ error: 'internal_error' }) });
     await new Promise(resolve => setTimeout(resolve, 10));
-    assert.deepEqual(settled, [], 'nothing from the previous session reaches the screens');
+    assert.deepEqual(settled, [['error', 500]], 'no data from the previous session reaches the screens; its error still settles');
     const fresh = client.call('/api/me');
     pending[2]({ ok: true, status: 200, json: async () => ({ user: { id: 'next' } }) });
     assert.deepEqual(await fresh, { user: { id: 'next' } }, 'the new session works normally');

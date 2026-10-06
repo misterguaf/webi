@@ -21,13 +21,14 @@ export function humanError(status, code) {
 // authorisation denial (403 `forbidden`) notifies `onForbidden`, so the shell can re-check what the session may do.
 export function createClient({ onUnauthorized, onForbidden = () => {} }) {
   // 3.5I: requests belong to the session that started them. When it ends (`endSession`: logout, expiry, another
-  // person), late answers are dropped — never painted into the next session's screens, never shown as errors.
+  // person), late DATA is dropped — never painted into the next session's screens. Errors still propagate, so a
+  // flow that itself ended the session (a 401, logout) always finishes.
   let epoch = 0;
   const dropped = new Promise(() => {});
   async function call(path, options = {}) {
     const started = epoch;
-    try { const data = await request(path, options); return started === epoch ? data : dropped; }
-    catch (error) { if (started !== epoch) return dropped; throw error; }
+    const data = await request(path, options);
+    return started === epoch ? data : dropped;
   }
   async function request(path, options) {
     let response;
