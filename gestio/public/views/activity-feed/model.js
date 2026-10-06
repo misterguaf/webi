@@ -9,7 +9,13 @@ export const KINDS = Object.freeze([
   { value: 'decide', label: 'Decisions' }, { value: 'read', label: 'Consultes sensibles' }, { value: 'access', label: 'Accessos i permisos' }]);
 export const categoryLabel = value => CATEGORIES.find(item => item.value === value && value)?.label ?? '';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const DATE = /^\d{4}-\d{2}-\d{2}$/;
+const DATE_SHAPE = /^\d{4}-\d{2}-\d{2}$/;
+// A real calendar date (2026-99-99 or 2026-02-30 are dropped, never sent to the server).
+const DATE = { test: value => {
+  if (!DATE_SHAPE.test(value)) return false;
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+} };
 
 /** URL query (Catalan keys) → filters; unknown values are dropped. */
 export function parseFilters(query = {}) {

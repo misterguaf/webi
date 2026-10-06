@@ -19,7 +19,8 @@ const { call, post } = createClient({ onUnauthorized: () => {
   hide();
   message('La sessió ha caducat. Torna a entrar.');
 }, onForbidden: () => void sync.check({ force: true }) });
-const reportLoadError = error => { if (error?.status !== 401 && error?.status !== 403 && error?.status !== 404) $('shellLoadError').hidden = false; };
+// The global banner is for network/server failures only (status 0 or 5xx); each screen explains its own 4xx (3.5I).
+const reportLoadError = error => { if (!(error?.status >= 400 && error?.status < 500)) $('shellLoadError').hidden = false; };
 let currentMe = null;
 
 const registrations = createRegistrationsView({ call, reportLoadError, routes, setPageHeader, setNavBadge });
@@ -37,7 +38,8 @@ const views = createViewRegistry([
   createFeeStatusView({ call, reportLoadError }),
   createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge }), createActivityFeedView({ call, reportLoadError, routes, setPageHeader }), createIncidentsView({ call, reportLoadError, routes, setPageHeader, setNavBadge, onNavigate })
 ]);
-onNavigate((page, route) => { views.enter(page, currentMe, route); void sync.check(); });
+let shownPage = null; // a load problem belongs to the page that had it: the banner clears when the page changes
+onNavigate((page, route) => { if (page !== shownPage) { $('shellLoadError').hidden = true; shownPage = page; } views.enter(page, currentMe, route); void sync.check(); });
 
 function hide() {
   currentMe = null;

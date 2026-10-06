@@ -88,8 +88,14 @@ export function createRegistrationsView({ call, reportLoadError, routes, setPage
     return h('div', { className: 'queue-block' }, title, h('ul', { className: 'registration-list queue-payments', attrs: { role: 'list' } }, payments.map(payment =>
       h('li', { className: 'registration-row' },
         h('div', { className: 'reg-main' },
-          h('span', { className: 'reg-name', text: payment.participant?.name ?? payment.submittedName }),
-          h('span', { className: 'reg-payment', text: payment.activity.name })),
+          // 3.5I: the person links to their record only when the server included it (the viewer can read it), and
+          // the activity only for people who use Activitats; otherwise plain text.
+          payment.participant ? h('a', { className: 'reg-name reg-linked', text: payment.participant.name, attrs: { href: `#/participants/${payment.participant.id}` },
+            on: { click: event => { event.preventDefault(); routes.go({ page: 'participants', path: [payment.participant.id] }); } } })
+            : h('span', { className: 'reg-name', text: payment.submittedName }),
+          me?.capabilities?.activities?.read ? h('a', { className: 'reg-payment', text: payment.activity.name, attrs: { href: `#/activitats/${payment.activity.id}` },
+            on: { click: event => { event.preventDefault(); routes.go({ page: 'activitats', path: [payment.activity.id] }); } } })
+            : h('span', { className: 'reg-payment', text: payment.activity.name })),
         h('p', { className: 'reg-secondary', text: [`Rebut el ${shortDate(payment.evidence.receivedAt)}`, payment.section ? sectionLabel(payment.section) : null,
           payment.transport ? (payment.transport === 'GROUP' ? 'Transport del grup' : 'Transport de la família') : null].filter(Boolean).join(' · ') }),
         evidenceBlock({ call, payment, onChanged: () => void render() })))));

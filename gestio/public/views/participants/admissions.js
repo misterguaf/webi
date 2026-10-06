@@ -48,7 +48,12 @@ export function createAdmissionsInbox({ call, routes }) {
     root.replaceChildren(h('div', { className: 'tab-loading', attrs: { 'aria-busy': 'true' } }, h('span', { className: 'skeleton-line' })));
     let data;
     try { data = await call(`/api/admissions/${id}`); }
-    catch (error) { if (mine === token) root.replaceChildren(h('div', { className: 'inline-error', attrs: { role: 'alert' } }, h('p', { text: errorCopy(error) }))); return; }
+    catch (error) {
+      // 3.5I: like every other detail, a missing or out-of-scope request offers the way back.
+      if (mine === token) root.replaceChildren(h('a', { className: 'back-link', attrs: { href: '#/participants/altes' }, on: { click: event => { event.preventDefault(); go([]); } } },
+        icon('arrow-left'), h('span', { text: 'Noves altes' })), h('div', { className: 'inline-error', attrs: { role: 'alert' } }, h('p', { text: errorCopy(error) })));
+      return;
+    }
     if (mine !== token) return;
     const a = data.admission, reload = () => renderDetail(root, id);
     const post = async (op, body = {}, success) => {

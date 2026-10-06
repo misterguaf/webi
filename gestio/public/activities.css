@@ -131,7 +131,8 @@ a.link-button{text-decoration:none;display:inline-flex;align-items:center}
 
 /* ------------------------------------------------------------ dialogs, sheets, menus, toasts */
 .dialog-layer,.sheet-layer{position:fixed;inset:0;z-index:60;display:grid;place-items:center;padding:var(--space-4);background:var(--veil);animation:fade-in var(--motion-fast) var(--ease-enter)}
-.dialog{width:min(100%,440px);padding:var(--space-6);border:1px solid var(--floating-edge);border-radius:var(--radius-large);background:var(--surface-primary);box-shadow:var(--floating-shadow);animation:dialog-in var(--motion-default) var(--ease-enter)}
+/* 3.5I: a dialog never grows past the screen; long forms scroll inside so their actions stay reachable. */
+.dialog{width:min(100%,440px);max-height:calc(100dvh - 2*var(--space-4));overflow-y:auto;overscroll-behavior:contain;padding:var(--space-6);border:1px solid var(--floating-edge);border-radius:var(--radius-large);background:var(--surface-primary);box-shadow:var(--floating-shadow);animation:dialog-in var(--motion-default) var(--ease-enter)}
 .dialog-title{margin:0 0 var(--space-2);font-size:17px;line-height:22px;font-weight:650;letter-spacing:-.015em}
 .dialog-body{margin:0 0 var(--space-6);color:var(--text-secondary);line-height:20px}
 .dialog-actions,.sheet-actions{display:flex;justify-content:flex-end;gap:var(--space-2)}
@@ -366,6 +367,7 @@ body.drawer-open{overflow:hidden}
   .row-signals{justify-items:start}
   .row-signal:nth-child(n+2){display:none}
   .dialog-layer,.sheet-layer{align-items:end;padding:0}
+  .dialog{max-height:calc(100dvh - var(--space-6))}
   .dialog,.filter-sheet{width:100%;border-radius:var(--radius-panel) var(--radius-panel) 0 0;padding-bottom:calc(var(--space-6) + env(safe-area-inset-bottom));animation:sheet-up var(--motion-medium) var(--ease-enter)}
   .dialog-actions,.sheet-actions{display:grid;grid-template-columns:1fr 1fr}
   .dialog-actions .btn,.sheet-actions .btn{min-height:44px}
