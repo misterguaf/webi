@@ -101,10 +101,35 @@ Fes-ho en un mòbil real o amb l'amplada de 375 px.
    Esperat: «Coordinació general», «Coordinació de secció · Tropa», «compte activa» — mai `GROUP_COORDINATOR`,
    `TROPA` o `ACTIVE`.
 
+## QUOTES
+
+**Coordinació de secció** (`seed-102`, Vicent Sendra · Tropa)
+1. `#/quotes` — esperat: només educands actius de Tropa (27), comptadors per estat, cap import ni «€».
+2. Toca «Pendents» i obri un educand — esperat: nom, secció, curs i estat; cap pagament, justificant, família ni acció.
+3. Dubte: vols que la coordinació veja també els educands de baixa amb quota pendent? Ara no (regla «actius»).
+
+**Tresoreria** (`seed-104`, Miquel Ortolà)
+1. `#/quotes` — esperat: 104 educands, franja de diners (previst, rebut verificat, pendent, sense assignar).
+2. Obri un **Parcial** amb pla (p. ex. «Noa Pons Sabater») — esperat: imports, família, pagament amb «Veure justificant»
+   (s'obri el PDF) i «Revisa el pagament» (porta a `#/quotes/eines` amb el pagament obert), pla de terminis.
+3. Obri una **Incidència** — esperat: frase entenedora de la incidència i botó «Resol» si es pot resoldre.
+4. Dubte: el detall per terminis mostra l'import i la data previstos de cada part, però no marca cada part com a
+   «pagada»: el sistema no assigna pagaments a parts concretes i no s'ha inventat. Digues si ho necessites.
+
+**Portal de famílies** (local: `inscripcions` en 4100 amb la teua instància; contrasenya local de proves)
+1. «Quota anual» → un educand real de la demo (p. ex. «Abril Bellver Bataller», 16/11/2013, Tropa), import declarat,
+   PDF de prova (ha de dur la marca sintètica), correu `@example.test`.
+   Esperat: «Comprovant rebut · Pendent de revisió» i una referència; res més.
+2. A Gestió, com a Tresoreria, obri Abril a Quotes — esperat: continua **Pendent**; apareix a «Justificants rebuts
+   pendents d'assignar». Com a Tropa: només «Pendent».
+
+**Mòbil** — repeteix llista → filtre → detall a 375 px amb 102 i 104 (sense desplaçament lateral).
+
 ## SUBJECTIVE VISUAL ISSUES FOR PHASE J
 
-- Quotes (vista de Tresoreria) és el formulari antic de 3B: camps en cèntims, botons plans, llistes de text. Necessita
-  el redisseny complet de J (no s'ha tocat la lògica).
+- Quotes ja té pantalla pròpia (llista + detall); les «Eines de Tresoreria» (`#/quotes/eines`) continuen sent el
+  formulari antic de 3B (camps en cèntims, botons plans). Funcionen; redisseny a J.
+- En mòbil, Tresoreria veu comptadors i diners abans de la llista (cal desplaçar-se); valora una versió més compacta.
 - La barra inferior de 107/106 queda amb Inici + tres pàgines secundàries; funcional però poc expressiva.
 - Botons d'acció amb text llarg en mòbil ara parteixen línia (correcte però visualment irregular).
 - L'indicador d'espera dels botons amaga el text (estil existent); valora un estil més discret a J.

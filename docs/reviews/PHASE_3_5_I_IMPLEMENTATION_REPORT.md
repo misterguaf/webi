@@ -97,6 +97,29 @@ canonical seed's visible records **in the local demo database only** (`seed.sql`
 dades de demostració» indicator, `SYNTHETIC_ONLY` intake checks. Seed activities with registrations keep their 2040
 dates (the terms lock forbids changing them). A test guarantees 104 unique names and no visible demo/fictitious text.
 
+## Quotes v1 (3.5I-Q)
+
+- **Existing backend reused**: rounds, obligations and the authoritative status view `annual_fee_obligation_status`,
+  family groups and sibling ordinal/discount, payments/evidence (private R2, audited view/download), allocations,
+  issues, installment plans, amount corrections, family overpayments (`finance_overpayment.fee_obligation_id`),
+  server-side matching, the 3B fee panel workflows and the write-only portal fee intake. No migration, no new fee model.
+- **New read model** (`gestio/src/services/quotes-service.js`): `GET /api/quotes` and `GET /api/quotes/participants/:id`,
+  projecting *basic* (`finance.fee.status.read`: ACTIVE, CURRENT section, name/section/status, counts) or *financial*
+  (`finance.fee.read`: amounts, in-scope family, payments, proofs not yet allocated, plan, issues, corrections,
+  overpayment). Out-of-scope details are concealed (404); filters and search are server-side and scoped.
+- **UI**: `views/quotes.js` + `views/quotes/model.js` — the first-class Quotes screen; the legacy fee panel became
+  «Eines de Tresoreria» at `#/quotes/eines` (`?pagament=` opens a payment); the basic fee-status panel is superseded;
+  participant record → «Veure a Quotes» only when the server sent the fee status.
+- **Portal**: the existing «Quota anual» flow is reused unchanged (neutral answer, private evidence, idempotency);
+  covered end to end by `test/portal-quota.test.js`, including «proof ≠ paid».
+- **Permission boundaries**: section coordinators get no money, payer, evidence, allocation, bank or Treasury action;
+  TECH_ADMIN/CRM/Secretaria get no Quotes; financial detail follows the actual `finance.fee.read` grant; a scoped
+  finance reader never sees another section's sibling.
+- **Tests**: `test/gestio-quotes.test.js` (7), `test/gestio-quotes-ui.test.js` (3), `test/portal-quota.test.js` (3).
+- **Known debt / Borja's decisions**: instalment parts are not individually marked paid (the domain allocates to the
+  obligation, not to a part); whether section coordinators should see inactive members owing a quota; Treasury tools
+  keep the 3B UI. The family portal now shows «Esculta (14-17)» (value `ESC` unchanged); the public website's legacy alta form keeps «Escoltes (14-17)» as its submitted value (H.2 mapping).
+
 ## Tests added / changed
 
 - New `test/gestio-integration-shell.test.js` (9 tests): session sync (unchanged / changed / other user / throttle /
