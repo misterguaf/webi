@@ -18,6 +18,7 @@ import * as capabilityService from './src/services/capability-service.js';
 import * as identityService from './src/services/identity-service.js';
 import * as accessAdmin from './src/services/access-admin-service.js';
 import * as admissions from './src/services/admissions-service.js';
+import * as quotes from './src/services/quotes-service.js';
 import * as activityFeed from './src/services/activity-feed-service.js';
 import * as workIncidents from './src/services/work-incident-service.js';
 import { AppError } from './src/services/common.js';
@@ -209,6 +210,10 @@ async function api(request,env,url,requestId) {
     return json({...await notifications.drainFake(db,context,requestId,body),requestId});
   }
 
+  // 3.5I-Q Quotes: one read model over the existing fee domain, projected by the viewer's own capabilities.
+  if (path==='/api/quotes' && method==='GET') return json({...await quotes.quotesList(db,context,requestId,url.searchParams),requestId});
+  match=path.match(/^\/api\/quotes\/participants\/([^/]+)$/);
+  if (match && method==='GET') return json({...await quotes.quotesDetail(db,context,requestId,match[1],url.searchParams.get('roundId')),requestId});
   if (path==='/api/fees/status' && method==='GET') return json({...await scopedFeeStatus(db,context,requestId,url.searchParams.get('roundId'),url.searchParams),requestId});
   if (path==='/api/fees/rounds' && method==='GET') return json({rounds:await fees.listRounds(db,context,requestId),requestId});
   if (path==='/api/fees/review-rounds' && method==='GET') return json({rounds:await fees.listReviewRounds(db,context,requestId),requestId});
