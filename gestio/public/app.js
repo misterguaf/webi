@@ -3,7 +3,7 @@
 import { createClient } from './http.js';
 import { navigateTo, onNavigate, routes, setAvailablePages, setContextAction, setNavBadge, setPageHeader, setShellSession } from './shell.js';
 import { createSessionSync } from './session-sync.js';
-import { dismissOverlays } from './ui.js';
+import { dismissOverlays } from './ui.js'; import { ROLE_LABELS } from './labels.js';
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
@@ -63,7 +63,7 @@ const sync = createSessionSync({ fetchMe: () => call('/api/me'), current: () => 
   onUserChanged: async () => { hide(); await refresh(); } });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') void sync.check({ force: true }); });
 async function loadDevIdentities() {
-  try { const data = await call('/api/dev/identities'); $('demoIndicator').hidden = false; $('localDataNotice').hidden = false; $('login').querySelector('p').textContent = 'Selector disponible únicament en desenvolupament local.'; $('loginButton').disabled = false; $('identity').replaceChildren(...data.identities.map(identity => { const option = document.createElement('option'); option.value = identity.subject; option.textContent = identity.display_name; return option; })); }
+  try { const data = await call('/api/dev/identities'); $('demoIndicator').hidden = false; $('localDataNotice').hidden = false; $('login').querySelector('p').textContent = 'Selector disponible únicament en desenvolupament local.'; $('loginButton').disabled = false; $('identity').replaceChildren(...data.identities.map(identity => { const option = document.createElement('option'); option.value = identity.subject; option.textContent = [identity.display_name, ROLE_LABELS[identity.role_code]].filter(Boolean).join(' · '); return option; })); }
   catch (error) { $('login').querySelector('p').textContent = error.status === 404 ? 'El selector local no està disponible. L’accés de producció requereix Cloudflare Access.' : 'No s’ha pogut carregar el selector local. Torna-ho a provar.'; $('loginButton').disabled = true; reportLoadError(error); }
 }
 $('retryShellData').addEventListener('click', async () => { await refresh(); await loadDevIdentities(); });

@@ -1,5 +1,7 @@
 export async function syntheticIdentities(db,issuer) {
-  return (await db.prepare(`SELECT ai.subject,u.display_name FROM auth_identity ai JOIN app_user u ON u.id=ai.user_id
+  // Local selector only: the first current role helps choose who to sign in as (3.5I, realistic demo names).
+  return (await db.prepare(`SELECT ai.subject,u.display_name,(SELECT min(r.role_code) FROM user_role r WHERE r.user_id=u.id AND r.revoked_at IS NULL) AS role_code
+    FROM auth_identity ai JOIN app_user u ON u.id=ai.user_id
     WHERE ai.issuer=? AND ai.revoked_at IS NULL AND u.status='ACTIVE' ORDER BY ai.subject`).bind(issuer).all()).results;
 }
 export async function findIdentityUser(db,issuer,subject) {

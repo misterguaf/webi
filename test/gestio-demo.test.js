@@ -70,8 +70,9 @@ test('synthetic fixture fits the migrated SQLite constraints and exercises fee s
       registrations: q('SELECT count(*) FROM activity_registration') };
   } finally { sql.close(); }
   assert.deepEqual(data.fk, []);
-  assert.deepEqual(data.status, [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 11]]);
-  assert.deepEqual(data.family, [[2, 3], [3, 4], [4, 3]]);
+  // 3.5I: 104 educands; the 64 added children have a pending quota (no payment scenarios of their own).
+  assert.deepEqual(data.status, [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 75]]);
+  assert.deepEqual(data.family, [[2, 14], [3, 8], [4, 3]]);
   assert.deepEqual(data.shared, [[2]]);
   assert.deepEqual(data.installments, [[3]]);
   assert.deepEqual(data.residual, [[1]]);
@@ -119,31 +120,31 @@ test('demo activity scenarios are relative to the seed time and cover D1–D12',
       const activity = code => one('SELECT * FROM activity WHERE public_code=?', code);
       const count = (code, extra = '') => one(`SELECT count(*) n FROM activity_registration r JOIN activity a ON a.id=r.activity_id WHERE a.public_code=?${extra}`, code).n;
       const HOUR = 3600000;
-      const general = activity('DEMO-GENERAL-OPEN');
+      const general = activity('GRUP-GERMANOR');
       assert.equal(general.audience, 'GENERAL'); assert.equal(general.status, 'PUBLISHED');
-      assert.ok(count('DEMO-GENERAL-OPEN', " AND r.status='NEEDS_PARTICIPANT_REVIEW'") >= 1, 'D1 has a pending review');
-      const tropa = activity('DEMO-TROPA-PAID');
+      assert.ok(count('GRUP-GERMANOR', " AND r.status='NEEDS_PARTICIPANT_REVIEW'") >= 1, 'D1 has a pending review');
+      const tropa = activity('TRO-DROVA');
       assert.ok(tropa.registration_deadline > now && tropa.registration_deadline - now < 48 * HOUR, 'D2 deadline in under 48h');
-      assert.ok(count('DEMO-TROPA-PAID') >= 20, 'D2 has many registrations');
+      assert.ok(count('TRO-DROVA') >= 20, 'D2 has many registrations');
       for (const status of ['CONFIRMED', 'NEEDS_PARTICIPANT_REVIEW', 'AWAITING_PAYMENT_REVIEW', 'REJECTED'])
-        assert.ok(count('DEMO-TROPA-PAID', ` AND r.status='${status}'`) >= 1, `D2 ${status}`);
+        assert.ok(count('TRO-DROVA', ` AND r.status='${status}'`) >= 1, `D2 ${status}`);
       assert.deepEqual(sql.prepare(`SELECT DISTINCT e.review_status s FROM payment_evidence e JOIN activity_registration r ON r.id=e.registration_id
         WHERE r.activity_id=? ORDER BY 1`).all(tropa.id).map(row => row.s), ['ISSUE', 'PENDING_REVIEW', 'VERIFIED'], 'D12');
-      assert.equal(count('DEMO-MANADA-FREE'), 0, 'D3 published without registrations');
-      assert.equal(activity('DEMO-NEW-DRAFT').status, 'DRAFT'); assert.equal(count('DEMO-NEW-DRAFT'), 0, 'D4 discardable');
-      const late = activity('DEMO-ESCOLTA-DRAFT');
+      assert.equal(count('MAN-NUSOS'), 0, 'D3 published without registrations');
+      assert.equal(activity('GRUP-PRIMAVERA').status, 'DRAFT'); assert.equal(count('GRUP-PRIMAVERA'), 0, 'D4 discardable');
+      const late = activity('ESC-PREPARACIO');
       assert.ok(late.status === 'DRAFT' && late.registration_deadline < now && late.price_cents > 0, 'D5');
-      const running = activity('DEMO-CLAN-NOW');
+      const running = activity('CLA-HIVERN');
       assert.ok(running.starts_at <= now && now <= running.ends_at, 'D6 in progress');
-      const ended = activity('DEMO-ESCOLTA-ENDED');
+      const ended = activity('ESC-SAFOR');
       assert.ok(ended.status === 'PUBLISHED' && ended.ends_at < now, 'D7 ended, pending close');
-      const closed = activity('DEMO-TROPA-PAST');
-      assert.ok(closed.status === 'CLOSED' && closed.ends_at < now && count('DEMO-TROPA-PAST') > 0, 'D8');
+      const closed = activity('TRO-ESTIU');
+      assert.ok(closed.status === 'CLOSED' && closed.ends_at < now && count('TRO-ESTIU') > 0, 'D8');
       assert.ok(one("SELECT count(*) n FROM activity WHERE price_cents=0").n > 0 && one("SELECT count(*) n FROM activity WHERE price_cents>0").n > 0, 'D9');
       const transport = sql.prepare('SELECT code,price_adjustment_cents c FROM activity_transport_option WHERE activity_id=? ORDER BY code')
-        .all(activity('DEMO-CLAN-PAID').id).map(row => [row.code, row.c]);
+        .all(activity('CLA-SOLIDARI').id).map(row => [row.code, row.c]);
       assert.deepEqual(transport, [['FAMILY', 0], ['GROUP', 300]], 'D10 family transport costs 0 €');
-      assert.equal(one('SELECT count(*) n FROM activity_section WHERE activity_id=?', activity('DEMO-MIXED-OPEN').id).n, 2, 'D11 mixed');
+      assert.equal(one('SELECT count(*) n FROM activity_section WHERE activity_id=?', activity('TRO-ESC-MARXUQUERA').id).n, 2, 'D11 mixed');
       // 3.5F Inscripcions scenarios (REGISTRATIONS.md).
       assert.ok(one("SELECT count(*) n FROM activity_registration WHERE status='WITHDRAWN' AND participant_id IS NULL").n >= 1, 'withdrawn pending request');
       assert.ok(one(`SELECT count(*) n FROM activity_registration r JOIN payment_evidence e ON e.registration_id=r.id
@@ -183,7 +184,7 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
     mkdirSync(resolve(temp, 'node_modules/.bin'), { recursive: true });
     cpSync(resolve(repo, 'gestio/migrations'), resolve(local, 'migrations'), { recursive: true });
     for (const file of ['seed.sql', 'wrangler.toml']) copyFileSync(resolve(repo, 'gestio', file), resolve(local, file));
-    for (const file of ['cli.js', 'data.js']) copyFileSync(resolve(repo, 'gestio/demo', file), resolve(local, 'demo', file));
+    for (const file of ['cli.js', 'data.js', 'names.js']) copyFileSync(resolve(repo, 'gestio/demo', file), resolve(local, 'demo', file));
     symlinkSync(wrangler, resolve(temp, 'node_modules/.bin/wrangler'));
     const cli = resolve(local, 'demo/cli.js');
     const seedOutput = run('node', [cli, 'seed'], temp);
@@ -195,7 +196,7 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
       return JSON.parse(output.slice(output.indexOf('[')))[0].results;
     };
     assert.deepEqual(query('SELECT status,count(*) n FROM annual_fee_obligation_status GROUP BY status ORDER BY status')
-      .map(row => [row.status, row.n]), [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 11]]);
+      .map(row => [row.status, row.n]), [['ISSUE', 7], ['PAID', 12], ['PARTIAL', 10], ['PENDING', 75]]);
     assert.deepEqual(query('PRAGMA foreign_key_check'), []);
     // 3.5G.1 treasury demo: the cash cycle counts nothing, cash and card expenses once, the proposal not at all.
     // 3.5G.2A operations demo on top: partial income 150 €, the multi-line and unpaid expenses once, a 45 € proposal;
@@ -207,13 +208,13 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
     run('node', [cli, 'seed'], temp);
     assert.equal(query('SELECT COUNT(*) n FROM finance_expense_evidence')[0].n, 4,
       'repeat seed does not duplicate synthetic Treasury receipts');
-    assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 41);
+    assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 105);
     assert.equal(query('SELECT COUNT(*) n FROM audit_event WHERE action=\'DEMO_DATASET_SEEDED\'')[0].n, 1);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);
     assert.equal(query('SELECT COUNT(*) n FROM finance_movement')[0].n, 15, 'repeat seed adds no treasury data twice');
     assert.match(run('node', [cli, 'reset'], temp), /Demo ready:/);
     assert.equal(query('SELECT COUNT(*) n FROM finance_round')[0].n, 1);
-    assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 40);
+    assert.equal(query('SELECT COUNT(*) n FROM participant')[0].n, 104);
     assert.equal(query('SELECT COUNT(*) n FROM annual_fee_payment')[0].n, 19);
     const html = readFileSync(resolve(repo, 'gestio/public/index.html'), 'utf8');
     const app = readFileSync(resolve(repo, 'gestio/public/views/activities.js'), 'utf8'); // audit M8: activity view module
@@ -222,4 +223,30 @@ test('empty local seed, repeat seed, and reset preserve isolation and restore a 
     assert.doesNotMatch(html, /id="activityForm"/, '3.5D: the legacy form embedded in the list is gone');
     assert.match(app, /fetchAllPages\(call, '\/api\/activities', 'activities'\)/);
   } finally { rmSync(temp, { recursive: true, force: true }); }
+});
+
+// 3.5I: the local demo looks like a real group — 104 educands with unique realistic names, no visible «Demo» or
+// «fictici» text — while every address stays on @example.test and evidence keeps its synthetic marker.
+test('realistic demo: 104 educands, unique names, nothing visible says demo/fictitious; synthetic fences kept', async () => {
+  const { buildTreasuryOperationsDemo, buildTreasuryIncomeDemo } = await import('../gestio/demo/data.js');
+  const demo = buildDemoData();
+  const sql = new DatabaseSync(':memory:');
+  try {
+    sql.exec('PRAGMA foreign_keys=ON');
+    for (const name of readdirSync(resolve(repo, 'gestio/migrations')).filter(name => name.endsWith('.sql')).sort())
+      sql.exec(readFileSync(resolve(repo, 'gestio/migrations', name), 'utf8'));
+    sql.exec(readFileSync(resolve(repo, 'gestio/seed.sql'), 'utf8'));
+    sql.exec(demo.sql); sql.exec(buildTreasuryDemo()); sql.exec(buildTreasuryOperationsDemo()); sql.exec(buildTreasuryIncomeDemo());
+    const q = query => sql.prepare(query).all();
+    assert.equal(q('SELECT count(*) n FROM participant')[0].n, 104);
+    assert.deepEqual(q('SELECT display_name FROM participant GROUP BY display_name HAVING count(*)>1'), [], 'no accidental homonyms (matching stays deterministic)');
+    const visible = q(`SELECT display_name v FROM participant UNION ALL SELECT display_name FROM app_user UNION ALL SELECT name||' '||public_code||' '||location FROM activity
+      UNION ALL SELECT display_name FROM guardian UNION ALL SELECT submitted_name||' '||submitted_by_name FROM activity_registration UNION ALL SELECT display_name FROM finance_counterparty
+      UNION ALL SELECT reference FROM annual_fee_family_group UNION ALL SELECT submitted_by_name FROM annual_fee_payment UNION ALL SELECT account_holder FROM annual_fee_round`)
+      .map(row => row.v).filter(value => /demo|ficti|de prova|sintètic/i.test(value ?? ''));
+    assert.deepEqual(visible, []);
+    assert.deepEqual(q("SELECT value FROM contact_point WHERE kind='EMAIL' AND value NOT LIKE '%@example.test'"), [], 'addresses stay synthetic');
+    assert.deepEqual(q("SELECT notification_email FROM participant_contact WHERE notification_email NOT LIKE '%@example.test'"), []);
+    assert.match(demo.pdf.toString('utf8'), /SYNTHETIC DEMO/, 'evidence keeps its synthetic marker (SYNTHETIC_ONLY fence)');
+  } finally { sql.close(); }
 });

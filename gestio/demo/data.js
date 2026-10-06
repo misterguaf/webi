@@ -1,7 +1,11 @@
 import { createHash } from 'node:crypto';
 import { deflateSync } from 'node:zlib';
+import { childName, familyOf, mailOf, personName } from './names.js';
 
-// Fixed, obviously fictional fixtures; existing canonical seed records are synthetic too.
+// Fixed fictional fixtures for the LOCAL demo. Since 3.5I the people look real (invented Valencian names, see
+// names.js) so Gestió can be reviewed as if it were in use; addresses stay on @example.test and evidence files keep
+// their synthetic marker. The canonical seed (seed.sql, used by tests) keeps its «(fictici)» names; the demo only
+// renames its visible records in the local demo database.
 const id = number => `00000000-0000-4000-8000-${String(number).padStart(12, '0')}`;
 const section = number => id(number);
 const coordinator = id(101);
@@ -59,6 +63,32 @@ export function demoPdf() {
   return Buffer.from(pdf);
 }
 
+// Visible names the demo gives to the canonical seed records (accounts 101–107, participants 501–505, activities 801–805).
+const SEED_PEOPLE = ['Lola Sanchis Gomar', 'Pau Mascarell Ribes', 'Carla Estruch Ivars', 'Jordi Pellicer Nadal', 'Irene Bolta Server'];
+const SEED_USERS = { 101: 'Teresa Climent Faus', 102: 'Vicent Sendra Llorca', 103: 'Marina Peiró Tur', 104: 'Miquel Ortolà Puig',
+  105: 'Anna Benavent Soler', 106: 'Carles Vidal Moll', 107: 'Lluís Bataller Grau' };
+const SEED_ACTIVITIES = {
+  801: ['TRO-PLATJA', 'Eixida a la platja de l’Ahuir · Tropa', 'Platja de l’Ahuir', 'Jocs a la platja i berenar.', 'Banyador, tovallola i crema solar'],
+  802: ['ESC-BARX', 'Acampada a Barx · Esculta', 'Àrea d’acampada de Barx', 'Dues nits d’acampada amb construccions.', 'Sac, esterilla i frontal'],
+  803: ['GRUP-PORTES', 'Jornada de portes obertes', 'Local del grup', 'Matí de jocs per a famílies noves.', ''],
+  804: ['TRO-CALENDARI', 'Calendari del segon trimestre', 'Local del grup', '', ''],
+  805: ['TRO-NETEJA', 'Neteja de la muntanya · Tropa', 'Serra de Mariola', 'Recollida de residus amb la Tropa.', 'Guants i bossa'] };
+/** Statements that give the canonical seed records realistic visible names in the local demo database. */
+function seedRenames(sqlValue) {
+  const people = ['501','502','503','504','505'].map((n, index) => [id(Number(n)), SEED_PEOPLE[index]]);
+  const key = name => name.toLocaleLowerCase('ca').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return [
+    ...Object.entries(SEED_USERS).map(([n, name]) => `UPDATE app_user SET display_name=${sqlValue(name)} WHERE id=${sqlValue(id(Number(n)))};`),
+    ...people.map(([pid, name]) => `UPDATE participant SET display_name=${sqlValue(name)} WHERE id=${sqlValue(pid)};`),
+    ...people.map(([pid, name]) => `UPDATE activity_registration SET submitted_name=${sqlValue(name)},match_key=${sqlValue(key(name))} WHERE participant_id=${sqlValue(pid)};`),
+    ...people.map(([pid, name]) => `UPDATE participant_contact SET notification_email=${sqlValue(mailOf(`familia ${name.split(' ').slice(1).join(' ')}`))} WHERE participant_id=${sqlValue(pid)};`),
+    ...Object.entries(SEED_ACTIVITIES).map(([n, [code, name, place, description, materials]]) =>
+      `UPDATE activity SET public_code=${sqlValue(code)},name=${sqlValue(name)},location=${sqlValue(place)},short_description=${sqlValue(description)},materials=${sqlValue(materials)} WHERE id=${sqlValue(id(Number(n)))};`),
+    `UPDATE annual_fee_round SET account_holder='Grup Scout Parpalló' WHERE id=${sqlValue(id(901))};`,
+    `UPDATE delegated_permission SET authorization_reference='ACTA-CONSELL-2026-03',ratification_reference='ACTA-CONSELL-2026-04' WHERE id=${sqlValue(id(741))};`
+  ].join('\n') + '\n';
+}
+
 export const DEMO_MARKER_ID = id(14001);
 export const DEMO_VERSION = 'gestio-demo-v2';
 
@@ -68,60 +98,62 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const imageKeys = new Set();
   const evidenceKeys = new Set(['fixture-only/no-binary']); // Repair the canonical synthetic 3A evidence link locally.
   const participants = [501, 502, 503, 504, 505].map((number, index) => ({id:id(number), number,
-    name:['Participante Manada A (ficticio)','Participante Tropa A (ficticio)','Participante Tropa B (ficticio)',
-      'Participante Esculta A (ficticio)','Participante Clan A (ficticio)'][index],
+    name:SEED_PEOPLE[index],
     section:[1,2,2,3,4][index], birth:['2017-06-12','2013-05-18','2012-11-03','2009-04-26','2007-08-09'][index]}));
-  const familySizes = [1,1,1,1,1,2,2,2,3,3,3,3,4,4,4];
+  // The first 15 families (35 children) carry every fee/registration scenario and stay as they were; 3.5I adds
+  // 45 more families (64 children) so the group has 104 educands with siblings in several sections.
+  const familySizes = [1,1,1,1,1,2,2,2,3,3,3,3,4,4,4,
+    ...Array(30).fill(1),...Array(11).fill(2),...Array(4).fill(3)];
   const families = [];
   let nextParticipant = 1001;
   // Explicit section sequence avoids any dependence on the existing seed's names or contacts.
-  const sectionSequence = Array.from({length:35},(_,index)=>[1,2,3,4][index%4]);
+  const sectionSequence = Array.from({length:99},(_,index)=>[1,2,3,4][index%4]);
   for(let familyIndex=0;familyIndex<familySizes.length;familyIndex++){
     const members=[];
     for(let child=1;child<=familySizes[familyIndex];child++){
       const number=nextParticipant++, sectionNumber=sectionSequence[number-1001];
-      const name=`Família Demo ${String(familyIndex+1).padStart(2,'0')} · Fill ${child}`;
+      const name=childName(familyIndex,child);
       const birthYear={1:2017,2:2013,3:2009,4:2007}[sectionNumber];
       const person={id:id(number),number,name,section:sectionNumber,
         birth:`${birthYear}-${String((number%12)+1).padStart(2,'0')}-${String((number%25)+1).padStart(2,'0')}`};
       members.push(person);participants.push(person);
     }
-    families.push({number:familyIndex+1,members});
+    families.push({number:familyIndex+1,members,...familyOf(familyIndex)});
   }
   const byNumber = new Map(participants.map(person=>[person.number,person]));
   const participantRows = participants.slice(5).map(person=>[person.id,person.name,section(person.section),'ACTIVE',person.birth]);
-  const contactRows = participants.slice(5).map(person=>[person.id,`familia-demo-${person.number}@example.test`,createdAt]);
+  const contactRows = participants.slice(5).map(person=>[person.id,mailOf(`familia ${person.name.split(' ').slice(1).join(' ')} ${person.number}`),createdAt]);
   // 3.5D (ACTIVITIES.md §21): activity scenarios D1–D12 are relative to the seed time T so that "deadline
   // soon", "in progress" and "ended" stay true whenever the demo is rebuilt. Fee data does not depend on them.
   const T = now, HOUR = 3600000, DAY = 24 * HOUR;
   const day = (offset, hour = 10) => { const d = new Date(T); d.setUTCHours(0, 0, 0, 0); return d.getTime() + offset * DAY + hour * HOUR; };
   const activities = [
     // D1 GENERAL, published, a few registrations incl. one pending review.
-    {n:11002,code:'DEMO-GENERAL-OPEN',name:'Jornada Demo · tot el grup',status:'PUBLISHED',audience:'GENERAL',sections:[],price:0,start:day(21),end:day(21,17),deadline:day(14,20)},
+    {n:11002,code:'GRUP-GERMANOR',name:'Jornada de germanor · tot el grup',place:'Parc de Sant Pere',status:'PUBLISHED',audience:'GENERAL',sections:[],price:0,start:day(21),end:day(21,17),deadline:day(14,20)},
     // D2 Tropa, paid, many registrations, deadline in under 48h; D12 evidence pending / issue / verified.
-    {n:11003,code:'DEMO-TROPA-PAID',name:'Eixida Demo · Tropa',status:'PUBLISHED',audience:'SECTIONS',sections:[2],price:1500,start:day(10),end:day(11,17),deadline:T+40*HOUR},
+    {n:11003,code:'TRO-DROVA',name:'Eixida a la Drova · Tropa',place:'Alberg de la Drova',status:'PUBLISHED',audience:'SECTIONS',sections:[2],price:1500,start:day(10),end:day(11,17),deadline:T+40*HOUR},
     // D3 published without registrations.
-    {n:11004,code:'DEMO-MANADA-FREE',name:'Taller Demo · Manada',status:'PUBLISHED',audience:'SECTIONS',sections:[1],price:0,start:day(30),end:day(30,14),deadline:day(20,20)},
+    {n:11004,code:'MAN-NUSOS',name:'Taller de nusos · Manada',place:'Local del grup',status:'PUBLISHED',audience:'SECTIONS',sections:[1],price:0,start:day(30),end:day(30,14),deadline:day(20,20)},
     // D4 DRAFT, GENERAL, free: discardable.
-    {n:11001,code:'DEMO-NEW-DRAFT',name:'Projecte Demo · esborrany',status:'DRAFT',audience:'GENERAL',sections:[],price:0,start:day(40),end:day(41,17),deadline:day(30,20),
+    {n:11001,code:'GRUP-PRIMAVERA',name:'Projecte de primavera',place:'Per decidir',status:'DRAFT',audience:'GENERAL',sections:[],price:0,start:day(40),end:day(41,17),deadline:day(30,20),
       description:''},
     // D5 DRAFT, section, paid, deadline already past (cannot be published until edited).
-    {n:11008,code:'DEMO-ESCOLTA-DRAFT',name:'Activitat Demo · preparació',status:'DRAFT',audience:'SECTIONS',sections:[3],price:500,start:day(5),end:day(5,18),deadline:day(-1,20)},
+    {n:11008,code:'ESC-PREPARACIO',name:'Preparació de la ruta · Esculta',place:'Local del grup',status:'DRAFT',audience:'SECTIONS',sections:[3],price:500,start:day(5),end:day(5,18),deadline:day(-1,20)},
     // D6 published, in progress.
-    {n:11009,code:'DEMO-CLAN-NOW',name:'Campament Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:T-DAY,end:T+DAY,deadline:T-3*DAY},
+    {n:11009,code:'CLA-HIVERN',name:'Campament d’hivern · Clan',place:'Refugi del Benicadell',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:T-DAY,end:T+DAY,deadline:T-3*DAY},
     // D7 published, ended, pending close.
-    {n:11010,code:'DEMO-ESCOLTA-ENDED',name:'Ruta Demo · Esculta',status:'PUBLISHED',audience:'SECTIONS',sections:[3],price:0,start:day(-10,9),end:day(-9,18),deadline:day(-14,20)},
+    {n:11010,code:'ESC-SAFOR',name:'Ruta pel circ de la Safor · Esculta',place:'Circ de la Safor',status:'PUBLISHED',audience:'SECTIONS',sections:[3],price:0,start:day(-10,9),end:day(-9,18),deadline:day(-14,20)},
     // D8 closed, past, with registrations (a historical Tropa intake whose participant is now in Escolta).
-    {n:11005,code:'DEMO-TROPA-PAST',name:'Campament d’estiu Demo · Tropa',status:'CLOSED',audience:'SECTIONS',sections:[2],price:1200,start:day(-60,9),end:day(-58,17),deadline:day(-67,20)},
-    {n:11006,code:'DEMO-ESCOLTA-PAST',name:'Ruta d’hivern Demo · Esculta',status:'CLOSED',audience:'SECTIONS',sections:[3],price:0,start:day(-120,9),end:day(-119,17),deadline:day(-127,20)},
+    {n:11005,code:'TRO-ESTIU',name:'Campament d’estiu · Tropa',place:'Campament de Bocairent',status:'CLOSED',audience:'SECTIONS',sections:[2],price:1200,start:day(-60,9),end:day(-58,17),deadline:day(-67,20)},
+    {n:11006,code:'ESC-MONTDUVER',name:'Ruta d’hivern al Montdúver · Esculta',place:'Montdúver',status:'CLOSED',audience:'SECTIONS',sections:[3],price:0,start:day(-120,9),end:day(-119,17),deadline:day(-127,20)},
     // D10 paid with group transport supplement (GROUP +3 €, FAMILY 0 €).
-    {n:11007,code:'DEMO-CLAN-PAID',name:'Projecte Demo · Clan',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:day(15,9),end:day(17,17),deadline:day(7,20),
+    {n:11007,code:'CLA-SOLIDARI',name:'Projecte solidari · Clan',place:'Alberg de Xàtiva',status:'PUBLISHED',audience:'SECTIONS',sections:[4],price:2300,start:day(15,9),end:day(17,17),deadline:day(7,20),
       transport:[['GROUP',300],['FAMILY',0]]},
     // D11 mixed Tropa + Escolta (read-only for a Tropa-only coordinator).
-    {n:11011,code:'DEMO-MIXED-OPEN',name:'Excursió Demo · Tropa i Esculta',status:'PUBLISHED',audience:'SECTIONS',sections:[2,3],price:0,start:day(25,8),end:day(25,19),deadline:day(15,20)}
+    {n:11011,code:'TRO-ESC-MARXUQUERA',name:'Excursió a Marxuquera · Tropa i Esculta',place:'Marxuquera',status:'PUBLISHED',audience:'SECTIONS',sections:[2,3],price:0,start:day(25,8),end:day(25,19),deadline:day(15,20)}
   ];
-  const activityRows=activities.map(a=>[id(a.n),a.code,a.name,a.status,a.audience,'Espai fictici',a.start,a.end,a.deadline,a.price,'EUR',
-    a.description??'Contingut sintètic per a proves de Gestió.','Material de demostració.','',coordinator,
+  const activityRows=activities.map(a=>[id(a.n),a.code,a.name,a.status,a.audience,a.place,a.start,a.end,a.deadline,a.price,'EUR',
+    a.description??'Activitat del calendari del grup. Les famílies reben la informació detallada per correu.','Roba còmoda, aigua i esmorzar.','',coordinator,
     Math.min(T-45*DAY,a.deadline-20*DAY),Math.min(T-45*DAY,a.deadline-20*DAY)]);
   const activitySectionRows=activities.flatMap(a=>a.sections.map(sectionNumber=>[id(a.n),section(sectionNumber)]));
   const transportRows=activities.flatMap(a=>(a.transport??[]).map(([code,cents])=>[id(a.n),code,cents]));
@@ -130,7 +162,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     const person=byNumber.get(participantNumber);
     const activity=activities.find(a=>a.n===activityNumber);
     const number=12001+regs.length;
-    const name=opts.name||person?.name||'Sol·licitud Demo sense fitxa';
+    const name=opts.name||person?.name||personName(900+regs.length);
     const transport=opts.transport??(activity.transport?'GROUP':null);
     const adjustment=activity.transport?.find(([code])=>code===transport)?.[1]??0;
     regs.push({number,activityNumber,person,status,matchStatus,name,sectionNumber:opts.section||person?.section||2,
@@ -143,7 +175,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const rejected=(activity,name,sectionNumber)=>addReg(activity,null,'REJECTED','REJECTED',{name,section:sectionNumber});
   // D1
   addReg(11002,1001,'CONFIRMED'); addReg(11002,1002,'CONFIRMED'); addReg(11002,1003,'CONFIRMED');
-  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','AMBIGUOUS',{name:'Família Demo · coincidència dubtosa',section:2,birth:'2013-04-10'});
+  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','AMBIGUOUS',{name:'Martí Ferrer García',section:2,birth:'2013-04-10'});
   // D2: 20 registrations mixing confirmed, pending review, pending payment and rejected.
   for(const n of [1002,1006,1010,1018,1022,1026,1030])addReg(11003,n,'CONFIRMED');
   // 3.5F: confirmed and paid, then withdrawn by the family; the verified payment stays (no refund implied).
@@ -154,18 +186,18 @@ export function buildDemoData({ now = Date.now() } = {}) {
   addReg(11003,503,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW',mime:'image/png'});
   // An incidence after a first instalment: the 5 € already verified are kept.
   addReg(11003,1014,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'ISSUE',paid:500});
-  [['Demo Sol·licitud sense fitxa','2013-07-11'],['Demo Persona Nova Tropa','2012-02-03'],['Demo Germana Petita','2014-09-21']]
+  [[personName(301),'2013-07-11'],[personName(302),'2012-02-03'],[personName(303),'2014-09-21']]
     .forEach(([name,birth])=>pending(11003,name,2,birth));
-  [['Demo Sol·licitud duplicada',2],['Demo Secció equivocada',2]].forEach(([name,sectionNumber])=>rejected(11003,name,sectionNumber));
+  [[personName(304),2],[personName(305),2]].forEach(([name,sectionNumber])=>rejected(11003,name,sectionNumber));
   // 3.5F: a withdrawal is not a rejection.
-  addReg(11003,null,'WITHDRAWN','NONE',{name:'Demo Sol·licitud retirada',section:2,withdrawn:'FAMILY_COMMUNICATION'});
-  pending(11003,'Demo Inscripció tardana',2,'2013-01-15');
-  pending(11003,'Demo Nom incomplet',2,'2012-06-30');
-  pending(11003,'Demo Família nova',2,'2013-11-02');
+  addReg(11003,null,'WITHDRAWN','NONE',{name:personName(306),section:2,withdrawn:'FAMILY_COMMUNICATION'});
+  pending(11003,personName(307),2,'2013-01-15');
+  pending(11003,personName(308),2,'2012-06-30');
+  pending(11003,personName(309),2,'2013-11-02');
   // D6
   // 3.5F: withdrawn after paying, then a new request: the withdrawn registration stays as history.
   addReg(11009,1004,'WITHDRAWN','CLEAR',{evidence:'VERIFIED',withdrawn:'FAMILY_COMMUNICATION'});
-  addReg(11009,1004,'CONFIRMED'); addReg(11009,1008,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'}); rejected(11009,'Demo Sol·licitud rebutjada',4);
+  addReg(11009,1004,'CONFIRMED'); addReg(11009,1008,'AWAITING_PAYMENT_REVIEW','CLEAR',{evidence:'PENDING_REVIEW'}); rejected(11009,personName(310),4);
   // D7
   addReg(11010,1007,'CONFIRMED'); addReg(11010,1011,'CONFIRMED');
   // D8
@@ -177,7 +209,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   // 13 € / 23 € partial with one incidence still open on B.
   addReg(11007,1016,'AWAITING_PAYMENT_REVIEW','CLEAR',{transport:'FAMILY',evidence:'VERIFIED',paid:1000,
     attempts:[{status:'ISSUE'},{status:'VERIFIED',paid:300}]});
-  rejected(11007,'Demo Sol·licitud Clan rebutjada',4);
+  rejected(11007,personName(311),4);
   // D11
   addReg(11011,1006,'CONFIRMED'); addReg(11011,1011,'CONFIRMED','CLEAR',{section:3});
   // D13 (3.5F, REGISTRATIONS.md): manual link, escalation to global review, manual escalation and a
@@ -187,15 +219,15 @@ export function buildDemoData({ now = Date.now() } = {}) {
   addReg(11011,free(11011,2).number,'CONFIRMED','RESOLVED',{reviewed:true});
   const escolta=free(11002,3);
   addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:escolta.name,section:2,birth:escolta.birth,escalation:'POSSIBLE_OTHER_SECTION'});
-  addReg(11003,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Diu la família que és d’Esculta',section:2,birth:'2010-03-03',escalation:'REVIEWER_REQUEST'});
-  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:'Demo Secció corregida',section:2,birth:'2006-05-05',correctedTo:4});
+  addReg(11003,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:personName(312),section:2,birth:'2010-03-03',escalation:'REVIEWER_REQUEST'});
+  addReg(11002,null,'NEEDS_PARTICIPANT_REVIEW','NONE',{name:personName(313),section:2,birth:'2006-05-05',correctedTo:4});
   const registrationRows=regs.map(r=>[id(r.number),id(r.activityNumber),r.person?.id??null,r.name,
     r.name.toLocaleLowerCase('ca').normalize('NFD').replace(/[̀-ͯ]/g,''),section(r.sectionNumber),
-    `inscripcio-demo-${r.number}@example.test`,r.transport,r.amount,r.matchStatus,r.status,'DEMO-3A',
+    mailOf(`${r.name} ${r.number}`),r.transport,r.amount,r.matchStatus,r.status,'DEMO-3A',
     'DEMO-3A-PARTICIPATION-V1',r.created,'DEMO-3A-PRIVACY-NOTICE-V1',r.created,
     `demo-registration-${r.number}`,createHash('sha256').update(`registration-${r.number}`).digest('hex'),r.created,r.created,
     r.status==='REJECTED'||r.reviewed?coordinator:null,r.status==='REJECTED'||r.reviewed?r.created:null,
-    'Tutor de demostració',r.number%3?`600 00${String(r.number).slice(-2)} 0${r.number%10}`:null,r.status==='NEEDS_PARTICIPANT_REVIEW'?r.birth:null,
+    personName(r.number,{adult:true}),r.number%3?`600 00${String(r.number).slice(-2)} 0${r.number%10}`:null,r.status==='NEEDS_PARTICIPANT_REVIEW'?r.birth:null,
     r.escalation?'GLOBAL':'SECTION',r.escalation,r.escalation?r.created:null,r.escalation==='REVIEWER_REQUEST'?id(102):null,
     r.withdrawn?r.created+HOUR:null,r.withdrawn?coordinator:null,r.withdrawn]);
   // Section corrections happen after the insert (the declared section is kept), with their history.
@@ -223,7 +255,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const familyGroupRows=[];const familyMemberRows=[];const familyForPerson=new Map();
   for(const family of families.filter(f=>f.members.length>=2)){
     const groupId=id(2000+family.number);
-    familyGroupRows.push([groupId,round,`DEMO-FAM-${String(family.number).padStart(2,'0')}`,treasury,createdAt]);
+    familyGroupRows.push([groupId,round,`FAM-${String(family.number).padStart(3,'0')} ${family.first}`,treasury,createdAt]);
     family.members.forEach((person,index)=>{familyForPerson.set(person.id,{id:groupId,ordinal:index+1});
       familyMemberRows.push([groupId,round,person.id,index+1,treasury,createdAt]);});
   }
@@ -246,8 +278,9 @@ export function buildDemoData({ now = Date.now() } = {}) {
     const amounts=selected.map(o=>Math.floor(o.due*fraction));
     const allocated=amounts.reduce((a,b)=>a+b,0),verified=status==='VERIFIED'?allocated+residual:null;
     const key=`synthetic/demo-fee-${number}.pdf`;evidenceKeys.add(key);
-    paymentRows.push([paymentId,round,`pagament-demo-${number}@example.test`,
-      `Família Demo · pagament ${number}`,null,allocated+residual||10000,verified,
+    const payer=selected[0]?.person.name.split(' ').slice(1).join(' ')??personName(number,{adult:true});
+    paymentRows.push([paymentId,round,mailOf(`familia ${payer} ${number}`),
+      `Família ${payer}`,null,allocated+residual||10000,verified,
       status==='VERIFIED'?'ISSUE':status,`demo-fee-payment-${number}`,createHash('sha256').update(`fee-${number}`).digest('hex'),
       'DEMO-3B-PRIVACY-NOTICE-V1',createdAt,createdAt,status==='VERIFIED'?treasury:null,status==='VERIFIED'?createdAt:null]);
     for(const o of selected)personRows.push([id(nextSubmitted++),paymentId,o.person.name,
@@ -267,7 +300,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const residualPayment=addPayment([505],{fraction:0.2,residual:3000});
   const pendingPayment=addPayment([1004],{status:'PENDING_REVIEW'});
   const ambiguousPayment=addPayment([],{status:'ISSUE'});
-  personRows.push([id(nextSubmitted++),ambiguousPayment.id,'Demo Coincidència Dubtosa','demo coincidencia dubtosa',
+  personRows.push([id(nextSubmitted++),ambiguousPayment.id,'Nil Ferrer Llopis','nil ferrer llopis',
     '2013-02-14',section(2),null,'AMBIGUOUS',null,null]);
   const installmentPeople=[503,1002,1007];
   const installmentRows=installmentPeople.map((n,index)=>{
@@ -289,7 +322,9 @@ export function buildDemoData({ now = Date.now() } = {}) {
   const link=(participantNumber,n,{rel='PARENT',rep=false,basis=null}={})=>linkRows.push(
     [id(19000+linkRows.length+1),id(participantNumber),G(n),rel,rep?1:0,createdAt,rep?basis:null,coordinator,'DOCUMENTACIO_FISICA',createdAt,coordinator]);
   const gcontact=(cn,n,kind,value,primary=true)=>guardianContactRows.push([id(16000+cn),null,G(n),kind,value,'GENERAL',primary?1:0,null,createdAt,null]);
-  guardian(1,'Mare Demo (ficticia)'); guardian(2,'Pare Demo (fictici)'); guardian(3,'Àvia Demo (ficticia)'); guardian(4,'Tutor legal Demo (fictici)');
+  const f6=families[5], f9=families[8];
+  guardian(1,`${f6.mother} ${f6.second} ${familyOf(200).first}`); guardian(2,`${f6.father} ${f6.first} ${familyOf(201).second}`);
+  guardian(3,`Carme ${f9.first} Pastor`); guardian(4,`${familyOf(202).father} ${familyOf(202).surnames}`);
   // Shared guardians across Tropa (1006) and Escolta (1007); the mother is a communicated representative.
   link(1006,1,{rep:true,basis:'COMUNICAT'}); link(1007,1,{});
   link(1006,2,{}); link(1007,2,{});
@@ -297,8 +332,19 @@ export function buildDemoData({ now = Date.now() } = {}) {
   link(1008,3,{rel:'LEGAL_GUARDIAN',rep:true,basis:'ACREDITAT'}); link(1009,3,{rel:'LEGAL_GUARDIAN'});
   // A guardian without a representative, on a Clan participant.
   link(1012,4,{});
-  gcontact(1,1,'PHONE','600111222'); gcontact(2,1,'EMAIL','mare.demo@example.test');
-  gcontact(3,2,'PHONE','600333444'); gcontact(4,3,'PHONE','600555666'); gcontact(5,4,'EMAIL','tutor.demo@example.test');
+  gcontact(1,1,'PHONE','600111222'); gcontact(2,1,'EMAIL',mailOf(guardianRows[0][1]));
+  gcontact(3,2,'PHONE','600333444'); gcontact(4,3,'PHONE','600555666'); gcontact(5,4,'EMAIL',mailOf(guardianRows[3][1]));
+  // 3.5I: the families added for 104 educands have a mother (phone + e-mail) and, in most, a father, as in a real group.
+  let nextGuardian=100, nextContact=100;
+  for(const family of families.slice(15)){
+    guardian(nextGuardian++,`${family.mother} ${family.second} ${familyOf(family.number+300).second}`);
+    for(const person of family.members)link(person.number,nextGuardian-1,{});
+    // Same 600 0xx xxx pattern as the rest of the demo (never a plausible real number range is generated on purpose).
+    gcontact(nextContact++,nextGuardian-1,'PHONE',`6000${String(family.number).padStart(2,'0')}${String(family.number*37%1000).padStart(3,'0')}`);
+    gcontact(nextContact++,nextGuardian-1,'EMAIL',mailOf(guardianRows.at(-1)[1]));
+    if(family.number%3){ guardian(nextGuardian++,`${family.father} ${family.first} ${familyOf(family.number+400).first}`);
+      for(const person of family.members)link(person.number,nextGuardian-1,{}); }
+  }
   repEventRows.push([id(17001),id(1006),G(1),'SET_REPRESENTATIVE','COMUNICAT','DOCUMENTACIO_FISICA',null,coordinator,createdAt]);
   repEventRows.push([id(17002),id(1008),G(3),'ACCREDIT','ACREDITAT','DOCUMENTACIO_FISICA',null,coordinator,createdAt]);
   // An open representation review, an open shared-guardian change request and a possible duplicate.
@@ -340,11 +386,13 @@ export function buildDemoData({ now = Date.now() } = {}) {
     insert('participant_representation_event',['id','participant_id','guardian_id','action','basis','provenance','note','recorded_by','recorded_at'],repEventRows),
     insert('participant_review',['id','kind','status','participant_id','guardian_id','duplicate_of','detail','payload_json','created_by','created_at'],reviewRows),
     `UPDATE payment_evidence SET sha256=${sqlValue(digest)}, size_bytes=${pdf.length} WHERE object_key='fixture-only/no-binary';\n`,
+    // 3.5I: realistic visible names for the canonical seed records too (local demo database only).
+    seedRenames(sqlValue),
     insert('audit_event',['id','occurred_at','created_at','request_id','actor_user_id','action','resource_type','resource_id','result','reason_code','security_relevant'],[markerRow])
   ];
   return {sql:chunks.join(''),evidenceKeys:[...evidenceKeys],imageKeys:[...imageKeys],pdf,png,
-    expected:{participants:40,activities:16,registrations:43,rounds:1,obligations:40,payments:19,
-      families:{single:10,pair:3,triple:4,quadruple:3}}};
+    expected:{participants:104,activities:16,registrations:43,rounds:1,obligations:104,payments:19,
+      families:{single:40,pair:14,triple:8,quadruple:3}}};
 }
 
 // 3.5G.1 financial foundation demo (TREASURY.md): round 2026/27 linked to the fee round, bank, card and
@@ -398,7 +446,7 @@ export function buildTreasuryDemo() {
     insert('finance_budget_revision', ['id', 'budget_id', 'line_id', 'delta_cents', 'proposed_by', 'proposed_at'], [[id(21061), id(21051), id(21123), 50000, u, T]]),
     `UPDATE finance_budget_revision SET status='APPROVED',decided_by=${sqlValue(c)},decided_at=${T + 7200000},version=2 WHERE id=${sqlValue(id(21061))};\n`,
     insert('finance_counterparty', ['id', 'kind', 'display_name', 'created_by', 'created_at', 'updated_at'],
-      [[scouter, 'PERSON', 'Scouter Demo (fictici)', u, T, T], [id(21402), 'ORGANIZATION', 'Supermercat Demo (fictici)', u, T, T]]),
+      [[scouter, 'PERSON', 'Jaume Seguí Reig', u, T, T], [id(21402), 'ORGANIZATION', 'Supermercat La Plaça', u, T, T]]),
     insert('finance_expense', ['id', 'round_id', 'expense_date', 'supplier_label', 'total_cents', 'payment_method', 'advanced_by_id', 'created_by', 'created_at', 'updated_at'],
       [expense(21301, '2026-10-14', 43000, 'CASH'), expense(21302, '2026-10-20', 3000, 'CARD'), expense(21303, '2026-10-22', 2500, 'ADVANCED', scouter)]),
     insert('finance_expense_line', ['expense_id', 'lines_version', 'line_no', 'budget_line_id', 'amount_cents'],
@@ -439,18 +487,18 @@ export function buildTreasuryOperationsDemo() {
       line(22110, '2.1', 'Campament de Nadal', 'EXPENSE', 21120), line(22111, '2.1.1', 'Transport', 'EXPENSE', 22110),
       line(22112, '2.1.2', 'Allotjament', 'EXPENSE', 22110), line(22120, '3.1', 'Material', 'EXPENSE', 21130)]),
     insert('finance_counterparty', ['id', 'kind', 'display_name', 'created_by', 'created_at', 'updated_at'], [
-      [id(22401), 'ORGANIZATION', 'Autocars Demo (fictici)', u, T, T], [id(22402), 'ORGANIZATION', 'Alberg Demo (fictici)', u, T, T],
-      [id(22403), 'ORGANIZATION', 'Ferreteria Demo (fictici)', u, T, T]]),
+      [id(22401), 'ORGANIZATION', 'Autocars La Safor', u, T, T], [id(22402), 'ORGANIZATION', 'Alberg de la Drova', u, T, T],
+      [id(22403), 'ORGANIZATION', 'Ferreteria Sant Josep', u, T, T]]),
     insert('finance_import_batch', ['id', 'position_id', 'source_format', 'file_sha256', 'row_count', 'created_count', 'duplicate_count', 'flagged_count', 'status', 'imported_by', 'imported_at'],
       [[id(22050), bank, 'SYNTHETIC_CSV_V1', hash('DEMO-IMPORT-BATCH-22050'), 5, 5, 0, 1, 'PARTIALLY_FLAGGED', u, T]]),
     insert('finance_movement', ['id', 'position_id', 'operation_date', 'amount_cents', 'origin', 'import_batch_id', 'batch_row', 'bank_reference', 'fingerprint', 'display_label', 'review_flag', 'created_by', 'created_at'], [
-      imported(22201, 1, '2026-10-21', 45000, 'DEMO-0101'), imported(22202, 2, '2026-10-22', -12000, 'DEMO-0102'),
-      imported(22203, 3, '2026-10-23', -8550, 'DEMO-0103'), imported(22204, 4, '2026-10-23', -8550, 'DEMO-0104', 'NEAR_MATCH'),
-      imported(22205, 5, '2026-10-24', 20000, 'DEMO-0105')]),
+      imported(22201, 1, '2026-10-21', 45000, 'TRF-261021'), imported(22202, 2, '2026-10-22', -12000, 'TRF-261022'),
+      imported(22203, 3, '2026-10-23', -8550, 'TRF-261023'), imported(22204, 4, '2026-10-23', -8550, 'TRF-261024', 'NEAR_MATCH'),
+      imported(22205, 5, '2026-10-24', 20000, 'TRF-261025')]),
     insert('finance_movement_description', ['movement_id', 'original_text'], [
-      [id(22201), 'TRANSFERENCIA RECIBIDA FAMILIA DEMO (fictici) QUOTES OCTUBRE'], [id(22202), 'RECIBO LLOGUER FURGONETA DEMO (fictici)'],
-      [id(22203), 'COMPRA TARGETA FERRETERIA DEMO (fictici)'], [id(22204), 'COMPRA TARGETA FERRETERIA DEMO (fictici) REF 2'],
-      [id(22205), 'TRANSFERENCIA AJUNTAMENT DEMO (fictici) SUBVENCIO']]),
+      [id(22201), 'TRANSFERENCIA RECIBIDA FAMILIA FERRER LLOPIS QUOTES OCTUBRE'], [id(22202), 'RECIBO LLOGUER FURGONETA AUTOCARS LA SAFOR'],
+      [id(22203), 'COMPRA TARGETA FERRETERIA SANT JOSEP'], [id(22204), 'COMPRA TARGETA FERRETERIA SANT JOSEP REF 2'],
+      [id(22205), 'TRANSFERENCIA AJUNTAMENT SUBVENCIO ACTIVITATS JUVENILS']]),
     insert('finance_movement', ['id', 'position_id', 'operation_date', 'amount_cents', 'origin', 'fingerprint', 'display_label', 'created_by', 'created_at'],
       [[id(22206), bank, '2026-10-26', -36000, 'MANUAL', hash(`MANUAL|${id(22206)}`), 'Càrrec 2026-10-26', u, T]]),
     insert('finance_expense', ['id', 'round_id', 'expense_date', 'concept', 'counterparty_id', 'total_cents', 'payment_method', 'created_by', 'created_at', 'updated_at'], [
@@ -479,7 +527,7 @@ export function buildTreasuryIncomeDemo() {
   return [
     '-- 3.5G.2A income demo (synthetic). Generated by demo/data.js buildTreasuryIncomeDemo().\n',
     insert('finance_counterparty', ['id', 'kind', 'display_name', 'created_by', 'created_at', 'updated_at'],
-      [[id(23401), 'ORGANIZATION', 'Ajuntament Demo (fictici)', u, T, T]]),
+      [[id(23401), 'ORGANIZATION', 'Ajuntament (subvenció municipal)', u, T, T]]),
     insert('finance_income', ['id', 'round_id', 'income_date', 'concept', 'total_cents', 'budget_line_id', 'counterparty_id', 'created_by', 'created_at', 'updated_at'], [
       [id(23001), R, '2026-10-01', 'Subvenció Ajuntament', 150000, id(22101), id(23401), u, T, T],
       [id(23002), R, '2026-10-21', 'Venda de loteria de Nadal', 45000, id(21103), null, u, T, T]]),
