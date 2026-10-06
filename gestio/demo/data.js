@@ -74,7 +74,7 @@ const SEED_ACTIVITIES = {
   804: ['TRO-CALENDARI', 'Calendari del segon trimestre', 'Local del grup', '', ''],
   805: ['TRO-NETEJA', 'Neteja de la muntanya · Tropa', 'Serra de Mariola', 'Recollida de residus amb la Tropa.', 'Guants i bossa'] };
 /** Statements that give the canonical seed records realistic visible names in the local demo database. */
-function seedRenames(sqlValue) {
+function seedRenames(sqlValue, T = Date.now()) {
   const people = ['501','502','503','504','505'].map((n, index) => [id(Number(n)), SEED_PEOPLE[index]]);
   const key = name => name.toLocaleLowerCase('ca').normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   return [
@@ -84,6 +84,10 @@ function seedRenames(sqlValue) {
     ...people.map(([pid, name]) => `UPDATE participant_contact SET notification_email=${sqlValue(mailOf(`familia ${name.split(' ').slice(1).join(' ')}`))} WHERE participant_id=${sqlValue(pid)};`),
     ...Object.entries(SEED_ACTIVITIES).map(([n, [code, name, place, description, materials]]) =>
       `UPDATE activity SET public_code=${sqlValue(code)},name=${sqlValue(name)},location=${sqlValue(place)},short_description=${sqlValue(description)},materials=${sqlValue(materials)} WHERE id=${sqlValue(id(Number(n)))};`),
+    // Seed activities are dated 2040; move those that the terms lock allows (no registrations, not closed).
+    ...[[803, 45], [804, 75]].map(([n, days]) => { const start = T + days * 86400000;
+      return `UPDATE activity SET starts_at=${start},ends_at=${start + 8 * 3600000},registration_deadline=${start - 7 * 86400000} WHERE id=${sqlValue(id(n))}
+        AND status!='CLOSED' AND NOT EXISTS(SELECT 1 FROM activity_registration WHERE activity_id=${sqlValue(id(n))});`; }),
     `UPDATE annual_fee_round SET account_holder='Grup Scout Parpalló' WHERE id=${sqlValue(id(901))};`,
     `UPDATE delegated_permission SET authorization_reference='ACTA-CONSELL-2026-03',ratification_reference='ACTA-CONSELL-2026-04' WHERE id=${sqlValue(id(741))};`
   ].join('\n') + '\n';
@@ -336,6 +340,15 @@ export function buildDemoData({ now = Date.now() } = {}) {
   gcontact(3,2,'PHONE','600333444'); gcontact(4,3,'PHONE','600555666'); gcontact(5,4,'EMAIL',mailOf(guardianRows[3][1]));
   // 3.5I: the families added for 104 educands have a mother (phone + e-mail) and, in most, a father, as in a real group.
   let nextGuardian=100, nextContact=100;
+  // Families 6–15 of the original set get a guardian where they had none; families 1–5 stay incomplete on purpose
+  // (the «Informació pendent» follow-up keeps real cases).
+  const guarded=new Set(linkRows.map(row=>row[1]));
+  for(const family of families.slice(5,15).filter(f=>!f.members.some(person=>guarded.has(person.id)))){
+    guardian(nextGuardian++,`${family.mother} ${family.second} ${familyOf(family.number+500).second}`);
+    for(const person of family.members)link(person.number,nextGuardian-1,{});
+    gcontact(nextContact++,nextGuardian-1,'PHONE',`6000${String(family.number).padStart(2,'0')}${String(family.number*41%1000).padStart(3,'0')}`);
+    gcontact(nextContact++,nextGuardian-1,'EMAIL',mailOf(guardianRows.at(-1)[1]));
+  }
   for(const family of families.slice(15)){
     guardian(nextGuardian++,`${family.mother} ${family.second} ${familyOf(family.number+300).second}`);
     for(const person of family.members)link(person.number,nextGuardian-1,{});
@@ -387,7 +400,7 @@ export function buildDemoData({ now = Date.now() } = {}) {
     insert('participant_review',['id','kind','status','participant_id','guardian_id','duplicate_of','detail','payload_json','created_by','created_at'],reviewRows),
     `UPDATE payment_evidence SET sha256=${sqlValue(digest)}, size_bytes=${pdf.length} WHERE object_key='fixture-only/no-binary';\n`,
     // 3.5I: realistic visible names for the canonical seed records too (local demo database only).
-    seedRenames(sqlValue),
+    seedRenames(sqlValue, T),
     insert('audit_event',['id','occurred_at','created_at','request_id','actor_user_id','action','resource_type','resource_id','result','reason_code','security_relevant'],[markerRow])
   ];
   return {sql:chunks.join(''),evidenceKeys:[...evidenceKeys],imageKeys:[...imageKeys],pdf,png,
