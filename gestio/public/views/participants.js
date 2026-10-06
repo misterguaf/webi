@@ -194,7 +194,7 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const since = current ? `${sectionName(p.currentSectionId, sections())} · des de ${monthYear(current.started_at)}` : sectionName(p.currentSectionId, sections());
     const completeness = p.completeness?.complete === false
       ? h('p', { className: 'detail-timing timing-attention', text: missingSummary(p.completeness.missing) ?? 'Informació pendent' }) : null;
-    const fee = feeLine(p.feeStatus);
+    const fee = feeLine(p.feeStatus, p);
     const header = h('header', { className: 'detail-header' },
       h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); back(); } } }, icon('arrow-left'), h('span', { text: 'Participants' })),
       h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title, badge),
@@ -286,11 +286,15 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
       select.focus();
     });
   }
-  function feeLine(feeStatus) {
+  function feeLine(feeStatus, p) {
     if (!feeStatus || !feeStatus.length) return null;
+    // 3.5I-Q: the server only sends the quota status to people with fee visibility over this section, so the link
+    // to Quotes never widens access (basic readers see active participants only).
+    const quotes = p && (p.status === 'ACTIVE' || caps()?.fees?.read) ? h('a', { className: 'link-button detail-fees-link', text: 'Veure a Quotes',
+      attrs: { href: `#/quotes/${p.id}` }, on: { click: event => { event.preventDefault(); routes.go({ page: 'quotes', path: [p.id] }); } } }) : null;
     return h('p', { className: 'detail-fees' }, feeStatus.map(item =>
       h('span', { className: 'fee-chip' }, h('span', { className: 'fee-round', text: `Quota ${item.round}:` }),
-        h('span', { className: `fee-state fee-${item.status.toLowerCase()}`, text: feeLabel(item.status) }))));
+        h('span', { className: `fee-state fee-${item.status.toLowerCase()}`, text: feeLabel(item.status) }))), quotes);
   }
   function fitxa(p) {
     const row2 = (label, value) => value ? h('div', { className: 'info-row' }, h('dt', { text: label }), h('dd', { text: value })) : null;

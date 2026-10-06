@@ -8,3 +8,37 @@
 
 /* 3.5I: Tresoreria fee summary, readable lines (it used to be a monospace block). */
 .fee-metrics{white-space:pre-line;margin:0;line-height:1.6;overflow-wrap:anywhere}
+
+/* 3.5I-Q Quotes: functional layout with the existing components (no new visual language; Phase J restyles). */
+.quotes-view{display:grid;gap:var(--space-3);min-width:0}
+.badge.tone-danger{background:color-mix(in srgb,var(--danger) 16%,transparent);color:var(--text-primary)}
+.quotes-summary{grid-template-columns:repeat(5,minmax(0,1fr))}
+.quotes-count{border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;border-radius:var(--radius-control)}
+.quotes-count:hover,.quotes-count-active{background:var(--surface-elevated)}
+.quotes-money{grid-template-columns:repeat(4,minmax(0,1fr))}
+.quotes-quick{flex-wrap:wrap}
+.quotes-tools{margin-left:auto}
+.quotes-list,.quotes-family{list-style:none;margin:0;padding:0!important}
+.quotes-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:var(--space-3);align-items:center;padding:var(--space-3) var(--space-5);margin:0!important}
+.quotes-row+.quotes-row{border-top:1px solid color-mix(in srgb,var(--border-default) 70%,transparent)}
+.quotes-row .quota-status{justify-self:end}
+.quotes-actions{display:flex;gap:var(--space-3);flex-wrap:wrap;justify-content:flex-end}
+.quotes-detail{display:grid;gap:var(--space-3);min-width:0}
+.quotes-detail .summary-strip{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+.quotes-links{display:flex;gap:var(--space-4);flex-wrap:wrap;padding:var(--space-3) var(--space-5)}
+.quotes-basic-status .badge{font-size:15px;padding:var(--space-2) var(--space-3)}
+.detail-fees-link{margin-left:var(--space-2)}
+@media(max-width:767px){
+  .quotes-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .quotes-money{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .quotes-quick{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%}
+  .quotes-quick .filter-chip{flex:none}
+  .quotes-view .activity-filters{flex-wrap:wrap}
+  .quotes-view .search-field{flex-basis:100%}
+  .quotes-view .select-field{display:flex!important;flex:1 1 100%;justify-content:space-between}
+  .quotes-view .select-field select{flex:1;min-width:0;max-width:70%;min-height:40px}
+  .quotes-tools{margin-left:0}
+  .quotes-row{padding:var(--space-3) var(--space-4)}
+  .quotes-actions{grid-column:1/-1;justify-content:flex-start}
+  .quotes-links{padding:var(--space-3) var(--space-4)}
+}

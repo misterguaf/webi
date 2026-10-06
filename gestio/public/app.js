@@ -7,7 +7,7 @@ import { dismissOverlays } from './ui.js'; import { ROLE_LABELS } from './labels
 import { createViewRegistry } from './view-registry.js';
 import { createActivitiesView } from './views/activities.js';
 import { createRegistrationsView } from './views/registrations.js';
-import { createAccountView, createActivityFeedView, createAdministrationView, createDashboardView, createFeeStatusView, createFeesView, createIncidentsView } from './views/simple-views.js';
+import { createAccountView, createActivityFeedView, createAdministrationView, createDashboardView, createFeesView, createIncidentsView, createQuotesView } from './views/simple-views.js';
 import { createParticipantsView } from './views/participants.js';
 import { createTreasuryView } from './views/treasury.js';
 import { createFamilyGroupsView } from './views/family-groups.js';
@@ -35,7 +35,7 @@ const views = createViewRegistry([
   registrations,
   createFeesView({ call, message, reportLoadError }),
   createFamilyGroupsView({ call, message, reportLoadError }),
-  createFeeStatusView({ call, reportLoadError }),
+  createQuotesView({ call, reportLoadError, routes, setPageHeader }),
   createTreasuryView({ call, reportLoadError, routes, setPageHeader, setNavBadge }), createActivityFeedView({ call, reportLoadError, routes, setPageHeader }), createIncidentsView({ call, reportLoadError, routes, setPageHeader, setNavBadge, onNavigate })
 ]);
 let shownPage = null; // a load problem belongs to the page that had it: the banner clears when the page changes

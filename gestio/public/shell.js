@@ -239,15 +239,16 @@ export function setShellSession(me){
 
 $('brandLink').addEventListener('click',event=>{event.preventDefault();navigateTo('inici')});
 export function currentRouteOf(){return currentRoute}
-$('openFeeIssues').addEventListener('click',()=>{if($('feePanel').hidden)return;navigateTo('quotes');$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
+$('openFeeIssues').addEventListener('click',()=>{if($('feePanel').dataset.loaded!=='true' && $('feePanel').hidden)return;navigateTo('quotes',{path:['eines']});$('feeIssues').scrollIntoView({block:'start',behavior:'instant'})});
 
-const emptyGroups={activitats:['activitiesView'],inscripcions:['registrationsView'],quotes:['feePanel','feeStatusPanel','familyGroupsPanel'],tresoreria:['treasuryView'],participants:['participantsView']};
+const emptyGroups={activitats:['activitiesView'],inscripcions:['registrationsView'],quotes:['quotesView','feePanel','feeStatusPanel','familyGroupsPanel'],tresoreria:['treasuryView'],participants:['participantsView']};
 function syncEmptyStates(){
   for(const [page,ids] of Object.entries(emptyGroups)){
     const empty=document.querySelector(`[data-shell-empty-for="${page}"]`);
     empty.hidden=ids.some(id=>!$(id).hidden);
   }
-  const feeAvailable=!$('feePanel').hidden;
+  // 3.5I-Q: the fee tools live at #/quotes/eines; they are available once loaded even while hidden.
+  const feeAvailable=!$('feePanel').hidden||$('feePanel').dataset.loaded==='true';
   $('openFeeIssues').hidden=!feeAvailable;
   // 3.5H.3: the fee-issue pointer only matters to people who use Quotes; the page itself is Incidències i millores.
   $('issuesShortcut').hidden=!feeAvailable;
@@ -255,5 +256,5 @@ function syncEmptyStates(){
     ?'Les incidències de quota es consulten i es resolen en Quotes en esta versió.'
     :'Les incidències de quota no estan disponibles en esta sessió.';
 }
-for(const ids of Object.values(emptyGroups))for(const id of ids)new MutationObserver(()=>{syncEmptyStates();syncContextAction()}).observe($(id),{attributes:true,attributeFilter:['hidden']});
+for(const ids of Object.values(emptyGroups))for(const id of ids)new MutationObserver(()=>{syncEmptyStates();syncContextAction()}).observe($(id),{attributes:true,attributeFilter:['hidden','data-loaded']});
 syncEmptyStates();

@@ -204,5 +204,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
     act(()=>send('/api/fees/groups','POST',{roundId:selected,reference:$('feeGroupReference').value.trim(),participantIds,
       reason:$('feeGroupReason').value.trim()}))
       .catch(error=>message(error.message));});
+  // 3.5I-Q: Quotes opens a payment of these Treasury tools directly (#/quotes/eines?pagament=<id>).
+  load.showPayment=id=>showPayment(id).then(()=>$('feePaymentDetail').scrollIntoView({block:'start',behavior:'instant'})).catch(error=>message(error.message));
   return load;
 }

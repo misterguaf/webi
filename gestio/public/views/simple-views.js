@@ -13,6 +13,8 @@ export { createAdministrationView } from './administration.js';
 // 3.5H.3 Activitat and Incidències i millores (every signed-in user).
 export { createActivityFeedView } from './activity-feed.js';
 export { createIncidentsView } from './incidents.js';
+// 3.5I-Q Quotes main screen (list + detail); the legacy panels below are its Treasury tools (#/quotes/eines).
+export { createQuotesView } from './quotes.js';
 export function createAccountView({ call, message, reportLoadError, reload }) {
   async function load(me) {
     $('account').hidden = false; $('sessions').hidden = false;
@@ -47,9 +49,15 @@ export function createAccountView({ call, message, reportLoadError, reload }) {
 // Full treasury view for group-wide finance readers; review-only mode for delegated payment reviewers.
 export function createFeesView({ call, message, reportLoadError }) {
   const loadFees = setupFees({ call, message, reportLoadError });
+  // 3.5I-Q: these are the Treasury tools of Quotes, shown only at #/quotes/eines; Quotes is the main screen.
+  let loaded = false;
+  const show = route => { $('feePanel').hidden = !(loaded && route?.path?.[0] === 'eines');
+    if (!$('feePanel').hidden && route?.query?.pagament) void loadFees.showPayment(route.query.pagament); };
   return { id: 'fees', page: 'quotes', available: caps => !!(caps.fees.read?.all || caps.fees.reviewPayments),
-    load: me => loadFees({ reviewOnly: !me.capabilities.fees.read?.all, readContacts: !!me.capabilities.fees.readContacts }),
-    unload() { $('feePanel').hidden = true; $('feeRound').replaceChildren(); $('feeRoundForm').reset(); for (const id of FEE_LISTS) $(id).replaceChildren(); } };
+    load: async me => { loaded = await loadFees({ reviewOnly: !me.capabilities.fees.read?.all, readContacts: !!me.capabilities.fees.readContacts });
+      $('feePanel').dataset.loaded = String(!!loaded); $('feePanel').hidden = true; },
+    enter: (_me, route) => show(route),
+    unload() { loaded = false; delete $('feePanel').dataset.loaded; $('feePanel').hidden = true; $('feeRound').replaceChildren(); $('feeRoundForm').reset(); for (const id of FEE_LISTS) $(id).replaceChildren(); } };
 }
 
 // Basic PAID/PARTIAL/PENDING/ISSUE view for section-scoped status readers (3.5C.1).
@@ -69,7 +77,7 @@ export function createDashboardView({ call, navigateTo, routes, activities }) {
     // 3.5F: payments and incidences live in the Inscripcions queue (3.5G Tresoreria reconciles them).
     openPayments: view => routes.go({ page: 'inscripcions', query: view && view !== 'pendents' ? { vista: view } : {} }),
     openRegistrationQueue: () => routes.go({ page: 'inscripcions' }),
-    openFeeIssues: () => { navigateTo('quotes'); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); },
+    openFeeIssues: () => { navigateTo('quotes', { path: ['eines'] }); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); },
     openIncompleteParticipants: () => routes.go({ page: 'participants', query: { completitud: 'pendents' } }),
     openParticipantReviews: () => routes.go({ page: 'participants', path: ['revisions'] })
   });
