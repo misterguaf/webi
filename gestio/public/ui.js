@@ -8,6 +8,21 @@
  * @param {{className?: string, text?: string|null, attrs?: Record<string, any>, on?: Record<string, EventListener>, dataset?: Record<string, string>}} [props]
  * @param {...any} children
  */
+// 3.5I: a button whose click handler returns a promise is busy until it settles: further clicks are ignored
+// (no double submit) and it is announced with aria-busy. It is not disabled, so focus stays where it was and each
+// screen keeps managing its own disabled states.
+export function guardBusy(node, listener) {
+  return event => {
+    if (node.getAttribute('aria-busy') === 'true') { event?.preventDefault?.(); return undefined; }
+    const result = listener(event);
+    if (result && typeof result.then === 'function') {
+      node.setAttribute('aria-busy', 'true');
+      Promise.resolve(result).catch(() => {}).finally(() => node.removeAttribute('aria-busy'));
+    }
+    return result;
+  };
+}
+
 export function h(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   if (props.className) node.className = props.className;
@@ -17,7 +32,8 @@ export function h(tag, props = {}, ...children) {
     node.setAttribute(name, value === true ? '' : String(value));
   }
   for (const [name, value] of Object.entries(props.dataset ?? {})) node.dataset[name] = value;
-  for (const [name, listener] of Object.entries(props.on ?? {})) node.addEventListener(name, listener);
+  for (const [name, listener] of Object.entries(props.on ?? {}))
+    node.addEventListener(name, tag === 'button' && name === 'click' ? guardBusy(node, listener) : listener);
   for (const child of children.flat()) if (child != null && child !== false) node.append(child);
   return node;
 }
@@ -83,6 +99,17 @@ export function toast(text, { tone = 'neutral', timeout = 3600 } = {}) {
  * @param {{title: string, body: string, confirm: string, tone?: 'primary'|'danger'|'strong', cancel?: string}} options
  * @returns {Promise<boolean>}
  */
+// 3.5I: every overlay (dialog, drawer, sheet, menu) registers how to dismiss itself. Ending a session dismisses
+// them all, so no protected data stays over the login screen and no keyboard handler keeps trapping focus.
+const overlays = new Set();
+/** @param {() => void} dismiss @returns {() => void} untrack */
+export function trackOverlay(dismiss) { overlays.add(dismiss); return () => { overlays.delete(dismiss); }; }
+export function dismissOverlays() {
+  for (const dismiss of [...overlays]) { try { dismiss(); } catch { /* an overlay that already left */ } }
+  overlays.clear();
+  document.body.classList.remove('drawer-open');
+}
+
 export function confirmDialog({ title, body, confirm, tone = 'primary', cancel = 'Cancel·la' }) {
   return new Promise(resolve => {
     const previous = document.activeElement;
@@ -98,7 +125,9 @@ export function confirmDialog({ title, body, confirm, tone = 'primary', cancel =
       if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(false); }
       else trapTab(dialog, event);
     };
+    const untrack = trackOverlay(() => close(false));
     function close(result) {
+      untrack();
       document.removeEventListener('keydown', onKey, true);
       layer.classList.add('dialog-leaving');
       afterMotion(dialog, 180).then(() => layer.remove());
@@ -142,7 +171,8 @@ export function formDialog({ title, fields, confirm, tone = 'primary' }) {
       close(read());
     };
     const onKey = event => { if (event.key === 'Escape') { event.preventDefault(); close(null); } else trapTab(dialog, event); };
-    function close(result) { document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); resolve(result); }
+    const untrack = trackOverlay(() => close(null));
+    function close(result) { untrack(); document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); resolve(result); }
     const dialog = h('div', { className: 'dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': title } },
       h('h2', { className: 'dialog-title', text: title }),
       h('div', { className: 'dialog-form' }, nodes),
@@ -179,7 +209,9 @@ export function openMenu(trigger, items) {
     else if (event.key === 'Tab') close();
   };
   const onPointer = event => { if (!menu.contains(event.target) && event.target !== trigger && !trigger.contains(event.target)) close(); };
+  const untrack = trackOverlay(() => close());
   function close() {
+    untrack();
     document.removeEventListener('keydown', onKey, true);
     document.removeEventListener('pointerdown', onPointer, true);
     trigger.setAttribute('aria-expanded', 'false');

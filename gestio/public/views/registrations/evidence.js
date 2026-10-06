@@ -1,7 +1,7 @@
 // Payment evidence (3.5F §14–§15) shared by the activity tab and the global queue: authenticated
 // preview inside Gestió (image or PDF, same-origin), named download as fallback, verification with
 // confirmation. Nothing is preloaded: each preview or download is one explicit, audited request.
-import { confirmDialog, h, toast, trapTab } from '../../ui.js';
+import { confirmDialog, h, toast, trackOverlay, trapTab } from '../../ui.js';
 import { attemptLine, evidenceKind, formatEuros, parseEurosToCents, paymentActions, paymentLine, validateVerifiedAmount } from './model.js';
 
 const formatMoney = cents => new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
@@ -22,7 +22,8 @@ export function verifyAmountDialog(payment) {
     const error = h('p', { className: 'field-error', attrs: { id: 'verify-amount-error', hidden: true, role: 'alert' } });
     const figure = (label, cents, strong = false) => h('div', { className: `verify-figure${strong ? ' verify-figure-strong' : ''}` },
       h('dt', { text: label }), h('dd', { text: formatEuros(cents) }));
-    const close = result => { document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); resolve(result); };
+    const close = result => { untrack(); document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); resolve(result); };
+    const untrack = trackOverlay(() => close(null));
     const submit = () => {
       const cents = parseEurosToCents(input.value), problem = validateVerifiedAmount(cents, payment.remainingCents);
       if (problem) { error.textContent = problem; error.hidden = false; input.focus(); return; }
@@ -57,7 +58,8 @@ export function openEvidencePreview(payment) {
       ? h('iframe', { className: 'evidence-frame', attrs: { src: url(payment.id, 'view'), title: 'Justificant de pagament' } })
       : null;
   if (!viewer) fallback.hidden = false;
-  const close = () => { document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); };
+  const close = () => { untrack(); document.removeEventListener('keydown', onKey, true); layer.remove(); if (previous?.isConnected) previous.focus({ preventScroll: true }); };
+  const untrack = trackOverlay(() => close());
   const closeButton = h('button', { className: 'btn btn-secondary', text: 'Tanca', attrs: { type: 'button' }, on: { click: close } });
   const dialog = h('div', { className: 'dialog evidence-dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Justificant de pagament' } },
     h('h2', { className: 'dialog-title', text: 'Justificant de pagament' }),

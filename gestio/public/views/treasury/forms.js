@@ -1,6 +1,6 @@
 // Tresoreria (3.5G.2A) — drawers and pickers: the generic drawer with busy state and inline errors, the
 // budget line tree picker, the Total / Distribuït / Pendent line split and the counterparty choice.
-import { afterMotion, formDialog, h, icon, toast, trapTab } from '../../ui.js';
+import { afterMotion, formDialog, h, icon, toast, trackOverlay, trapTab } from '../../ui.js';
 import { COUNTERPARTY_KIND, budgetPath, budgetTree, centsInput, errorCopy, filterTree, formatEur, splitState } from './model.js';
 
 let drawerSeq = 0;
@@ -44,9 +44,11 @@ export function openDrawer({ title, content, primary, tone = 'primary', onSubmit
     finally { busy = false; submit.removeAttribute('aria-busy'); submit.disabled = false; }
   }
   function showError(text) { error.textContent = text; error.hidden = false; }
+  const untrack = trackOverlay(() => close());
   function close() {
     if (closed) return;
     closed = true;
+    untrack();
     document.removeEventListener('keydown', onKey, true);
     document.body.classList.remove('drawer-open');
     layer.classList.add('drawer-leaving');
@@ -113,7 +115,9 @@ export function pickBudgetLine({ lines, title = 'Tria una línia del pressupost'
       h('div', { className: 'dialog-actions' }, h('button', { className: 'btn btn-secondary', text: 'Cancel·la', attrs: { type: 'button' }, on: { click: () => close(null) } })));
     const layer = h('div', { className: 'dialog-layer', on: { mousedown: event => { if (event.target === layer) close(null); } } }, dialog);
     const onKey = event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close(null); } else trapTab(dialog, event); };
+    const untrack = trackOverlay(() => close(null));
     function close(result) {
+      untrack();
       document.removeEventListener('keydown', onKey, true);
       layer.remove();
       if (previous?.isConnected) previous.focus({ preventScroll: true });

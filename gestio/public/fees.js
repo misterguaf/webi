@@ -37,7 +37,7 @@ export function setupFees({call,message,reportLoadError=()=>{}}) {
       if (selected) {if(reviewOnly)await loadPayments();else await loadRound();}
       else for(const id of ['feeRoundRevisions','feeMetrics','feeSearchResults','feeGroups','feeObligations','feePayments','feeIssues','feeObligationDetail','feePaymentDetail']) $(id).replaceChildren();
       return true;
-    } catch(error) {clearFinancialView();$('feePanel').hidden=true;reportLoadError(error);if(error.message && error.status!==0 && !(error.status>=500) && !error.message.startsWith('forbidden'))message(error.message);return false;}
+    } catch(error) {clearFinancialView();$('feePanel').hidden=true;reportLoadError(error);if(error.message && error.status!==0 && !(error.status>=500) && error.code!=='forbidden')message(error.message);return false;}
   }
   async function loadRound() {
     const revisions=(await call(roundPath()+'/revisions')).revisions;

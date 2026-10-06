@@ -1,6 +1,6 @@
 // Activitats list (ACTIVITIES.md §5–§8): status segments, search, section and time filters (URL-backed),
 // one calm column of rich rows grouped by situation, and every list state of §20.
-import { announce, h, icon } from '../../ui.js';
+import { announce, h, icon, trackOverlay } from '../../ui.js';
 import { STATUS_FILTERS, STATUS_LABELS, WHEN_FILTERS, accessibleRowName, activeFilterCount, canCreate, canManage, dateRange,
   dayNumber, filterActivities, filtersDiffer, flatActivities, groupActivities, parseFilters, phase, scopeLabel, sectionOptions,
   shortMonth, signals, statusCounts } from './model.js';
@@ -66,7 +66,8 @@ export function createActivityList({ root, onFilters, onOpen, onCreate, onRetry 
     const sheetSection = sectionSelect.cloneNode(true), sheetWhen = whenSelect.cloneNode(true);
     sheetSection.id = 'activitySectionFilterSheet'; sheetWhen.id = 'activityWhenFilterSheet';
     sheetSection.value = filters.seccio; sheetWhen.value = filters.quan;
-    const close = () => { mobileSheetOpen = false; layer.remove(); document.removeEventListener('keydown', onKey, true); previous?.focus?.(); };
+    const close = () => { untrack(); mobileSheetOpen = false; layer.remove(); document.removeEventListener('keydown', onKey, true); previous?.focus?.(); };
+    const untrack = trackOverlay(() => close());
     const onKey = event => { if (event.key === 'Escape') { event.preventDefault(); close(); } };
     const sheet = h('div', { className: 'filter-sheet', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Filtres' } },
       h('h2', { className: 'sheet-title', text: 'Filtres' }),

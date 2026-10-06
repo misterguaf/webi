@@ -2,6 +2,7 @@
 // view contract documented in ../view-registry.js.
 import { setupFees } from '../fees.js';
 import { setupFeeStatus } from '../fee-status.js';
+import { setupDashboard } from '../dashboard.js';
 
 const $ = id => document.getElementById(id);
 const FEE_LISTS = ['feeRoundRevisions', 'feeMetrics', 'feeSearchResults', 'feeGroups', 'feeObligations', 'feePayments', 'feeIssues', 'feeObligationDetail', 'feePaymentDetail'];
@@ -32,7 +33,11 @@ export function createAccountView({ call, message, reportLoadError, reload }) {
     message(`Correus ficticis capturats: ${result.sent}; errors: ${result.failed}.`);
   } catch (error) { message(error.message); } });
   return { id: 'account', page: 'administracio', available: () => true, load,
-    unload: () => { for (const id of ['account', 'sessions', 'notificationPanel']) $(id).hidden = true; } };
+    unload: () => {
+      for (const id of ['account', 'sessions', 'notificationPanel']) $(id).hidden = true;
+      // 3.5I: the previous person's name, roles and sessions do not stay in the DOM.
+      $('profile').textContent = ''; $('roles').replaceChildren(); $('sessionList').replaceChildren();
+    } };
 }
 
 
@@ -52,6 +57,18 @@ export function createFeeStatusView({ call, reportLoadError }) {
     unload() { $('feeStatusPanel').hidden = true; $('feeStatusList').replaceChildren(); $('feeStatusRound').replaceChildren(); } };
 }
 
-export function createDashboardView(dashboard) {
+export function createDashboardView({ call, navigateTo, routes, activities }) {
+  // Dashboard entry points land on the activity detail (3.5D), never on a form.
+  const dashboard = setupDashboard({ call, navigateTo,
+    openActivity: id => activities.openActivity(id),
+    openRegistrations: id => activities.openActivity(id, { tab: 'inscripcions', query: { filtre: 'per-revisar' } }),
+    createActivity: () => { navigateTo('activitats'); activities.openCreate(); },
+    // 3.5F: payments and incidences live in the Inscripcions queue (3.5G Tresoreria reconciles them).
+    openPayments: view => routes.go({ page: 'inscripcions', query: view && view !== 'pendents' ? { vista: view } : {} }),
+    openRegistrationQueue: () => routes.go({ page: 'inscripcions' }),
+    openFeeIssues: () => { navigateTo('quotes'); $('feeIssues').scrollIntoView({ block: 'start', behavior: 'instant' }); },
+    openIncompleteParticipants: () => routes.go({ page: 'participants', query: { completitud: 'pendents' } }),
+    openParticipantReviews: () => routes.go({ page: 'participants', path: ['revisions'] })
+  });
   return { id: 'dashboard', page: 'inici', available: () => true, load() {}, enter: me => dashboard.load(me), unload: () => dashboard.hide() };
 }

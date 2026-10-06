@@ -4,7 +4,7 @@
 // edit, section change and the Família tab are added in later batches.
 import { createAdmissionsInbox } from './participants/admissions.js';
 import { fetchAllPages } from '../api.js';
-import { announce, confirmDialog, h, icon, openMenu, toast, trapTab } from '../ui.js';
+import { announce, confirmDialog, h, icon, openMenu, toast, trackOverlay, trapTab } from '../ui.js';
 import { createParticipantEditor } from './participants/editor.js';
 import { createFamiliaTab } from './participants/familia.js';
 import { createReviewQueue } from './participants/reviews.js';
@@ -270,7 +270,8 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     return new Promise(resolve => {
       const previous = document.activeElement;
       const select = h('select', { attrs: { id: 'section-target', 'aria-label': 'Nova secció' } }, targets.map(c => h('option', { text: SECTION_LABELS[c], attrs: { value: c } })));
-      const done = value => { document.removeEventListener('keydown', onKey, true); layer.remove(); previous?.focus?.(); resolve(value); };
+      const done = value => { untrack(); document.removeEventListener('keydown', onKey, true); layer.remove(); previous?.focus?.(); resolve(value); };
+      const untrack = trackOverlay(() => done(null));
       const onKey = e => { if (e.key === 'Escape') { e.preventDefault(); done(null); } else trapTab(dialog, e); };
       const dialog = h('div', { className: 'dialog', attrs: { role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Canviar de secció' } },
         h('h2', { className: 'dialog-title', text: 'Canviar de secció' }),

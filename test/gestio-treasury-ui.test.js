@@ -161,7 +161,9 @@ test('wiring: each action label reaches its endpoint; reveal is on demand, never
   for (const toastText of ['Despesa creada', 'Classificació actualitzada', 'Moviment marcat com a duplicat']) assert.ok((movements + form).includes(toastText), toastText);
   assert.ok(PAGES.includes('tresoreria'));
   assert.match(shell, /\{id:'tresoreria',label:'Tresoreria',icon:'bank'\}/);
-  assert.match(app, /setNavAvailable\('tresoreria', treasuryAvailable\(me\.capabilities\)\)/);
+  // 3.5I: navigation offers a page only when one of its views is available; Tresoreria's view declares it.
+  assert.match(app, /setAvailablePages\(views\.availablePages\(me\.capabilities\)\)/);
+  assert.match(source('views/treasury.js'), /available: caps => treasuryAvailable\(caps\)/);
   assert.match(html, /id="treasuryView"[^>]*data-page="tresoreria"/);
   assert.match(html, /href="\/treasury\.css"/);
   assert.doesNotMatch(source('views/treasury.js') + movements + expenses + form + source('views/treasury/home.js') + source('views/treasury/forms.js'),

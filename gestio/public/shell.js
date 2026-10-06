@@ -12,7 +12,9 @@ const pages = [
   {id:'incidencies',label:'Incidències i millores',icon:'alert'},
   {id:'administracio',label:'Administració',icon:'settings'}
 ];
-const mobilePrimary = new Set(['inici','activitats','quotes','participants']);
+// 3.5I: the mobile bar shows the first four pages this session can use, in this priority; the rest go to «Més».
+const MOBILE_PRIORITY = ['inici','activitats','participants','quotes','tresoreria','inscripcions','incidencies','activitat','administracio'];
+let mobilePrimary = new Set(['inici','activitats','quotes','participants']);
 const icon = name => `<svg aria-hidden="true"><use href="#icon-${name}"></use></svg>`;
 const navButton = (page, className) => {
   const button=document.createElement('button');
@@ -41,16 +43,17 @@ const save=(key,value)=>{try{localStorage.setItem(key,value)}catch{/* preference
 const sidebarLinks=$('sidebarNav');
 for(const page of pages)sidebarLinks.append(navButton(page,'nav-link'));
 const mobileNav=$('mobileNav');
-for(const page of pages.filter(page=>mobilePrimary.has(page.id))){
+for(const page of pages){
   const button=navButton(page,'mobile-link');
-  button.querySelector('.nav-label').className='mobile-label';
+  button.querySelector('.nav-label').className='mobile-label';button.hidden=!mobilePrimary.has(page.id);
   mobileNav.append(button);
 }
 const moreButton=document.createElement('button');
 moreButton.type='button';moreButton.id='moreButton';moreButton.title='Més';moreButton.setAttribute('aria-label','Més opcions');moreButton.setAttribute('aria-expanded','false');
 moreButton.innerHTML=`${icon('more')}<span>Més</span>`;mobileNav.append(moreButton);
-for(const page of pages.filter(page=>!mobilePrimary.has(page.id))){
-  const button=navButton(page,'more-link');button.querySelector('.nav-label').className='more-label';$('moreSheetLinks').append(button);
+for(const page of pages){
+  const button=navButton(page,'more-link');button.querySelector('.nav-label').className='more-label';button.hidden=mobilePrimary.has(page.id);
+  $('moreSheetLinks').append(button);
 }
 function applyTheme(){
   document.documentElement.dataset.theme=themePreference==='system'?(systemDark.matches?'dark':'light'):themePreference;
@@ -100,7 +103,7 @@ function openSearch(trigger=document.activeElement){
 }
 function renderSearchResults(){
   const query=$('searchInput').value.trim().toLocaleLowerCase('ca');
-  const results=pages.filter(page=>page.label.toLocaleLowerCase('ca').includes(query));
+  const results=pages.filter(page=>pageAvailable(page.id) && page.label.toLocaleLowerCase('ca').includes(query));
   const container=$('searchResults');container.replaceChildren();
   for(const page of results){
     const button=document.createElement('button');button.type='button';button.innerHTML=`${icon(page.icon)}<span>${page.label}</span>`;
@@ -160,6 +163,7 @@ export function navigateTo(id,{path=[],query={},replace=false}={}){
   router.go({page:id,path,query},{replace});
 }
 function showRoute(route){
+  if(!pageAvailable(route.page)){router.go({page:'inici'},{replace:true});return}
   const samePage=currentRoute?.page===route.page && document.body.dataset.page===route.page;
   currentRoute=route;
   if(!samePage)showPage(route.page);
@@ -201,10 +205,19 @@ export function setNavBadge(page,count){
     button.setAttribute('aria-label',`${label}, ${count} ${count===1?'pendent':'pendents'}`);
   }
 }
-// Pages whose module the session cannot use are not offered in the navigation.
-export function setNavAvailable(page,available){
-  for(const button of document.querySelectorAll(`[data-route="${page}"]`))button.hidden=!available;
+// 3.5I: the set of pages this session can use (view-registry availablePages). Others are neither offered (sidebar,
+// mobile bar, «Més», search) nor enterable: a deep link to one lands on Inici. Advisory only; the server authorises.
+let availablePages=null;
+export function setAvailablePages(usable){
+  availablePages=usable?new Set(usable):null;
+  mobilePrimary=new Set(MOBILE_PRIORITY.filter(id=>pageAvailable(id)).slice(0,4));
+  for(const page of pages){
+    const available=pageAvailable(page.id);
+    for(const button of document.querySelectorAll(`[data-route="${page.id}"]`))
+      button.hidden=!available||(button.classList.contains('mobile-link')&&!mobilePrimary.has(page.id))||(button.classList.contains('more-link')&&mobilePrimary.has(page.id));
+  }
 }
+const pageAvailable=id=>!availablePages||availablePages.has(id);
 export function onNavigate(listener){navigationListeners.add(listener);return ()=>navigationListeners.delete(listener)}
 export function setShellSession(me){
   sessionActive=!!me;

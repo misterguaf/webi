@@ -57,10 +57,13 @@ body[data-page="participants"] .page-main,body[data-page="participants"] .page-h
 /* ------------------------------------------------------------ compact / mobile */
 @media(max-width:1179px) and (min-width:768px){ .person-section{font-size:12px} }
 @media(max-width:767px){
-  .participant-toolbar{flex-wrap:nowrap}
-  .participant-toolbar .search-field{flex:1 1 auto;max-width:none}
-  .participant-toolbar .select-field,.participant-toolbar .filters-reset{display:none!important}
+  /* 3.5I: the toolbar wraps instead of pushing actions off-screen; section/state filters stay usable on mobile. */
+  .participant-toolbar{flex-wrap:wrap}
+  .participant-toolbar .search-field{flex:1 1 100%;max-width:none}
+  .participant-toolbar .select-field{display:flex!important;flex:1 1 140px;justify-content:space-between}
+  .participant-toolbar .select-field select{flex:1;min-width:0;min-height:40px}
   .participant-toolbar .filter-toggle{flex:none}
+  .participant-toolbar .toolbar-cta{margin-left:auto}
   .participant-row{grid-template-columns:36px minmax(0,1fr) auto;padding:var(--space-3) var(--space-4);min-height:44px}
   .participant-row .row-chevron{display:none}
   .person-signal{grid-column:2/4}

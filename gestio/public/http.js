@@ -1,5 +1,25 @@
-// Same-origin JSON client for the Gestió API. Errors carry `status`; 401 notifies the session owner.
-export function createClient({ onUnauthorized }) {
+// 3.5I: one human sentence per kind of failure for screens that show `error.message` directly. Screens that know
+// their domain map `error.code` to their own copy; raw codes and request ids never reach the person.
+const HUMAN = {
+  forbidden: 'No tens permís per fer aquesta acció.',
+  not_found: 'No s’ha trobat o no és dins del teu abast.',
+  fresh_session_required: 'Per seguretat, torna a iniciar la sessió i repeteix l’acció.',
+  body_too_large: 'El contingut és massa gran.',
+  invalid_origin: 'La sol·licitud no s’ha pogut verificar. Recarrega la pàgina.'
+};
+export function humanError(status, code) {
+  if (code && HUMAN[code]) return HUMAN[code];
+  if (status === 403) return HUMAN.forbidden;
+  if (status === 404) return HUMAN.not_found;
+  if (status === 409) return /stale|version|changed/.test(code ?? '') ? 'Les dades han canviat mentrestant. Torna-les a carregar.'
+    : 'Aquesta acció ja no és possible en l’estat actual.';
+  if (status === 429) return 'Massa intents seguits. Espera un moment i torna-ho a provar.';
+  return 'No s’ha pogut completar l’acció. Revisa les dades i torna-ho a provar.';
+}
+
+// Same-origin JSON client for the Gestió API. Errors carry `status`; 401 notifies the session owner; a generic
+// authorisation denial (403 `forbidden`) notifies `onForbidden`, so the shell can re-check what the session may do.
+export function createClient({ onUnauthorized, onForbidden = () => {} }) {
   async function call(path, options = {}) {
     let response;
     try { response = await fetch(path, { credentials: 'same-origin', ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } }); }
@@ -19,9 +39,12 @@ export function createClient({ onUnauthorized }) {
         onUnauthorized();
         const error = new Error('La sessió ha caducat. Torna a entrar.'); error.status = 401; throw error;
       }
-      const error = new Error(response.status >= 500 ? 'No s’ha pogut completar l’operació. Torna-ho a provar.' : `${data.error || 'error'} · ${data.requestId || ''}`);
-      // Stable server code (e.g. stale_activity) so screens can map it to human copy.
-      error.status = response.status; error.code = typeof data.error === 'string' ? data.error : null; throw error;
+      const code = typeof data.error === 'string' ? data.error : null;
+      const error = new Error(response.status >= 500 ? 'No s’ha pogut completar l’operació. Torna-ho a provar.' : humanError(response.status, code));
+      // Stable server code (e.g. stale_activity) so screens can map it to their own copy; the request id for support.
+      error.status = response.status; error.code = code; error.requestId = typeof data.requestId === 'string' ? data.requestId : null;
+      if (response.status === 403 && error.code === 'forbidden') onForbidden();
+      throw error;
     }
     return data;
   }

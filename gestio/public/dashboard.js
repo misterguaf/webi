@@ -91,7 +91,8 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     const summary=basicFeeSummary(statuses),panel=$('dashboardFeesPanel');
     if(!summary)return;
     $('dashboardFeesTitle').textContent='Quotes de les teues seccions';
-    $('dashboardSeeFees').textContent='Veure participants →';
+    // 3.5I: the link opens Quotes (the basic per-section status lives there), so it says so.
+    $('dashboardSeeFees').textContent='Veure quotes →';
     const content=$('dashboardFees');content.replaceChildren();
     if(!statuses.length)content.append(make('p','dashboard-empty','No hi ha quotes per mostrar en les teues seccions.'));
     else{
@@ -201,7 +202,9 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
       loadParticipantFollowUp(token,caps),loadParticipantReviews(token,caps)]);
     if(token===generation)renderAttention();
   }
-  function hide(){generation++;identity=null;$('dashboard').hidden=true;$('dashboardNewActivity').hidden=true;$('dashboardFees').replaceChildren();}
+  // Leaving (logout, expiry, lost capability) also drops the previous person's lists from the DOM (3.5I).
+  function hide(){generation++;identity=null;$('dashboard').hidden=true;$('dashboardNewActivity').hidden=true;
+    for(const id of ['dashboardFees','dashboardAttention','dashboardActivities'])$(id).replaceChildren();}
   $('dashboardSeeActivities').addEventListener('click',()=>navigateTo('activitats'));
   $('dashboardSeeFees').addEventListener('click',()=>navigateTo('quotes'));
   $('dashboardNewActivity').addEventListener('click',()=>createActivity());

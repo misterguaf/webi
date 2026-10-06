@@ -36,6 +36,8 @@ export function createViewRegistry(views) {
       }
     },
     unloadAll() { for (const view of views) view.unload(); },
+    /** Pages with at least one view this session can use (3.5I): the only pages offered or enterable. */
+    availablePages(caps) { return new Set(views.filter(view => view.available(caps)).map(view => view.page)); },
     /** Navigation hook: let views on the entered page refresh themselves or follow the route. */
     enter(page, me, route = null) {
       if (!me) return;
