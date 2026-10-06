@@ -49,5 +49,8 @@
   },
   "dependencies": {
     "fflate": "0.8.3"
+  },
+  "overrides": {
+    "sharp": "0.35.5"
   }
 }
