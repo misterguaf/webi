@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
-import { createServer } from 'node:net';
+import { PORT_ARGS, readyBase } from './helpers/wrangler-port.js';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -57,8 +57,6 @@ test('D1 local: migrar, seed, matriz, scope, sesiones y suspensión', { timeout:
       {cwd:gestio,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.notEqual(result.status,0,`Unexpected success: ${sql}`);
   };
-  const server=createServer(); await new Promise(resolveReady => server.listen(0,'127.0.0.1',resolveReady));
-  const port=server.address().port; await new Promise(resolveReady => server.close(resolveReady));
   let child, logs='';
   try {
     run(['d1','migrations','apply','parpallo-gestio-local','--local','--persist-to',state,'--config','wrangler.toml']);
@@ -66,11 +64,10 @@ test('D1 local: migrar, seed, matriz, scope, sesiones y suspensión', { timeout:
     rejectSql(`INSERT INTO app_session VALUES('${id(900)}','${id(999)}','fk-canary',1,1,2,NULL,NULL)`);
     rejectSql(`INSERT INTO user_role(id,user_id,role_code,section_id,valid_from,justification) VALUES('${id(901)}','${id(101)}','UNKNOWN',NULL,1,'synthetic')`);
     rejectSql(`INSERT INTO health_access_grant(id,user_id,participant_id,purpose,valid_from,expires_at,justification) VALUES('${id(902)}','${id(102)}','${id(999)}','activity-safety',1,2,'synthetic')`);
-    child=spawn(wrangler,['dev','--local','--persist-to',state,'--ip','127.0.0.1','--port',String(port),'--config','wrangler.toml'],{cwd:gestio,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+    child=spawn(wrangler,['dev','--local','--persist-to',state,...PORT_ARGS,'--config','wrangler.toml'],{cwd:gestio,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     child.stdout.on('data',chunk => { logs+=chunk.toString(); }); child.stderr.on('data',chunk => { logs+=chunk.toString(); });
-    const base=`http://127.0.0.1:${port}`;
-    let ready=false;
-    for(let i=0;i<100;i++) { if(child.exitCode !== null) break; try { const r=await fetch(`${base}/api/dev/identities`); if(r.ok){ready=true;break;} } catch {} await new Promise(r=>setTimeout(r,100)); }
+    let base=null, ready=false;
+    for(let i=0;i<250;i++) { if(child.exitCode !== null) break; base=readyBase(logs); try { if(base && (await fetch(`${base}/api/dev/identities`)).ok){ready=true;break;} } catch {} await new Promise(r=>setTimeout(r,100)); }
     assert.ok(ready,logs);
     const request=async (path,{method='GET',cookie='',body}={}) => {
       const response=await fetch(`${base}${path}`,{method,headers:{...(cookie?{Cookie:cookie}:{}),...(method!=='GET'?{Origin:base}:{}),...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});

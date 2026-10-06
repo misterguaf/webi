@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBackup, restoreBackup } from '../gestio/scripts/recovery.js';
+import { PORT_ARGS, readyBase } from './helpers/wrangler-port.js';
 import { validateSyntheticEvidence } from '../gestio/src/services/evidence-service.js';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
@@ -22,16 +22,10 @@ function rows(cwd,state,sql) {
   return JSON.parse(run(cwd,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,
     '--config','wrangler.toml','--command',sql,'--json']))[0].results;
 }
-async function freePort() {
-  const server=createServer();await new Promise(resolveReady=>server.listen(0,'127.0.0.1',resolveReady));
-  const port=server.address().port;await new Promise(resolveReady=>server.close(resolveReady));return port;
-}
 async function start(cwd,state,readyPath,environment=null,registry=null) {
-  const port=await freePort(),base='http://127.0.0.1:'+port;
-  let inspectorPort=await freePort();while(inspectorPort===port)inspectorPort=await freePort();
   const args=['dev','--local','--persist-to',state,'--config','wrangler.toml'];
   if(environment)args.push('--env',environment);
-  args.push('--ip','127.0.0.1','--port',String(port),'--inspector-port',String(inspectorPort));
+  args.push(...PORT_ARGS);
   // A private dev registry makes the portal's service binding resolve to this test's Gestió only.
   const child=spawn(wrangler,args,
     {cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false',...(registry?{WRANGLER_REGISTRY_PATH:registry}:{})}});
@@ -39,7 +33,8 @@ async function start(cwd,state,readyPath,environment=null,registry=null) {
   const deadline=Date.now()+25_000;
   while(Date.now()<deadline){
     if(child.exitCode!==null)break;
-    try{if((await fetch(base+readyPath,{signal:AbortSignal.timeout(2000)})).ok)return {child,base};}catch{}
+    const base=readyBase(logs);
+    try{if(base&&(await fetch(base+readyPath,{signal:AbortSignal.timeout(2000)})).ok)return {child,base};}catch{}
     await new Promise(r=>setTimeout(r,100));
   }
   child.kill('SIGTERM');throw new Error('Worker unavailable: '+logs);

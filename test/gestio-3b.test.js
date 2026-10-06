@@ -2,11 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createBackup, restoreBackup } from '../gestio/scripts/recovery.js';
+import { PORT_ARGS, readyBase } from './helpers/wrangler-port.js';
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
 const wrangler=resolve(root,'node_modules/.bin/wrangler');
@@ -22,21 +22,18 @@ function rows(cwd,state,sql) {
   return JSON.parse(run(cwd,['d1','execute','parpallo-gestio-local','--local','--persist-to',state,
     '--config','wrangler.toml','--command',sql,'--json']))[0].results;
 }
-async function freePort() {const server=createServer();await new Promise(done=>server.listen(0,'127.0.0.1',done));
-  const port=server.address().port;await new Promise(done=>server.close(done));return port;}
 async function start(cwd,state,path,environment=null,registry=null) {
-  const port=await freePort(),base='http://127.0.0.1:'+port;
-  let inspectorPort=await freePort();while(inspectorPort===port)inspectorPort=await freePort();
   const args=['dev','--local','--persist-to',state,'--config','wrangler.toml'];
   if(environment)args.push('--env',environment);
-  args.push('--ip','127.0.0.1','--port',String(port),'--inspector-port',String(inspectorPort));
+  args.push(...PORT_ARGS);
   // A private dev registry makes the portal's service binding resolve to this test's Gestió only.
   const child=spawn(wrangler,args,{cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false',
     ...(registry?{WRANGLER_REGISTRY_PATH:registry}:{})}});
   let logs='';child.stdout.on('data',chunk=>{logs+=chunk.toString();});child.stderr.on('data',chunk=>{logs+=chunk.toString();});
   const until=Date.now()+25_000;
   while(Date.now()<until){if(child.exitCode!==null)break;
-    try{if((await fetch(base+path,{signal:AbortSignal.timeout(2000)})).ok){
+    const base=readyBase(logs);
+    try{if(base&&(await fetch(base+path,{signal:AbortSignal.timeout(2000)})).ok){
       running.set(base,()=>`exit=${child.exitCode} logs=${logs.slice(-2500)}`);return {child,base};
     }}catch{}
     await new Promise(done=>setTimeout(done,100));}

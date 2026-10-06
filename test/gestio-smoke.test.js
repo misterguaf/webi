@@ -4,31 +4,26 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { root } from './helpers/gestio-sqlite.js';
+import { PORT_ARGS, readyBase } from './helpers/wrangler-port.js';
 import { unzipSync, strFromU8 } from 'fflate';
 
 const wrangler = resolve(root, 'node_modules/.bin/wrangler');
 const env = extra => ({ ...process.env, WRANGLER_SEND_METRICS: 'false', ...extra });
-async function freePort() {
-  const server = createServer(); await new Promise(done => server.listen(0, '127.0.0.1', done));
-  const { port } = server.address(); await new Promise(done => server.close(done)); return port;
-}
 function run(cwd, args) {
   const result = spawnSync(wrangler, args, { cwd, encoding: 'utf8', env: env({}), maxBuffer: 8 * 1024 * 1024 });
   assert.equal(result.status, 0, (result.stderr || result.stdout || '').slice(-2000));
 }
 async function start(cwd, { state, registry, environment = null, ready }) {
-  const port = await freePort(); let inspector = await freePort(); while (inspector === port) inspector = await freePort();
-  const args = ['dev', '--local', '--persist-to', state, '--config', 'wrangler.toml', '--ip', '127.0.0.1',
-    '--port', String(port), '--inspector-port', String(inspector), ...(environment ? ['--env', environment] : [])];
+  const args = ['dev', '--local', '--persist-to', state, '--config', 'wrangler.toml', ...PORT_ARGS, ...(environment ? ['--env', environment] : [])];
   const child = spawn(wrangler, args, { cwd, env: env({ WRANGLER_REGISTRY_PATH: registry }) });
   let logs = ''; child.stdout.on('data', chunk => { logs += chunk; }); child.stderr.on('data', chunk => { logs += chunk; });
-  const base = `http://127.0.0.1:${port}`, until = Date.now() + 30_000;
+  const until = Date.now() + 30_000;
   while (Date.now() < until && child.exitCode === null) {
-    try { if ((await fetch(base + ready, { signal: AbortSignal.timeout(2000) })).ok) return { child, base }; } catch { /* starting */ }
+    const base = readyBase(logs);
+    try { if (base && (await fetch(base + ready, { signal: AbortSignal.timeout(2000) })).ok) return { child, base }; } catch { /* starting */ }
     await new Promise(done => setTimeout(done, 150));
   }
   child.kill('SIGTERM'); throw new Error('worker did not start: ' + logs.slice(-2000));

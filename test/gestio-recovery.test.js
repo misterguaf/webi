@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn, spawnSync } from 'node:child_process';
 import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
 import { createBackup, verifyBackup, restoreBackup } from '../gestio/scripts/recovery.js';
+import { PORT_ARGS, readyBase } from './helpers/wrangler-port.js';
 import { assertAllowedEgress } from '../api/_lib/environment.js';
 import { runRetention } from '../gestio/src/services/audit-service.js';
 
@@ -50,17 +50,9 @@ function localD1Adapter(cwd,state) {
     async batch(statements) {return statements.map(item=>execute(item.sql,item.params));}
   };
 }
-async function freePort() {
-  const server=createServer();
-  await new Promise(resolveReady=>server.listen(0,'127.0.0.1',resolveReady));
-  const port=server.address().port;
-  await new Promise(resolveReady=>server.close(resolveReady));
-  return port;
-}
 async function startWorker(cwd,state) {
-  const port=await freePort(),base='http://127.0.0.1:'+port;
-  const child=spawn(wrangler,['dev','--local','--persist-to',state,'--ip','127.0.0.1',
-    '--port',String(port),'--config','wrangler.toml'],{cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
+  const child=spawn(wrangler,['dev','--local','--persist-to',state,...PORT_ARGS,
+    '--config','wrangler.toml'],{cwd,env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
   let logs='';
   let closed=false,spawnError=null;
   const capture=chunk=>{logs=(logs+chunk.toString()).slice(-8000);};
@@ -71,6 +63,8 @@ async function startWorker(cwd,state) {
   const worker={child,close};
   for (let i=0;i<100;i++) {
     if (closed || spawnError) break;
+    const base=readyBase(logs);
+    if (!base) { await new Promise(resolveWait=>setTimeout(resolveWait,100)); continue; }
     try { const response=await fetch(base+'/api/dev/identities',{signal:AbortSignal.timeout(1000)});if(response.ok) {
       const request=async (path,{method='GET',cookie='',body}={})=>{
         try {
