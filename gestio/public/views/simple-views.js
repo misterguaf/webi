@@ -3,6 +3,7 @@
 import { setupFees } from '../fees.js';
 import { setupFeeStatus } from '../fee-status.js';
 import { setupDashboard } from '../dashboard.js';
+import { ACCOUNT_STATUS_LABELS, ROLE_LABELS, SECTION_LABELS } from '../labels.js';
 
 const $ = id => document.getElementById(id);
 const FEE_LISTS = ['feeRoundRevisions', 'feeMetrics', 'feeSearchResults', 'feeGroups', 'feeObligations', 'feePayments', 'feeIssues', 'feeObligationDetail', 'feePaymentDetail'];
@@ -15,8 +16,10 @@ export { createIncidentsView } from './incidents.js';
 export function createAccountView({ call, message, reportLoadError, reload }) {
   async function load(me) {
     $('account').hidden = false; $('sessions').hidden = false;
-    $('profile').textContent = `${me.user.displayName} · ${me.user.status}`;
-    $('roles').replaceChildren(...me.roles.map(role => { const li = document.createElement('li'); li.textContent = `${role.role_code}${role.section_code ? ` · ${role.section_code}` : ''}`; return li; }));
+    // 3.5I: human names, never role/section/status codes.
+    $('profile').textContent = `${me.user.displayName} · compte ${(ACCOUNT_STATUS_LABELS[me.user.status] ?? 'activa').toLocaleLowerCase('ca')}`;
+    $('roles').replaceChildren(...me.roles.map(role => { const li = document.createElement('li');
+      li.textContent = `${ROLE_LABELS[role.role_code] ?? 'Rol'}${role.section_code ? ` · ${SECTION_LABELS[role.section_code] ?? role.section_code}` : ''}`; return li; }));
     let sessions = { sessions: [] };
     try { sessions = await call('/api/me/sessions'); } catch (error) { reportLoadError(error); if (error.status === 401) return; }
     $('sessionList').replaceChildren(...sessions.sessions.map(session => {

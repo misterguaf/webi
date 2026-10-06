@@ -97,3 +97,15 @@ test('lists and screens drop the previous person’s data when unloaded', () => 
   assert.match(source('dashboard.js'), /for\(const id of \['dashboardFees','dashboardAttention','dashboardActivities'\]\)\$\(id\)\.replaceChildren\(\)/);
   assert.match(source('dashboard.js'), /Quotes de les teues seccions';[\s\S]{0,140}Veure quotes →/, 'the link says where it goes');
 });
+
+test('visible copy: section names (Esculta), no backend states, codes or internal ids in the legacy Quotes view', () => {
+  const html = source('index.html'), fees = source('fees.js'), account = source('views/simple-views.js');
+  assert.doesNotMatch(html, />Escolta</, 'the visible section name is Esculta');
+  assert.doesNotMatch(html, /<option>(PENDING|PARTIAL|PAID|ISSUE)<\/option>/, 'filter options carry human labels');
+  assert.doesNotMatch(html, /<pre id="feeMetrics"/);
+  assert.match(fees, /sectionName\(section\)/, 'fee summary by section name');
+  assert.doesNotMatch(fees, /\$\{row\.(status|review_status|match_status|code|payment_id|obligation_id)\}/, 'no raw state, code or id interpolated');
+  assert.doesNotMatch(fees, /toFixed\(2\)\+' €'/, 'one money format (formatEur)');
+  assert.doesNotMatch(account, /\$\{role\.role_code\}|\$\{me\.user\.status\}/, 'account shows role and state names');
+  assert.match(source('shell.js'), /ROLE_LABELS\[me\.roles\[0\]\?\.role_code\]/);
+});

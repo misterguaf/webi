@@ -105,7 +105,7 @@
       <button type="submit">Guarda configuració</button><button id="newFeeRound" type="button">Nova ronda</button>
     </form>
     <ul id="feeRoundRevisions"></ul>
-    <h3>Resum</h3><pre id="feeMetrics"></pre>
+    <h3>Resum</h3><p id="feeMetrics" class="fee-metrics"></p>
     <h3>Educands i agrupació explícita</h3>
     <label>Busca educand <input id="feePersonSearch" minlength="2" placeholder="Nom fictici"></label>
     <button id="feeSearchButton" type="button">Busca</button><ul id="feeSearchResults"></ul>
@@ -113,8 +113,8 @@
     <label>Motiu de la correcció, si ja hi ha quotes emeses <input id="feeGroupReason" maxlength="240" autocomplete="off"></label>
     <button id="feeCreateGroup" type="button">Agrupa educands seleccionats en este ordre</button><ul id="feeGroups"></ul>
     <h3>Obligacions</h3>
-    <label>Filtra per secció <select id="feeSectionFilter"><option value="">Totes</option><option value="00000000-0000-4000-8000-000000000001">Manada</option><option value="00000000-0000-4000-8000-000000000002">Tropa</option><option value="00000000-0000-4000-8000-000000000003">Escolta</option><option value="00000000-0000-4000-8000-000000000004">Clan</option></select></label>
-    <label>Filtra per estat <select id="feeStatusFilter"><option value="">Tots</option><option>PENDING</option><option>PARTIAL</option><option>PAID</option><option>ISSUE</option></select></label>
+    <label>Filtra per secció <select id="feeSectionFilter"><option value="">Totes</option><option value="00000000-0000-4000-8000-000000000001">Manada</option><option value="00000000-0000-4000-8000-000000000002">Tropa</option><option value="00000000-0000-4000-8000-000000000003">Esculta</option><option value="00000000-0000-4000-8000-000000000004">Clan</option></select></label>
+    <label>Filtra per estat <select id="feeStatusFilter"><option value="">Tots</option><option value="PENDING">Pendents</option><option value="PARTIAL">Parcials</option><option value="PAID">Pagades</option><option value="ISSUE">Amb incidència</option></select></label>
     <label>Busca pel nom <input id="feeObligationSearch"></label><button id="feeFilterButton" type="button">Filtra</button>
     <ul id="feeObligations"></ul><div id="feeObligationDetail"></div>
     </div>

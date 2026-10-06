@@ -1,4 +1,5 @@
 import { createRouter } from './router.js';
+import { ROLE_LABELS } from './labels.js';
 
 const $ = id => document.getElementById(id);
 const pages = [
@@ -229,8 +230,7 @@ export function setShellSession(me){
   if(!sessionActive){closeSearch({restoreFocus:false});closeProfile();closeMore();currentPage='inici';currentRoute=null;document.body.dataset.page='login';$('pageTitle').textContent='Accés a Gestió';$('pageHeader').hidden=false;$('pageSubtitle').hidden=true;document.title='Gestió · Parpalló';return}
   const name=me.user.displayName||'Usuari';
   $('profileName').textContent=name;
-  const roleLabels={GROUP_COORDINATOR:'Coordinació general',SECTION_COORDINATOR:'Coordinació de secció',SECTION_DELEGATE:'Delegació de secció',TREASURY:'Tresoreria',SECRETARY:'Secretaria',CRM_MANAGER:'CRM',TECH_ADMIN:'Administració tècnica'};
-  $('profileRole').textContent=roleLabels[me.roles[0]?.role_code]||'Compte';
+  $('profileRole').textContent=ROLE_LABELS[me.roles[0]?.role_code]||'Compte';
   $('profileAvatar').textContent=name.replace(/\s*\([^)]*\)/g,'').trim().split(/\s+/).slice(0,2).map(part=>part[0]).join('').toLocaleUpperCase('ca');
   $('profileTrigger').setAttribute('aria-label',`Perfil de ${name}`);
   // The hash survives the login screen, so a deep link requested while signed out is restored here.
