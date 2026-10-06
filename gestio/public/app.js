@@ -14,7 +14,7 @@ import { createFamilyGroupsView } from './views/family-groups.js';
 
 const $ = id => document.getElementById(id);
 const message = value => { $('message').textContent = value; };
-const { call, post } = createClient({ onUnauthorized: () => {
+const { call, post, endSession } = createClient({ onUnauthorized: () => {
   if (!document.body.classList.contains('shell-authenticated')) return;
   hide();
   message('La sessió ha caducat. Torna a entrar.');
@@ -43,7 +43,7 @@ onNavigate((page, route) => { if (page !== shownPage) { $('shellLoadError').hidd
 
 function hide() {
   currentMe = null;
-  dismissOverlays(); views.unloadAll();
+  endSession(); dismissOverlays(); views.unloadAll();
   $('logout').hidden = true; $('login').hidden = false; setShellSession(null);
 }
 async function refresh() {

@@ -127,3 +127,25 @@ test('cross-module links only from server-included data or usable pages; every m
   assert.match(source('participants.css'), /\.participant-toolbar\{flex-wrap:wrap\}/, 'the mobile toolbar wraps instead of overflowing');
   assert.match(source('activities.css'), /\.detail-actions \.btn\{min-height:44px;min-width:0;white-space:normal/);
 });
+
+test('a late answer from an ended session is dropped: never painted into the next session, never shown as an error', async () => {
+  const { createClient } = await import('../gestio/public/http.js');
+  const original = globalThis.fetch;
+  const pending = [];
+  globalThis.fetch = () => new Promise(resolve => pending.push(resolve));
+  try {
+    const client = createClient({ onUnauthorized: () => {} });
+    const settled = [];
+    client.call('/api/participants').then(data => settled.push(['data', data]), error => settled.push(['error', error.status]));
+    client.call('/api/payments').then(data => settled.push(['data', data]), error => settled.push(['error', error.status]));
+    client.endSession(); // logout, expiry or another person
+    pending[0]({ ok: true, status: 200, json: async () => ({ participants: ['previous person'] }) });
+    pending[1]({ ok: false, status: 500, json: async () => ({ error: 'internal_error' }) });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.deepEqual(settled, [], 'nothing from the previous session reaches the screens');
+    const fresh = client.call('/api/me');
+    pending[2]({ ok: true, status: 200, json: async () => ({ user: { id: 'next' } }) });
+    assert.deepEqual(await fresh, { user: { id: 'next' } }, 'the new session works normally');
+  } finally { globalThis.fetch = original; }
+  assert.match(source('app.js'), /endSession\(\); dismissOverlays\(\); views\.unloadAll\(\)/);
+});

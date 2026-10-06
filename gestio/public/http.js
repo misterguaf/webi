@@ -20,7 +20,16 @@ export function humanError(status, code) {
 // Same-origin JSON client for the Gestió API. Errors carry `status`; 401 notifies the session owner; a generic
 // authorisation denial (403 `forbidden`) notifies `onForbidden`, so the shell can re-check what the session may do.
 export function createClient({ onUnauthorized, onForbidden = () => {} }) {
+  // 3.5I: requests belong to the session that started them. When it ends (`endSession`: logout, expiry, another
+  // person), late answers are dropped — never painted into the next session's screens, never shown as errors.
+  let epoch = 0;
+  const dropped = new Promise(() => {});
   async function call(path, options = {}) {
+    const started = epoch;
+    try { const data = await request(path, options); return started === epoch ? data : dropped; }
+    catch (error) { if (started !== epoch) return dropped; throw error; }
+  }
+  async function request(path, options) {
     let response;
     try { response = await fetch(path, { credentials: 'same-origin', ...options, headers: { ...(options.body ? { 'Content-Type': 'application/json' } : {}), ...options.headers } }); }
     catch (cause) {
@@ -48,5 +57,5 @@ export function createClient({ onUnauthorized, onForbidden = () => {} }) {
     }
     return data;
   }
-  return { call, post: path => call(path, { method: 'POST' }) };
+  return { call, post: path => call(path, { method: 'POST' }), endSession: () => { epoch += 1; } };
 }
