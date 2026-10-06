@@ -3,10 +3,22 @@
 Només el que cal mirar amb els teus ulls. Tot el que ja comproven els tests automàtics o el recorregut automatitzat
 (desbordaments, codis tècnics visibles, errors a la consola, rutes trencades) **no** és ací.
 
-Entorn: Gestió local amb la demo sintètica (`npm run demo:seed` amb el teu servidor aturat, o la teua base actual
-després d'aplicar les migracions fins a 0047). Identitats del selector: `seed-101` Coordinació general, `seed-102`
-Coordinació Tropa, `seed-103` Coordinació Esculta, `seed-104` Tresoreria, `seed-105` Secretaria, `seed-106` CRM,
-`seed-107` Administració tècnica.
+Entorn: Gestió local amb la demo (104 educands amb noms realistes inventats). La teua base de l'8788 no s'ha tocat;
+per a veure la demo nova cal `npm run demo:reset` amb el teu servidor aturat, **que esborra la teua base local**.
+Identitats del selector (ara mostra nom · rol): `seed-101` Teresa Climent Faus (Coordinació general), `seed-102` Vicent
+Sendra Llorca (Coordinació Tropa), `seed-103` Marina Peiró Tur (Coordinació Esculta), `seed-104` Miquel Ortolà Puig
+(Tresoreria), `seed-105` Anna Benavent Soler (Secretaria), `seed-106` Carles Vidal Moll (CRM), `seed-107` Lluís
+Bataller Grau (Administració tècnica).
+
+## DADES DE LA DEMO
+
+1. **Aspecte real** — recorre Participants, Activitats, Inscripcions, Quotes i Tresoreria.
+   Esperat: cap «Demo», «fictici» ni «de prova» visible; famílies amb germans en seccions diferents; 25–27 educands per secció.
+   Es mantenen a propòsit: l'indicador «Entorn local · dades de demostració» (protecció de l'entorn), els correus
+   `@example.test`, els justificants PDF amb la marca sintètica i l'IBAN de zeros (no s'inventen comptes bancaris).
+   Dubte: «Eixida a la platja de l’Ahuir», «Acampada a Barx» (amb inscripcions) i «Neteja de la muntanya» (tancada)
+   vénen de la llavor canònica amb data de 2040 i el bloqueig de condicions no permet canviar-la; es veuen amb un
+   termini molt llarg. Digues si les vols tractar d'una altra manera.
 
 ## DESKTOP
 

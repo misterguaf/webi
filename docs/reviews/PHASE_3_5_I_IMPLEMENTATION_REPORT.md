@@ -17,6 +17,8 @@ no `pre-j`, no canonical I branch. Borja reviews it first (`docs/reviews/PHASE_3
 | I.3 states/responsive/cross-module | scoped error banner, real-date filters, payment queue links when permitted, way back from missing requests, dialogs fit small screens |
 | I.4 lifecycle | requests belong to their session; late answers are dropped |
 | I.5 docs | this report and the human review checklist |
+| I.4 fix | only late data is dropped (errors settle), found by the full suite: the shell test hung on logout |
+| I.6 demo | realistic invented names for a 104-educand group; local selector shows each role (Borja's request) |
 
 ## How the inventory was made
 
@@ -84,6 +86,16 @@ shell, router, view registry, HTTP client and every view's load/unload.
   may read it. → person links to the record when included; activity links only for people who use Activitats.
 - Already correct and kept: activity registrations tab → participant (server-gated), Noves altes → participant (H.3),
   Activitat → resource (server-decided links), incidents → admission request (server-decided).
+
+## Realistic demo (Borja's request during Phase I)
+
+`gestio/demo/names.js` builds invented Valencian names deterministically; the demo now has 104 educands (the 15
+original families and every fee/registration/treasury scenario unchanged, plus 45 families with 64 children), guardians
+for most families, realistic activity names/places/codes, payers, counterparties and bank descriptions, and renames the
+canonical seed's visible records **in the local demo database only** (`seed.sql` and every test fixture keep their
+«(fictici)» names). Fences kept: `@example.test` addresses, synthetic marker in evidence, zero IBAN, the «Entorn local ·
+dades de demostració» indicator, `SYNTHETIC_ONLY` intake checks. Seed activities with registrations keep their 2040
+dates (the terms lock forbids changing them). A test guarantees 104 unique names and no visible demo/fictitious text.
 
 ## Tests added / changed
 
