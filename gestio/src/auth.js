@@ -51,7 +51,8 @@ export async function verifyAccessRequest(request, env, now = Date.now()) {
   const issuer = new URL(env.ACCESS_ISSUER);
   if (issuer.protocol !== 'https:' || !issuer.hostname.endsWith('.cloudflareaccess.com') || issuer.pathname !== '/' || issuer.search || issuer.hash) throw new Error('invalid issuer');
   const certUrl = new URL('/cdn-cgi/access/certs', issuer);
-  const response = await fetch(certUrl, { redirect: 'error' });
+  // Workers do not support redirect:'error'; with 'manual' a redirect is a non-ok response and is refused below.
+  const response = await fetch(certUrl, { redirect: 'manual' });
   if (!response.ok) throw new Error('JWKS unavailable');
   const jwks = await response.json();
   return verifyAccessJwt(token, { issuer: issuer.origin, audience: env.ACCESS_AUDIENCE, jwks, now });

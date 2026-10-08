@@ -28,8 +28,11 @@ export function createAccessGate({ fetchImpl = (input, init) => fetch(input, ini
   let cached = null;
   async function jwks(issuer, refresh) {
     if (!refresh && cached && cached.issuer === issuer && now() - cached.at < JWKS_TTL_MS) return cached.keys;
-    const response = await fetchImpl(new URL('/cdn-cgi/access/certs', issuer), { redirect: 'error' });
-    if (!response.ok) throw new Error('JWKS unavailable');
+    // Workers do not support redirect:'error'; with 'manual' any redirect is a non-ok answer and is refused.
+    let response;
+    try { response = await fetchImpl(new URL('/cdn-cgi/access/certs', issuer), { redirect: 'manual' }); }
+    catch (error) { console.warn('access jwks fetch failed', { name: error?.name }); throw new Error('JWKS unavailable'); }
+    if (!response.ok) { console.warn('access jwks refused', { status: response.status }); throw new Error('JWKS unavailable'); }
     const body = await response.json();
     if (!Array.isArray(body?.keys) || !body.keys.length)
       console.warn('access jwks without keys', { status: response.status, type: response.headers.get('content-type'), fields: Object.keys(body ?? {}).slice(0, 8) });
