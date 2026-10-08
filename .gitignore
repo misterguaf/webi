@@ -16,3 +16,6 @@ node_modules/
 .parpallo-backup-partial-*/
 .parpallo-restore-partial-*/
 .DS_Store
+
+# Gestió «proves»: generated at deploy time from the demo (never committed).
+gestio/proves/snapshot.generated.js

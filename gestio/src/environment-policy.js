@@ -6,7 +6,7 @@
 
 /** @typedef {'local-synthetic'|'test'|'production'} RuntimeEnvironment */
 /** @typedef {{APP_ENV?: string, DB?: unknown, EVIDENCE_STORAGE?: unknown, DEV_IDENTITY_PROVIDER?: string,
- *   ACCESS_ISSUER?: string, ACCESS_AUDIENCE?: string, DEPLOYMENT_ENVIRONMENT?: string}} RuntimeEnv */
+ *   ACCESS_ISSUER?: string, ACCESS_AUDIENCE?: string, DEPLOYMENT_ENVIRONMENT?: string, STAGING_DEMO_LOGIN?: string}} RuntimeEnv */
 /** @typedef {'LOCAL'|'STAGING'|'PRODUCTION'} DeploymentEnvironment */
 
 // Data accepted by Gestió services, independent of the runtime: while SYNTHETIC_ONLY, every intake,
@@ -59,7 +59,20 @@ export function assertRuntime(env) {
     throw new Error('DEV_IDENTITY_PROVIDER cannot be enabled in production');
   if (!env.DB) throw new Error('D1 binding missing');
   if (name === 'production' && (!env.ACCESS_ISSUER || !env.ACCESS_AUDIENCE)) throw new Error('Access issuer/audience missing');
+  if (env.STAGING_DEMO_LOGIN != null && (env.STAGING_DEMO_LOGIN !== 'enabled' || name !== 'production' || deploymentEnvironment(env) !== 'STAGING'))
+    throw new Error('STAGING_DEMO_LOGIN is only valid on a STAGING deployment');
   return name;
+}
+
+// Gestió «proves» (gestioproves.grupscoutparpallo.com): a STAGING deployment of the production runtime whose
+// visitors have already passed Cloudflare Access (e-mail allow-list). Behind that gate they pick one of the
+// synthetic demo identities, like the local selector. Never on PRODUCTION; the caller still verifies the Access JWT.
+/** @param {RuntimeEnv} env */
+export function stagingDemoLoginEnabled(env) {
+  try {
+    return runtimeEnvironment(env) === 'production' && deploymentEnvironment(env) === 'STAGING' &&
+      env.STAGING_DEMO_LOGIN === 'enabled' && !!env.ACCESS_ISSUER && !!env.ACCESS_AUDIENCE;
+  } catch { return false; }
 }
 
 /** @param {URL} url */
