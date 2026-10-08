@@ -41,9 +41,32 @@ export function createAccessGate({ fetchImpl = (input, init) => fetch(input, ini
     catch {
       // Access rotates its signing keys: refresh once before refusing.
       try { await verifyAccessJwt(token, { ...options, jwks: await jwks(env.ACCESS_ISSUER, true) }); return true; }
-      catch { return false; }
+      catch (error) {
+        console.warn('access gate refused', { reason: error?.message === 'JWKS unavailable' ? 'jwks_unavailable' : refusalReason(token, options, cached?.keys) });
+        return false;
+      }
     }
   };
+}
+
+/** Which check refused the token: a code only, never token contents or identity (for the Worker logs). */
+export function refusalReason(token, { issuer, audience, now }, jwksValue) {
+  try {
+    const [head, body] = token.split('.').slice(0, 2).map(part => JSON.parse(new TextDecoder().decode(decode(part.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - part.length % 4) % 4)))));
+    if (token.split('.').length !== 3) return 'shape';
+    if (head.alg !== 'RS256') return 'alg';
+    if (!jwksValue?.keys?.some(key => key.kid === head.kid)) return 'kid';
+    if (body.iss !== issuer) return 'iss';
+    if (!Array.isArray(body.aud)) return 'aud_not_array';
+    if (!body.aud.includes(audience)) return 'aud';
+    if (body.type !== 'app') return `type_${String(body.type).slice(0, 12)}`;
+    if (typeof body.sub !== 'string' || !body.sub) return 'sub';
+    for (const claim of ['exp', 'nbf', 'iat']) if (!Number.isInteger(body[claim])) return `${claim}_missing`;
+    if (body.exp * 1000 <= now) return 'expired';
+    if (body.nbf * 1000 > now) return 'not_yet_valid';
+    if (body.iat * 1000 > now + 60_000) return 'iat_future';
+    return 'signature';
+  } catch { return 'undecodable'; }
 }
 
 /** R2 stand-in: nothing is stored or read back; the evidence type comes from the D1 row (never the client). */
