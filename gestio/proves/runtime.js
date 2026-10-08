@@ -30,7 +30,10 @@ export function createAccessGate({ fetchImpl = (input, init) => fetch(input, ini
     if (!refresh && cached && cached.issuer === issuer && now() - cached.at < JWKS_TTL_MS) return cached.keys;
     const response = await fetchImpl(new URL('/cdn-cgi/access/certs', issuer), { redirect: 'error' });
     if (!response.ok) throw new Error('JWKS unavailable');
-    cached = { issuer, keys: await response.json(), at: now() };
+    const body = await response.json();
+    if (!Array.isArray(body?.keys) || !body.keys.length)
+      console.warn('access jwks without keys', { status: response.status, type: response.headers.get('content-type'), fields: Object.keys(body ?? {}).slice(0, 8) });
+    cached = { issuer, keys: body, at: now() };
     return cached.keys;
   }
   return async function verify(request, env) {
