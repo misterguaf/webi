@@ -163,10 +163,9 @@ test('placeholder evidence: nothing stored, the type comes from the D1 row', asy
 
 test('deploy config: only the reviewed STAGING shape is accepted; local config untouched', () => {
   const committed = readFileSync(join(root, 'gestio/wrangler.proves.toml'), 'utf8');
-  assert.throws(() => assertProvesConfig(committed), /REPLACE_/, 'placeholders block a deploy');
-  const filled = committed.replace('REPLACE_TEAM', 'parpallo').replace('REPLACE_AUD', 'c'.repeat(64))
-    .replace('REPLACE_D1_ID', '12345678-1234-4123-8123-123456789abc');
+  const filled = committed;
   assert.doesNotThrow(() => assertProvesConfig(filled));
+  assert.throws(() => assertProvesConfig(filled.replace(/ACCESS_AUDIENCE = "[^"]*"/, 'ACCESS_AUDIENCE = "REPLACE_AUD"')), /REPLACE_/, 'placeholders block a deploy');
   for (const broken of [filled + '\n[[r2_buckets]]\nbinding = "EVIDENCE_STORAGE"\n', filled.replace('STAGING"', 'PRODUCTION"'),
     filled + '\nDEV_IDENTITY_PROVIDER = "enabled"\n', filled.replace('workers_dev = false', 'workers_dev = true'),
     filled.replace('gestioproves.grupscoutparpallo.com", custom_domain', 'gestio.grupscoutparpallo.com", custom_domain')])
