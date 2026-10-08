@@ -55,9 +55,6 @@ export function refusalReason(token, { issuer, audience, now }, jwksValue) {
     const [head, body] = token.split('.').slice(0, 2).map(part => JSON.parse(new TextDecoder().decode(decode(part.replaceAll('-', '+').replaceAll('_', '/') + '='.repeat((4 - part.length % 4) % 4)))));
     if (token.split('.').length !== 3) return 'shape';
     if (head.alg !== 'RS256') return 'alg';
-    // Key ids are public (published at /cdn-cgi/access/certs); prefixes help diagnose a key mismatch.
-    if (!jwksValue?.keys?.some(key => key.kid === head.kid))
-      return `kid ${String(head.kid).slice(0, 8)} not in [${(jwksValue?.keys ?? []).map(key => String(key.kid).slice(0, 8)).join(',')}]`;
     if (body.iss !== issuer) return 'iss';
     if (!Array.isArray(body.aud)) return 'aud_not_array';
     if (!body.aud.includes(audience)) return 'aud';
@@ -67,7 +64,8 @@ export function refusalReason(token, { issuer, audience, now }, jwksValue) {
     if (body.exp * 1000 <= now) return 'expired';
     if (body.nbf * 1000 > now) return 'not_yet_valid';
     if (body.iat * 1000 > now + 60_000) return 'iat_future';
-    return 'signature';
+    // Key ids are public (published at /cdn-cgi/access/certs); prefixes help diagnose a key mismatch.
+    return `signature (kid ${String(head.kid).slice(0, 8)}; keys [${(jwksValue?.keys ?? []).map(key => String(key.kid).slice(0, 8)).join(',')}])`;
   } catch { return 'undecodable'; }
 }
 
