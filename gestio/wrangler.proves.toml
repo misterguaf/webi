@@ -14,8 +14,8 @@ APP_ENV = "production"
 DEPLOYMENT_ENVIRONMENT = "STAGING"
 STAGING_DEMO_LOGIN = "enabled"
 # Zero Trust → Access → Applications → «Gestió proves»: team domain and Application Audience (AUD) tag.
-ACCESS_ISSUER = "https://REPLACE_TEAM.cloudflareaccess.com"
-ACCESS_AUDIENCE = "REPLACE_AUD"
+ACCESS_ISSUER = "https://royal-silence-6c06.cloudflareaccess.com"
+ACCESS_AUDIENCE = "743e48315f92b361aec4e30617f50acb2748ba4f2f15fcef7601ebb336cea888"
 
 [assets]
 directory = "./public"
@@ -31,7 +31,7 @@ fallthrough = true
 [[d1_databases]]
 binding = "DB"
 database_name = "parpallo-gestio-proves"
-database_id = "REPLACE_D1_ID"
+database_id = "81da6cb1-3478-4d35-b0a2-76a28e240294"
 migrations_dir = "./migrations"
 
 # Nightly reset to the demo: one small batch per minute from 02:00 UTC (03:00/04:00 in Gandia).
