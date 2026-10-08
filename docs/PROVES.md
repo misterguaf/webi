@@ -54,6 +54,9 @@ Rellenar en `gestio/wrangler.proves.toml`: `ACCESS_ISSUER`, `ACCESS_AUDIENCE` y 
 npm run proves:deploy -- --reset
 ```
 
+Requisito de Cloudflare para el cron nocturno: la cuenta necesita un subdominio `workers.dev` (se crea solo al abrir
+una vez **Workers & Pages** en el panel). El Worker de proves no se publica en él (`workers_dev = false`).
+
 `proves:deploy` se niega si falta algún valor, si hay R2, si aparece el proveedor local, si la ruta no es
 exactamente el dominio de proves o si hay cambios sin commitear en `gestio/`. Construye la demo, aplica las
 migraciones remotas, publica el Worker y (con `--reset`) carga la demo.
