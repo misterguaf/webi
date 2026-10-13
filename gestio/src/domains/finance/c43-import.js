@@ -6,10 +6,10 @@
 // otherwise the full row with its ordinal among identical rows. A near match (same account, date and amount,
 // different identity) is imported flagged for human review, never dropped. Nothing of the file is stored besides
 // the movements: no copy of the statement, no public object, no personal data in logs or audit metadata.
-import { authorize } from '../../policy.js';
 import { synthetic } from '../../environment-policy.js';
 import { AppError, validUuid } from '../../services/common.js';
 import { allow, audit, commit, fail, keysOnly, notFound, uuid } from './shared.js';
+import { canReadBankConcepts } from './movements.js';
 import { C43Error, C43_COMMON_CONCEPTS, C43_ENCODINGS, C43_LIMITS, accountMask, decodeC43, parseC43 } from './c43-parser.js';
 
 const encoder = new TextEncoder();
@@ -126,13 +126,13 @@ const counts = rows => ({ detected: rows.length, new: rows.filter(row => row.sta
   possibleDuplicates: rows.filter(row => row.status === 'POSSIBLE_DUPLICATE').length,
   incidents: rows.filter(row => row.incidents.length).length });
 
-/** Analyse a statement without writing. Concepts are shown only to people who may read bank descriptions. */
+/** Analyse a statement without writing. Concepts are shown to people authorised to consult bank movements. */
 export async function previewC43Import(db, context, requestId, input, now = Date.now()) {
   await allow(db, context, requestId, 'finance.movement.import', 'finance_import_batch');
   const bytes = readInput(input, false);
   const result = await analyse(db, input, bytes);
   if (result.error) return { ok: false, error: result.error };
-  const concepts = (await authorize(db, context, { permission: 'finance.bank_description.reveal' })).allow;
+  const concepts = await canReadBankConcepts(db, context);
   await commit(db, [audit(db, context, requestId, 'BANK_IMPORT_PREVIEWED', 'finance_import_batch', null, now,
     { metadata: { count: Math.min(result.statement.movementCount, 1000) } })]);
   return { ok: true, file: { name: input.filename.trim(), hash: result.fileHash, encoding: result.encoding, bytes: bytes.length },

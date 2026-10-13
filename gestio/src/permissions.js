@@ -69,7 +69,7 @@ export const PERMISSIONS = Object.freeze({
   'finance.movement.import': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.movement.classify': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.bank_description.reveal': { kind: 'GLOBAL',
-    note: 'Original bank description, audited; explicit grant only (LEGAL DECISION REQUIRED); not delegable.' },
+    note: 'Original bank description, audited; explicit grant, not delegable. Since 3.5I (C43) holders of finance.movement.read may also read concepts (product decision).' },
   'finance.expense.read': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.expense.manage': { kind: 'GLOBAL', delegable: true, financialDelegation: true },
   'finance.reimbursement.self_approve': { kind: 'GLOBAL', note: 'Explicit Treasury role ceiling and individual grant; never delegated.' },

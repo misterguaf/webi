@@ -301,8 +301,15 @@ export async function receiptCandidates(db, context, requestId, id) {
   return { fees, activities, overpayments, refunds: [], suggestionOnly: true };
 }
 // The protected original description: explicit permission, audited without the value (LEGAL DECISION REQUIRED).
+/** Product decision (3.5I C43): people expressly authorised to consult bank movements may read the concepts they
+ * classify and reconcile. The explicit grant still exists; TECH_ADMIN and section roles get neither. Audited. */
+export async function canReadBankConcepts(db, context) {
+  return (await authorize(db, context, { permission: 'finance.movement.read' })).allow ||
+    (await authorize(db, context, { permission: 'finance.bank_description.reveal' })).allow;
+}
 export async function revealDescription(db, context, requestId, id) {
-  await allow(db, context, requestId, 'finance.bank_description.reveal', 'finance_movement', validUuid(id) ? id : null);
+  if (!await canReadBankConcepts(db, context))
+    await allow(db, context, requestId, 'finance.bank_description.reveal', 'finance_movement', validUuid(id) ? id : null);
   const row = await db.prepare('SELECT original_text FROM finance_movement_description WHERE movement_id=?').bind(requireUuid(id)).first();
   if (!row) throw notFound();
   await append(db, { requestId, actorUserId: context.userId, sessionId: context.sessionId, action: 'BANK_DESCRIPTION_REVEALED',
@@ -394,6 +401,28 @@ async function allocationRows(db, context, movementId, setVersion, list, now) {
 }
 /** Replace the current allocation set of a movement (an empty list clears it). History is kept. */
 export async function allocateMovement(db, context, requestId, id, input, now = Date.now()) {
+  const plan = await movementAllocationPlan(db, context, requestId, id, input, now);
+  await commit(db, plan.statements, 'stale_movement');
+  return { id, allocationVersion: plan.next };
+}
+/** Current allocation set of a movement as an allocation payload (to keep it while adding to it). */
+export async function currentAllocationPayload(db, id) {
+  const rows = (await db.prepare(`SELECT kind,amount_cents AS amountCents,budget_line_id AS budgetLineId,expense_id AS expenseId,
+    paired_movement_id AS pairedMovementId,income_id AS incomeId,reimbursement_id AS reimbursementId,fee_payment_id AS feePaymentId,
+    activity_allocation_id AS activityAllocationId,overpayment_id AS overpaymentId,activity_id AS activityId,section_id AS sectionId
+    FROM finance_allocation_current WHERE movement_id=? ORDER BY created_at,id`).bind(id).all()).results;
+  return keptAllocations(rows);
+}
+/** Add one allocation to the current set (kept as it is): a receipt that also pays a camp, a second quota… */
+export async function addMovementAllocation(db, context, requestId, id, input, now = Date.now()) {
+  if (!keysOnly(input, ['expectedVersion', 'allocation']) || !version(input.expectedVersion) || !input.allocation || typeof input.allocation !== 'object')
+    fail('invalid_allocation');
+  const allocations = [...await currentAllocationPayload(db, requireUuid(id)), input.allocation];
+  return allocateMovement(db, context, requestId, id, { expectedVersion: input.expectedVersion, allocations }, now);
+}
+/** Validation and statements of an allocation set change, without running them (the bank reconciliation of a
+ * quota runs them in the same atomic batch as the Quotes review). */
+export async function movementAllocationPlan(db, context, requestId, id, input, now = Date.now()) {
   await allow(db, context, requestId, 'finance.movement.classify', 'finance_movement', validUuid(id) ? id : null);
   if (!keysOnly(input, ['expectedVersion', 'allocations', 'reason']) || !version(input.expectedVersion)) fail('invalid_allocation');
   validAllocations(input.allocations);
@@ -447,7 +476,7 @@ export async function allocateMovement(db, context, requestId, id, input, now = 
       throw new AppError(409, 'invalid_reimbursement_settlement');
   }
   const next = input.expectedVersion + 1;
-  await commit(db, [
+  return { next, statements: [
     ...(changesPrior ? [db.prepare(`INSERT INTO finance_allocation_correction(movement_id,set_version,reason,changed_by,changed_at)
       VALUES(?,?,?,?,?)`).bind(id, next, input.reason.trim(), context.userId, now)] : []),
     db.prepare(`UPDATE finance_movement SET ${versionCas('allocation_version')} WHERE id=?`).bind(input.expectedVersion, id),
@@ -469,8 +498,7 @@ export async function allocateMovement(db, context, requestId, id, input, now = 
       .map(overpaymentId => audit(db, context, requestId, 'FAMILY_OVERPAYMENT_RECONCILED', 'finance_overpayment', overpaymentId, now)),
     ...([...prior, ...input.allocations].some(item => item.kind === 'FAMILY_REFUND') ?
       [audit(db, context, requestId, 'FAMILY_REFUND_RECONCILED', 'finance_movement', id, now)] : [])
-  ], 'stale_movement');
-  return { id, allocationVersion: next };
+  ] };
 }
 const idsForAudit = (allocations, kind) => [...new Set(allocations.filter(item => item.kind === kind).map(item => item.reimbursementId))];
 /** Pair two movements as one internal transfer (bank ↔ cash, card settlement later): both whole amounts,

@@ -91,7 +91,7 @@ export async function capabilities(db, context, now = Date.now()) {
       readMovements: global('finance.movement.read'),
       importMovements: global('finance.movement.import'),
       classifyMovements: global('finance.movement.classify'),
-      revealDescriptions: global('finance.bank_description.reveal'),
+      revealDescriptions: global('finance.bank_description.reveal') || global('finance.movement.read'),
       readExpenses: global('finance.expense.read'),
       manageExpenses: global('finance.expense.manage'),
       selfApproveReimbursement: global('finance.reimbursement.self_approve'),

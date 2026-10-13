@@ -41,8 +41,7 @@ test('preview analyses the statement without writing; confirm stores only the mo
   const s = await setup();
   try {
     const before = s.count('finance_movement');
-    assert.ok((await s.preview(october())).data.rows.every(row => row.concept === null), 'no bank text without the explicit grant');
-    s.grantReveal(104);
+    // Product decision: people authorised to consult bank movements (Treasury) read the concepts they classify.
     const preview = await s.preview(october());
     assert.equal(preview.status, 200, JSON.stringify(preview.data));
     const data = preview.data;
@@ -56,7 +55,7 @@ test('preview analyses the statement without writing; confirm stores only the mo
     assert.equal(s.count('finance_movement'), before, 'preview never writes movements');
     assert.equal(s.count('finance_import_batch'), 0);
     const audit = s.f.sql.prepare("SELECT metadata_json FROM audit_event WHERE action='BANK_IMPORT_PREVIEWED'").all();
-    assert.deepEqual(audit.map(row => JSON.parse(row.metadata_json)), [{ count: 5 }, { count: 5 }]);
+    assert.deepEqual(audit.map(row => JSON.parse(row.metadata_json)), [{ count: 5 }]);
 
     const confirmed = await s.confirm(october());
     assert.equal(confirmed.status, 201, JSON.stringify(confirmed.data));
@@ -200,14 +199,20 @@ test('a statement spanning two rounds keeps real dates and shows the round of ea
   } finally { s.f.close(); }
 });
 
-test('permissions: Treasury only (not coordinators, Secretaria or TECH_ADMIN); concepts need the description grant', async () => {
+test('permissions: Treasury only (not coordinators, Secretaria or TECH_ADMIN); bank concepts only for authorised readers', async () => {
   const s = await setup();
   try {
     for (const user of [101, 102, 105, 107]) {
       assert.equal((await s.preview(october(), user)).status, 403, `user ${user}`);
       assert.equal((await s.call(user, '/api/finance/bank-statements', 'POST', { filename: 'C43.txt', contentBase64: b64(october()), expectedFileHash: '0'.repeat(64) })).status, 403);
     }
-    assert.equal((await s.preview(october(), 104)).data.ok, true);
-    assert.equal(s.count('finance_movement'), 0);
+    const treasury = (await s.preview(october(), 104)).data;
+    assert.deepEqual([treasury.ok, treasury.conceptsVisible], [true, true]);
+    // A movement imported, then its concept: Treasury reads it (audited); section coordination and TECH_ADMIN never.
+    assert.equal((await s.confirm(october())).status, 201);
+    const movement = s.f.sql.prepare('SELECT id FROM finance_movement LIMIT 1').get().id;
+    assert.equal((await s.call(104, `/api/finance/movements/${movement}/description`)).status, 200);
+    assert.equal(s.count('audit_event', "action='BANK_DESCRIPTION_REVEALED'"), 1);
+    for (const user of [102, 105, 107]) assert.equal((await s.call(user, `/api/finance/movements/${movement}/description`)).status, 403, `user ${user}`);
   } finally { s.f.close(); }
 });

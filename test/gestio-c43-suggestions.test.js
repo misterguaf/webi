@@ -145,7 +145,7 @@ test('budget lines come from the round budget: a clear path is suggested, ties a
     assert.ok(none.notes.some(note => /Cap partida/.test(note)), 'no compatible line: pending, never a wrong one');
     const fee = (await s.suggest(quota)).data;
     assert.equal(fee.budgetLine, null);
-    assert.ok(fee.notes.some(note => /registrar i verificar el pagament a Quotes/.test(note)));
+    assert.ok(fee.notes.some(note => /cap quota amb el nom del concepte/.test(note)), 'no name: pending, never a guessed quota');
   } finally { s.f.close(); }
 });
 

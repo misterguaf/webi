@@ -33,6 +33,13 @@ test('filters, labels and result lines come from the server analysis', () => {
   assert.equal(model.toBase64(new Uint8Array([0x31, 0x31, 0xd1])), Buffer.from([0x31, 0x31, 0xd1]).toString('base64'));
   assert.deepEqual(model.matchAllocation({ type: 'FEE_PAYMENT', id: 'f', amountCents: 100 }), { kind: 'FEE_PAYMENT', feePaymentId: 'f', amountCents: 100 });
   assert.deepEqual(model.matchAllocation({ type: 'EXPENSE_SETTLEMENT', id: 'e', amountCents: 9 }), { kind: 'EXPENSE_SETTLEMENT', expenseId: 'e', amountCents: 9 });
+  // Quotas from a proof or without one: Quotes review + bank link together; the rest is added to the current set.
+  const allocations = [{ obligationId: 'o1', amountCents: 100, name: 'Educand' }];
+  assert.deepEqual(model.matchRequest({ type: 'FEE_PROOF', paymentId: 'p', allocations }, 'm', 3),
+    { path: '/api/finance/movements/m/fee-reconciliations', body: { expectedVersion: 3, paymentId: 'p', allocations: [{ obligationId: 'o1', amountCents: 100 }] } });
+  assert.deepEqual(model.matchRequest({ type: 'FEE_OBLIGATION', allocations }, 'm', 0).body, { expectedVersion: 0, allocations: [{ obligationId: 'o1', amountCents: 100 }] });
+  assert.equal(model.matchRequest({ type: 'FEE_PROOF', paymentId: 'p', allocations, needsMatchReview: true }, 'm', 0), null, 'unresolved proofs are solved in Quotes first');
+  assert.equal(model.matchRequest({ type: 'FEE_PAYMENT', id: 'f', amountCents: 5 }, 'm', 2).path, '/api/finance/movements/m/allocations/add');
 });
 
 test('wiring: Moviments › Importar extracte, preview then confirm, suggestions only confirmed by a person', () => {

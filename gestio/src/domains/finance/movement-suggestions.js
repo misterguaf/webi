@@ -158,8 +158,73 @@ export async function movementSuggestions(db, context, requestId, id) {
         strength: exact ? 'STRONG' : 'WEAK', reasons: [`Nom de l’educand al concepte: ${activity.participant}.`,
           exact ? 'Import idèntic al pendent de l’activitat.' : 'Import diferent del pendent: revisa’l.'] });
     }
-    if (kind.kind === 'FEE' && !matches.length)
-      notes.push('No hi ha cap pagament de quota verificat que encaixe. Si és una quota, primer cal registrar i verificar el pagament a Quotes.');
+    // Quotas by name: a family proof still to review, or no proof at all. Each proposal lists the obligations it would
+    // cover; confirming runs the Quotes review and the bank link together (fee-reconciliation.js).
+    const pending = (await db.prepare(`SELECT s.id,s.participant_id AS participantId,s.display_name AS name,s.family_group_id AS familyId,
+        s.amount_due_cents-s.allocated_cents AS pendingCents,r.code AS roundCode,s.status
+      FROM annual_fee_obligation_status s JOIN annual_fee_round r ON r.id=s.round_id
+      JOIN finance_round fr ON fr.annual_fee_round_id=s.round_id WHERE fr.status!='CLOSED'`).all()).results;
+    const allNamed = pending.filter(row => nameMatch(row.name, words));
+    // A quota with an open issue in Quotes is resolved there first (the bank link would be refused anyway).
+    for (const row of allNamed.filter(item => item.status === 'ISSUE'))
+      notes.push(`${names ? `La quota de ${row.name}` : 'Una quota del concepte'} té una incidència oberta a Quotes: resol-la abans de conciliar-la.`);
+    const named = allNamed.filter(row => row.status !== 'ISSUE');
+    const proofs = (await db.prepare(`SELECT p.id,p.declared_amount_cents AS declaredCents,p.submitted_by_name AS payer,
+        group_concat(COALESCE(s.participant_id,'?'),'|') AS people,sum(s.match_status NOT IN ('CLEAR','RESOLVED')) AS unresolved
+      FROM annual_fee_payment p JOIN annual_fee_submission_person s ON s.payment_id=p.id
+      WHERE p.origin='FAMILY' AND p.verified_amount_cents IS NULL AND p.review_status IN ('PENDING_REVIEW','ISSUE')
+      GROUP BY p.id LIMIT 400`).all()).results;
+    const covered = new Set();
+    const distribute = rows => { let left = movement.unallocatedCents;
+      return rows.filter(row => row.pendingCents > 0).map(row => { const amountCents = Math.min(row.pendingCents, left); left -= amountCents;
+        return { obligationId: row.id, amountCents, name: row.name }; }).filter(row => row.amountCents > 0); };
+    for (const proof of proofs) {
+      const people = String(proof.people).split('|');
+      const rows = pending.filter(row => people.includes(row.participantId));
+      const byName = rows.filter(row => named.includes(row));
+      const payer = nameMatch(proof.payer ?? '', words);
+      if (!byName.length && !payer) continue;
+      rows.forEach(row => covered.add(row.participantId));
+      const allocations = distribute(rows);
+      const sum = rows.reduce((total, row) => total + Math.max(row.pendingCents, 0), 0);
+      const exact = sum > 0 && (movement.unallocatedCents === sum || movement.unallocatedCents === proof.declaredCents);
+      matches.push({ type: 'FEE_PROOF', id: proof.id, paymentId: proof.id, roundCode: rows[0]?.roundCode ?? null, allocations: names ? allocations : allocations.map(({ name, ...rest }) => rest),
+        amountCents: allocations.reduce((total, row) => total + row.amountCents, 0), outstandingCents: sum, participants: names ? rows.map(row => row.name) : [],
+        needsMatchReview: proof.unresolved > 0, strength: exact && byName.length && !proof.unresolved && allocations.length ? 'STRONG' : 'WEAK',
+        reasons: [...byName.map(row => names ? `Nom de l’educand al concepte: ${row.name}.` : 'Nom d’un educand al concepte.'),
+          ...(payer ? ['Nom de qui va enviar el justificant al concepte.'] : []), 'Hi ha un justificant de la família pendent de revisar: es conserva.',
+          exact ? 'Import idèntic al de les quotes pendents.' : 'Import diferent del pendent: revisa’l.',
+          ...(proof.unresolved ? ['Primer cal resoldre a Quotes la identificació d’algun infant del justificant.'] : []),
+          ...(!allocations.length ? ['Les quotes del justificant ja estan cobertes: pot ser un pagament repetit.'] : [])] });
+    }
+    // No proof: the named educands' pending quotas, together with their siblings when the amount is the family's.
+    const families = new Map();
+    for (const row of named.filter(item => !covered.has(item.participantId) && item.pendingCents > 0)) {
+      const key = row.familyId ?? row.id;
+      if (!families.has(key)) families.set(key, { named: [], all: row.familyId ? pending.filter(item => item.familyId === row.familyId && item.pendingCents > 0
+        && item.status !== 'ISSUE' && !covered.has(item.participantId)) : [row] });
+      families.get(key).named.push(row);
+    }
+    for (const family of families.values()) {
+      const sum = list => list.reduce((total, row) => total + row.pendingCents, 0);
+      const whole = family.all.length > family.named.length && sum(family.all) === movement.unallocatedCents;
+      const rows = whole ? family.all : family.named;
+      const allocations = distribute(rows);
+      const exact = sum(rows) === movement.unallocatedCents;
+      matches.push({ type: 'FEE_OBLIGATION', id: rows.map(row => row.id).join(','), roundCode: rows[0].roundCode,
+        allocations: names ? allocations : allocations.map(({ name, ...rest }) => rest), amountCents: allocations.reduce((total, row) => total + row.amountCents, 0),
+        outstandingCents: sum(rows), participants: names ? rows.map(row => row.name) : [], strength: exact ? 'STRONG' : 'WEAK',
+        reasons: [...family.named.map(row => names ? `Nom de l’educand al concepte: ${row.name}.` : 'Nom d’un educand al concepte.'),
+          ...(whole ? ['L’import és el de totes les quotes pendents de la família (germans).'] : []),
+          'No hi ha justificant: es registrarà el pagament a Quotes a partir d’este moviment bancari.',
+          exact ? 'Import idèntic al de les quotes pendents.' : movement.unallocatedCents > sum(rows)
+            ? 'L’import és superior al pendent: la resta del moviment quedarà pendent de classificar.' : 'Pagament parcial: la quota quedarà parcialment pagada.'] });
+    }
+    // Quotas already recognised: never paid twice; the movement waits for a person.
+    for (const row of named.filter(item => item.pendingCents <= 0 && !matches.some(match => match.type === 'FEE_PAYMENT' && match.participants.includes(item.name))))
+      notes.push(`${names ? `La quota de ${row.name}` : 'La quota d’un educand del concepte'} ja està reconeguda: este moviment pot ser un pagament repetit i queda pendent de revisió.`);
+    if (kind.kind === 'FEE' && !matches.length && !named.length)
+      notes.push('No s’ha trobat cap quota amb el nom del concepte: queda pendent de classificar.');
   }
   // Recognised bank expenses still to settle with exactly this amount: settling one never creates a second expense.
   let expenses = [];

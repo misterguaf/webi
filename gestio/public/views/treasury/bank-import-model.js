@@ -93,10 +93,23 @@ export const NATURE_LABEL = {
   CARD_SETTLEMENT: 'Liquidació de targeta', REFUND_RECEIVED: 'Devolució rebuda', REFUND_PAID: 'Devolució pagada',
   BANK_CHARGES: 'Comissions o despeses bancàries'
 };
-export const MATCH_LABEL = { FEE_PAYMENT: 'Quota anual', ACTIVITY_PAYMENT: 'Activitat', EXPENSE_SETTLEMENT: 'Despesa ja registrada' };
+export const MATCH_LABEL = { FEE_PAYMENT: 'Quota anual ja verificada', FEE_PROOF: 'Quota amb justificant pendent', FEE_OBLIGATION: 'Quota sense justificant',
+  ACTIVITY_PAYMENT: 'Activitat', EXPENSE_SETTLEMENT: 'Despesa ja registrada' };
 export const STRENGTH = { STRONG: { label: 'Coincidència clara', tone: 'ok' }, WEAK: { label: 'Coincidència possible', tone: 'warning' } };
 /** Allocation payload for a confirmed match: the existing reconciliation endpoint decides if it is valid. */
 export function matchAllocation(match) {
   const key = { FEE_PAYMENT: 'feePaymentId', ACTIVITY_PAYMENT: 'activityAllocationId', EXPENSE_SETTLEMENT: 'expenseId' }[match.type];
   return key ? { kind: match.type, [key]: match.id, amountCents: match.amountCents } : null;
+}
+/** The request that confirms a match: quotas from a proof or without one go through the fee reconciliation (Quotes
+ * review + bank link in one batch); the rest is added to the movement's current classification. */
+export function matchRequest(match, movementId, allocationVersion) {
+  if (match.type === 'FEE_PROOF' || match.type === 'FEE_OBLIGATION') {
+    if (match.needsMatchReview || !match.allocations?.length) return null;
+    return { path: `/api/finance/movements/${movementId}/fee-reconciliations`, body: { expectedVersion: allocationVersion,
+      ...(match.type === 'FEE_PROOF' ? { paymentId: match.paymentId } : {}),
+      allocations: match.allocations.map(({ obligationId, amountCents }) => ({ obligationId, amountCents })) } };
+  }
+  const allocation = matchAllocation(match);
+  return allocation ? { path: `/api/finance/movements/${movementId}/allocations/add`, body: { expectedVersion: allocationVersion, allocation } } : null;
 }

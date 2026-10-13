@@ -105,7 +105,8 @@ export async function quotesDetail(db, context, requestId, participantId, roundI
     FROM annual_fee_obligation_status v JOIN section s ON s.id=v.current_section_id
     WHERE v.family_group_id=? AND v.round_id=? ORDER BY v.sibling_ordinal,v.display_name`).bind(row.family_group_id, roundId).all()).results
     .filter(sibling => covers(full, sibling.current_section_id)) : [];
-  const payments = (await db.prepare(`SELECT p.id AS payment_id,p.created_at,p.review_status,p.verified_amount_cents,a.amount_cents,
+  const payments = (await db.prepare(`SELECT p.id AS payment_id,p.created_at,p.review_status,p.verified_amount_cents,a.amount_cents,p.origin,
+      EXISTS(SELECT 1 FROM finance_allocation_current f WHERE f.kind='FEE_PAYMENT' AND f.fee_payment_id=p.id) AS bank_linked,
       (SELECT e.id FROM annual_fee_evidence e WHERE e.payment_id=p.id) AS evidence_id,
       EXISTS(SELECT 1 FROM annual_fee_issue i WHERE i.payment_id=p.id AND i.status='OPEN') AS open_issue
     FROM annual_fee_allocation a JOIN annual_fee_payment p ON p.id=a.payment_id WHERE a.obligation_id=? ORDER BY p.created_at,a.id`).bind(id).all()).results;
@@ -132,7 +133,8 @@ export async function quotesDetail(db, context, requestId, participantId, roundI
       sectionCode: sibling.section_code, ordinal: sibling.sibling_ordinal, discountCents: sibling.discount_cents, baseCents: sibling.base_cents,
       amountDueCents: sibling.amount_due_cents, status: sibling.status, current: sibling.participant_id === participantId })) } : null,
     payments: payments.map(payment => ({ paymentId: payment.payment_id, receivedAt: payment.created_at, reviewStatus: payment.review_status,
-      allocatedCents: payment.amount_cents, evidenceId: payment.evidence_id, openIssue: !!payment.open_issue })),
+      allocatedCents: payment.amount_cents, evidenceId: payment.evidence_id, openIssue: !!payment.open_issue,
+      origin: payment.origin, bankLinked: !!payment.bank_linked })),
     proofs: proofs.map(proof => ({ paymentId: proof.payment_id, receivedAt: proof.created_at, reviewStatus: proof.review_status,
       declaredCents: proof.declared_amount_cents, evidenceId: proof.evidence_id })),
     plan: plan ? { authorizedAt: plan.authorized_at, parts: parts.map(part => ({ ordinal: part.ordinal, plannedCents: part.planned_cents, targetAt: part.target_at })) } : null,

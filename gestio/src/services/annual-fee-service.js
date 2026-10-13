@@ -607,16 +607,28 @@ export async function feeEvidenceDownload(db,storage,context,requestId,id,mode='
 
 export async function reviewFeePayment(db,context,requestId,id,input,now=Date.now()) {
   const payment=await paymentAccess(db,context,requestId,id);
+  validFeeReview(input);
+  const people=(await db.prepare('SELECT participant_id,match_status FROM annual_fee_submission_person WHERE payment_id=?')
+    .bind(id).all()).results;
+  await db.batch(await feeReviewPlan(db,context,requestId,payment,people,input,now));
+  return {id,status:'VERIFIED'};
+}
+function validFeeReview(input) {
   if (!keysOnly(input,['verifiedAmountCents','allocations']) || !cents(input.verifiedAmountCents) ||
     !Array.isArray(input.allocations) || input.allocations.length<1 || input.allocations.length>8 ||
     input.allocations.some(item=>!keysOnly(item,['obligationId','amountCents']) ||
       !validUuid(item.obligationId) || !cents(item.amountCents)) ||
     new Set(input.allocations.map(item=>item.obligationId)).size!==input.allocations.length ||
     input.allocations.reduce((sum,item)=>sum+item.amountCents,0)>input.verifiedAmountCents) fail('invalid_fee_review');
+}
+/** Statements that verify a payment and allocate it to obligations (the canonical Quotes review). Shared by the
+ * Quotes review and by Treasury's bank reconciliation, which runs them in the same atomic batch as the bank link.
+ * `people` may be preloaded when the payment is created in that same batch (a bank-originated payment). */
+export async function feeReviewPlan(db,context,requestId,payment,people,input,now,{notify=true}={}) {
+  validFeeReview(input);
+  const id=payment.id;
   if (!['PENDING_REVIEW','ISSUE'].includes(payment.review_status) || payment.verified_amount_cents!==null)
     throw new AppError(409,'invalid_transition');
-  const people=(await db.prepare('SELECT participant_id,match_status FROM annual_fee_submission_person WHERE payment_id=?')
-    .bind(id).all()).results;
   if (!people.length || people.some(person=>!['CLEAR','RESOLVED'].includes(person.match_status)))
     throw new AppError(409,'fee_match_review_required');
   const allowedPeople=new Set(people.map(person=>person.participant_id));
@@ -629,14 +641,14 @@ export async function reviewFeePayment(db,context,requestId,id,input,now=Date.no
   const issues=obligations.filter(row=>row.allocated_cents+row.amount>row.amount_due_cents);
   const unallocated=input.verifiedAmountCents-input.allocations.reduce((sum,row)=>sum+row.amountCents,0);
   const paid=obligations.some(row=>row.allocated_cents+row.amount===row.amount_due_cents);
-  const existingNotices=(await db.prepare('SELECT kind FROM annual_fee_notification_outbox WHERE payment_id=?')
-    .bind(id).all()).results;
+  const existingNotices=notify?(await db.prepare('SELECT kind FROM annual_fee_notification_outbox WHERE payment_id=?')
+    .bind(id).all()).results:[];
   const notified=new Set(existingNotices.map(row=>row.kind));
   const notifications=[];
-  if (paid && !notified.has('FEE_PAYMENT_CONFIRMED')) notifications.push(feeQueue(db,id,'FEE_PAYMENT_CONFIRMED',payment.receipt_email,now));
+  if (notify && paid && !notified.has('FEE_PAYMENT_CONFIRMED')) notifications.push(feeQueue(db,id,'FEE_PAYMENT_CONFIRMED',payment.receipt_email,now));
   const openedIssues=[...issues.map(row=>({id:uuid(),obligationId:row.id,code:'OVERPAYMENT'})),
     ...(unallocated>0?[{id:uuid(),obligationId:null,code:'ALLOCATION_UNCLEAR'}]:[])];
-  await db.batch([
+  return [
     db.prepare(`UPDATE annual_fee_payment SET verified_amount_cents=?,reviewed_by=?,reviewed_at=?,review_status='ISSUE'
       WHERE id=? AND verified_amount_cents IS NULL AND review_status IN ('PENDING_REVIEW','ISSUE')`)
       .bind(input.verifiedAmountCents,context.userId,now,id),
@@ -657,8 +669,7 @@ export async function reviewFeePayment(db,context,requestId,id,input,now=Date.no
     }),
     ...notifications.flatMap(queued=>[queued.query,
       audit(db,context,requestId,'NOTIFICATION_QUEUED','annual_fee_notification_outbox',queued.id,now)])
-  ]);
-  return {id,status:'VERIFIED'};
+  ];
 }
 
 export async function reviseFeeAllocations(db,context,requestId,id,input,now=Date.now()) {

@@ -7,6 +7,7 @@ import * as budget from './budget.js';
 import * as budgetImports from './budget-import.js';
 import * as bankStatements from './c43-import.js';
 import { movementSuggestions } from './movement-suggestions.js';
+import { reconcileFeeFromMovement } from './fee-reconciliation.js';
 import * as incomes from './incomes.js';
 import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
@@ -106,6 +107,10 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await bankStatements.confirmC43Import(db, context, requestId, await readJson(request, C43_MAX_BODY_BYTES)), 201);
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/suggestions$/)) && method === 'GET')
     return ok(await movementSuggestions(db, context, requestId, match[1]));
+  if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/fee-reconciliations$/)) && method === 'POST')
+    return ok(await reconcileFeeFromMovement(db, context, requestId, match[1], await body()), 201);
+  if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/allocations\/add$/)) && method === 'POST')
+    return ok(await movements.addMovementAllocation(db, context, requestId, match[1], await body()));
   if (path === '/api/finance/movements' && method === 'GET') return ok(await movements.listMovements(db, context, requestId, url.searchParams));
   if (path === '/api/finance/movements' && method === 'POST') return ok(await movements.createManualMovement(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)$/)) && method === 'GET')

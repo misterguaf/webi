@@ -2,7 +2,7 @@
 // filters, detail, classification (enabled kinds only), correction keeping history, duplicate review and
 // the audited, on-demand original description. Nothing here is a security boundary.
 import { confirmDialog, h, icon, toast } from '../../ui.js';
-import { MATCH_LABEL, NATURE_LABEL, STRENGTH, matchAllocation } from './bank-import-model.js';
+import { MATCH_LABEL, NATURE_LABEL, STRENGTH, matchRequest } from './bank-import-model.js';
 import { field, moneyInput, openDrawer, budgetLineButton } from './forms.js';
 import { openExpenseForm } from './expense-form.js';
 import { openIncomeForm } from './income-form.js';
@@ -168,6 +168,7 @@ function suggestionBlock(data, ctx, reload) {
   const node = h('div', { className: 'activity-surface info-surface suggestion-surface', attrs: { 'aria-busy': 'true' } },
     h('h3', { className: 'info-title', text: 'Suggeriments' }), h('p', { className: 'tx-sub', text: 'Buscant coincidències…' }));
   const fresh = !data.allocations.length && m.unallocatedCents === Math.abs(m.amountCents);
+  const open = m.unallocatedCents > 0;
   const apply = async (title, body, send) => {
     if (!await confirmDialog({ title, body, confirm: 'Confirma' })) return;
     try { await send(); toast('Moviment classificat.', { tone: 'ok' }); await reload(); }
@@ -190,16 +191,19 @@ function suggestionBlock(data, ctx, reload) {
         on: { click: () => void apply('Classificar com a ingrés?', `${formatEur(m.amountCents, { signed: true })} a «${s.budgetLine.path.join(' › ')}».`,
           () => allocate({ kind: 'INCOME', budgetLineId: s.budgetLine.id, amountCents: Math.abs(m.amountCents) })) } })));
     if (s.matches.length) parts.push(h('ul', { className: 'candidate-list', attrs: { role: 'list', 'aria-label': 'Coincidències suggerides' } }, s.matches.map(match => {
-      const allocation = matchAllocation(match);
+      const request = matchRequest(match, m.id, m.allocationVersion);
       const who = [MATCH_LABEL[match.type], match.participants?.length ? match.participants.join(', ') : null, match.activityName ?? match.label ?? null,
         match.roundCode ? `Ronda ${match.roundCode}` : null].filter(Boolean).join(' · ');
       return h('li', { className: 'candidate' },
         h('div', { className: 'candidate-main' }, h('span', { text: who }), statusBadge(STRENGTH[match.strength] ?? STRENGTH.WEAK)),
         h('p', { className: 'tx-sub', text: `Import: ${formatEur(match.amountCents)} · Pendent: ${formatEur(match.outstandingCents)} · Estat: pendent de confirmació` }),
+        match.allocations?.length ? h('p', { className: 'tx-sub', text: `Quotes que cobreix: ${match.allocations.map(row => `${row.name ?? 'educand'} ${formatEur(row.amountCents)}`).join(' · ')}` }) : null,
         h('ul', { className: 'reason-list' }, match.reasons.map(reason => h('li', { text: reason }))),
-        fresh && allocation ? h('button', { className: 'btn btn-small btn-secondary', text: 'Confirmar', attrs: { type: 'button' },
-          on: { click: () => void apply('Confirmar la coincidència?', `${who}: ${formatEur(match.amountCents)}. Es concilia este moviment amb el pagament; les regles de Tresoreria ho tornen a comprovar.`,
-            () => allocate(allocation)) } }) : null);
+        open && request ? h('button', { className: 'btn btn-small btn-secondary', text: 'Confirmar', attrs: { type: 'button' },
+          on: { click: () => void apply('Confirmar la coincidència?', `${who}: ${formatEur(match.amountCents)}. ${match.type === 'FEE_OBLIGATION'
+            ? 'Es registrarà el pagament a Quotes a partir d’este moviment bancari i es conciliarà.' : match.type === 'FEE_PROOF'
+              ? 'Es verificarà el justificant de la família amb este moviment bancari i es conciliarà.' : 'Es concilia este moviment amb el pagament.'} Les regles de Tresoreria ho tornen a comprovar.`,
+            () => ctx.call(request.path, { method: 'POST', body: JSON.stringify(request.body) })) } }) : null);
     })));
     if (s.transfer && fresh) parts.push(h('div', { className: 'detail-actions' }, h('button', { className: 'btn btn-secondary', attrs: { type: 'button' },
       text: `Confirmar traspàs amb ${s.transfer.positionName} (${formatDay(s.transfer.date)})`,
@@ -207,7 +211,7 @@ function suggestionBlock(data, ctx, reload) {
         () => ctx.call('/api/finance/internal-transfers', { method: 'POST', body: JSON.stringify(m.amountCents < 0
           ? { fromMovementId: m.id, toMovementId: s.transfer.id, fromExpectedVersion: m.allocationVersion, toExpectedVersion: s.transfer.allocationVersion }
           : { fromMovementId: s.transfer.id, toMovementId: m.id, fromExpectedVersion: s.transfer.allocationVersion, toExpectedVersion: m.allocationVersion }) })) } })));
-    if (!fresh && (s.matches.length || s.budgetLine)) parts.push(h('p', { className: 'tx-sub', text: 'El moviment ja té una part classificada: usa «Classifica» per a afegir la resta.' }));
+    if (!fresh && s.budgetLine) parts.push(h('p', { className: 'tx-sub', text: 'El moviment ja té una part classificada: usa «Classifica» per a assignar la resta a una partida.' }));
     if (s.notes.length) parts.push(h('ul', { className: 'reason-list notes' }, s.notes.map(note => h('li', { text: note }))));
     if (!s.matches.length && !s.budgetLine && !s.transfer && !s.notes.length) parts.push(h('p', { className: 'empty-detail', text: 'Cap suggeriment: classifica’l manualment.' }));
     node.replaceChildren(...parts); node.removeAttribute('aria-busy');
