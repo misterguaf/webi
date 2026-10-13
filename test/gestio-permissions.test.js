@@ -30,7 +30,8 @@ test('catalogue covers exactly the permissions in the schema and every entry is 
       WHERE role_code IN ('SECTION_COORDINATOR','SECTION_DELEGATE') ORDER BY 1,2`).all()
       .filter(row => PERMISSIONS[row.permission_code].kind === 'GLOBAL');
     assert.deepEqual(scopedGlobal.map(row => `${row.role_code}:${row.permission_code}`),
-      ['SECTION_COORDINATOR:activities.general.manage']);
+      ['SECTION_COORDINATOR:activities.general.manage','SECTION_COORDINATOR:tasks.group.read','SECTION_DELEGATE:tasks.group.read']);
+    assert.equal(PERMISSIONS['tasks.group.read'].scopedHolders,'ALLOWED','group-shared tasks are readable by current scout teams');
     assert.equal(PERMISSIONS['activities.general.manage'].scopedHolders, 'ALLOWED');
   } finally { f.close(); }
 });

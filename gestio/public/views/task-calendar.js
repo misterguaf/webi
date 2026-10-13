@@ -1,6 +1,7 @@
 import { h,button } from '../ui.js';
-import { fetchAllPages } from '../pagination.js';
-import { today,dateLabel,calendarDays,navigateDate,taskKind } from './task-calendar-model.js';
+import { fetchAllPages } from '../api.js';
+import { today,dateLabel,calendarDays,navigateDate,taskKind,overdue } from './task-calendar-model.js';
+import {SECTION_LABELS} from '../labels.js';
 const option=(value,text)=>h('option',{text,attrs:{value}});
 const errorText=error=>error.code==='stale_task'?'La tasca ha canviat. Tanca-la i torna-la a obrir.':
  error.code==='invalid_task_assignee'?'Revisa les persones responsables: han de tindre accés vigent a aquest àmbit.':
@@ -34,15 +35,17 @@ export function setupTaskCalendar({call,routes}){
   await call('/api/tasks/'+task.id+'/'+action,{method:'POST',body:JSON.stringify({expectedVersion:task.version})});await refresh();
  }
  function row(task){
-  const overdue=task.status==='PENDING'&&task.dueDate&&task.dueDate<today();
+  const late=overdue(task);
   return h('li',{className:'task-row'+(task.status==='COMPLETED'?' task-done':'')},
    task.actions.complete?button(task.status==='COMPLETED'?'✓':'○',async()=>{try{await change(task,task.status==='COMPLETED'?'reopen':'complete');}
     catch(error){await showError(error);}}, {attrs:{'aria-label':(task.status==='COMPLETED'?'Reobri ':'Completa ')+task.title}}):h('span',{text:'•'}),
    button(task.title,()=>detail(task.id),{className:'task-title'}),
-   h('span',{className:'task-meta',text:[taskKind(task),task.status==='COMPLETED'?'Completada':overdue?'Vençuda':null,
+   h('span',{className:'task-meta',text:[taskKind(task),task.status==='COMPLETED'?'Completada':late?'Vençuda':null,
     task.dueDate?dateLabel(task.dueDate):'Sense data',task.dueTime,task.recurrence?'↻ Recurrent':null].filter(Boolean).join(' · ')}));
  }
  function activityDate(a){return new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(a.startsAt);}
+ function activityOn(a,value){const end=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(a.endsAt);
+  return activityDate(a)<=value&&end>=value;}
  function eventLink(a){return h('a',{className:'calendar-activity',text:'Activitat · '+a.name,
   attrs:{href:'#/activitats/'+a.id},on:{click:event=>{event.preventDefault();routes.go({page:'activitats',path:[a.id]});}}});}
  function render(){
@@ -62,11 +65,13 @@ export function setupTaskCalendar({call,routes}){
   const reminders=h('p',{className:'calendar-reminders',text:`Hui: ${summary.today??0} · Vençudes: ${summary.overdue??0} · Assignades pendents: ${summary.assigned??0}`});
   const days=calendarDays(date,view),grid=h('div',{className:'calendar-grid calendar-'+view});
   if(view!=='list')for(const value of days){
-   const dayTasks=tasks.filter(t=>t.dueDate===value),dayEvents=events.filter(a=>activityDate(a)===value);
+   const dayTasks=tasks.filter(t=>t.dueDate===value),dayEvents=events.filter(a=>activityOn(a,value));
    grid.append(h('section',{className:'calendar-day'+(value===today()?' is-today':'')+(value===date?' is-selected':'')},
-    button(dateLabel(value),()=>{date=value;render();},{className:'calendar-date',attrs:{'aria-current':value===today()?'date':null}}),
-    ...dayTasks.slice(0,view==='month'?2:8).map(t=>button((t.status==='COMPLETED'?'✓ ':'')+t.title,()=>detail(t.id),
-      {className:'calendar-task'+(t.visibility==='PERSONAL'?' personal':' shared'),attrs:{title:taskKind(t)}})),
+    button(view==='month'?String(Number(value.slice(-2))):dateLabel(value),()=>{date=value;render();},
+      {className:'calendar-date',attrs:{'aria-label':'Selecciona el '+dateLabel(value),'aria-current':value===today()?'date':null}}),
+    ...dayTasks.slice(0,view==='month'?2:8).map(t=>button((t.status==='COMPLETED'?'✓ ':overdue(t)?'Vençuda · ':'')+t.title,()=>detail(t.id),
+      {className:'calendar-task'+(t.visibility==='PERSONAL'?' personal':' shared')+(t.status==='COMPLETED'?' task-complete':overdue(t)?' task-late':''),
+       attrs:{title:taskKind(t),'aria-label':taskKind(t)+' · '+(t.status==='COMPLETED'?'Completada · ':overdue(t)?'Vençuda · ':'')+t.title}})),
     ...dayEvents.slice(0,2).map(eventLink),
     dayTasks.length>(view==='month'?2:8)?h('span',{text:`+${dayTasks.length-(view==='month'?2:8)} tasques`}):null,
     button('+',()=>form(null,value),{attrs:{'aria-label':'Nova tasca el '+dateLabel(value)},className:'calendar-add'})));
@@ -74,11 +79,14 @@ export function setupTaskCalendar({call,routes}){
   const visible=view==='list'?tasks:tasks.filter(t=>t.dueDate===date);
   const selected=h('section',{className:'calendar-selected'},h('h3',{text:view==='list'?'Tasques':dateLabel(date)}),
    visible.length?h('ul',{className:'task-list'},...visible.sort((a,b)=>(a.dueDate||'9999').localeCompare(b.dueDate||'9999')).map(row)):
-     h('p',{text:'Cap tasca en aquesta vista.'}),...(view==='list'?[]:events.filter(a=>activityDate(a)===date).map(eventLink)));
-  root.replaceChildren(controls,reminders,filters,grid,selected);
+     h('p',{text:'Cap tasca en aquesta vista.'}),...(view==='list'?[]:events.filter(a=>activityOn(a,date)).map(eventLink)));
+  const weekdays=view==='month'?h('div',{className:'calendar-weekdays',attrs:{'aria-hidden':'true'}},
+    ...['Dl','Dt','Dc','Dj','Dv','Ds','Dg'].map(text=>h('span',{text}))):null;
+  const legend=view==='month'?h('p',{className:'calendar-legend',text:'○ Personal · ↗ Compartida · ✓ Completada · ! Vençuda · A Activitat'}):null;
+  root.replaceChildren(...[controls,reminders,filters,legend,weekdays,grid,selected].filter(Boolean));
  }
  function dialog(title){
-  const opener=document.activeElement,node=h('dialog',{className:'task-dialog'},h('h2',{text:title}));
+  const opener=document.activeElement,node=h('dialog',{className:'task-dialog',attrs:{'aria-label':title}},h('h2',{text:title}));
   const close=()=>{node.close();node.remove();dialogs.delete(node);if(opener?.isConnected)opener.focus();};
   node.addEventListener('cancel',event=>{event.preventDefault();close();});
   node.append(button('Tanca',close,{className:'btn btn-secondary'}));document.body.append(node);dialogs.add(node);node.showModal();
@@ -105,7 +113,10 @@ export function setupTaskCalendar({call,routes}){
   const visibility=h('select',{attrs:{name:'visibility'}},option('PERSONAL','Personal'),option('NAMED','Persones concretes'),
    ...(me.capabilities.tasks.sectionManage?[option('SECTION','Equip de secció')]:[]),...(me.capabilities.tasks.groupManage?[option('GROUP','Grup')]:[]));
   visibility.value=task?.visibility||'PERSONAL';
-  const section=h('select',{attrs:{name:'sectionId','aria-label':'Secció'}},option('','Tria una secció'),...me.capabilities.sections.map(s=>option(s.id,s.code)));
+  const scope=me.capabilities.tasks.sectionManage;
+  const allowedSections=scope?.all?me.capabilities.sections:scope?.sections??[];
+  const section=h('select',{attrs:{name:'sectionId','aria-label':'Secció'}},option('','Tria una secció'),
+    ...allowedSections.map(s=>option(s.id,SECTION_LABELS[s.code]||s.code)));
   section.value=task?.sectionId||'';
   const members=h('div',{className:'task-members'});let usersToken=0;
   async function updatePeople(){
@@ -114,7 +125,7 @@ export function setupTaskCalendar({call,routes}){
    try{const params=new URLSearchParams({visibility:visibility.value,...(section.value&&visibility.value==='SECTION'?{sectionId:section.value}:{})});
     const data=await call('/api/tasks/users?'+params);if(mine!==usersToken||!node.isConnected)return;
     members.append(h('p',{text:'Comparteix amb / responsables (opcionales per a secció o grup):'}),...data.users.map(u=>{
-     const shared=h('input',{attrs:{type:'checkbox',name:'member',value:u.id}}),responsible=h('input',{attrs:{type:'checkbox',name:'responsible',value:u.id}});
+     const shared=h('input',{attrs:{type:'checkbox',name:'member',value:u.id}}),responsible=h('input',{attrs:{type:'checkbox',name:'responsible',value:u.id,'aria-label':'Responsable: '+u.name}});
      shared.checked=task?.members.some(m=>m.userId===u.id)||false;responsible.checked=task?.members.some(m=>m.userId===u.id&&m.responsible)||false;
      return h('div',{className:'task-member'},h('label',{},shared,u.name),h('label',{},responsible,'Responsable'));
     }));
@@ -140,7 +151,7 @@ export function setupTaskCalendar({call,routes}){
    h('label',{text:'Hora '},h('input',{attrs:{type:'time',name:'dueTime',value:task?.dueTime||''}})),
    h('label',{text:'Visibilitat '},visibility),section,members,h('label',{text:'Repetició '},recurrence)),
    button('Guarda',null,{type:'submit',className:'btn btn-primary'}),notice);
-  node.prepend(formNode);await updatePeople();title.focus();
+  node.insertBefore(formNode,node.querySelector('button'));await updatePeople();title.focus();
  }
  function unload(){epoch++;me=null;tasks=[];events=[];root.replaceChildren();for(const d of dialogs){d.close();d.remove();}dialogs.clear();}
  return {load,unload};

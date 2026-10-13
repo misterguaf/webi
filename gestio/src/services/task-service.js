@@ -5,6 +5,7 @@ import { versionCas } from '../concurrency.js';
 
 const clean=value=>typeof value==='string'?value.trim():'';
 export const madridDay=(now=Date.now())=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(now);
+const madridTime=(now=Date.now())=>new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
 const day=value=>typeof value==='string' && /^20\d\d-\d\d-\d\d$/.test(value) &&
   !Number.isNaN(Date.parse(value+'T12:00:00Z')) && new Date(value+'T12:00:00Z').toISOString().slice(0,10)===value;
 const audit=(db,ctx,requestId,action,id,now)=>statement(db,{requestId,actorUserId:ctx.userId,sessionId:ctx.sessionId,
@@ -145,11 +146,11 @@ export async function listTasks(db,ctx,requestId,params,now=Date.now()) {
 export async function taskSummary(db,ctx,now=Date.now()) {
   const access=await scope(db,ctx);
   return db.prepare(`SELECT count(CASE WHEN t.status='PENDING' AND t.due_date=? THEN 1 END) AS today,
-    count(CASE WHEN t.status='PENDING' AND t.due_date<? THEN 1 END) AS overdue,
+    count(CASE WHEN t.status='PENDING' AND (t.due_date<? OR (t.due_date=? AND t.due_time<?)) THEN 1 END) AS overdue,
     count(CASE WHEN t.status='PENDING' AND (t.owner_id=? OR EXISTS(SELECT 1 FROM task_member m
       WHERE m.task_id=t.id AND m.user_id=? AND m.responsible=1)) THEN 1 END) AS assigned
     FROM task t WHERE t.archived_at IS NULL AND ${access.sql}`)
-    .bind(madridDay(now),madridDay(now),ctx.userId,ctx.userId,...access.binds).first();
+    .bind(madridDay(now),madridDay(now),madridDay(now),madridTime(now),ctx.userId,ctx.userId,...access.binds).first();
 }
 export async function editTask(db,ctx,requestId,id,input,now=Date.now()) {
   const row=await load(db,ctx,id),actions=await rights(db,ctx,row);

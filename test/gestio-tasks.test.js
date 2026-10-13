@@ -63,3 +63,26 @@ test('tasks: recurrence creates just one next occurrence; monthly anchor and Mad
   assert.equal((await f.request(102,'/api/tasks?view=all&from=2027-02-01&to=2027-02-28')).data.tasks[0].dueDate,'2027-02-28');
  }finally{f.close();}
 });
+test('tasks: pagination and simultaneous revisions never duplicate or lose authorized updates',async()=>{
+ const f=await setup();try{
+  const created=[];
+  for(let i=0;i<7;i++)created.push((await f.request(102,'/api/tasks',{method:'POST',body:input({dueDate:'2027-03-01',title:'Tasca fictícia '+i})})).data.id);
+  const ids=[];let cursor=null;
+  do{const page=await f.request(102,'/api/tasks?view=all&limit=2'+(cursor?'&cursor='+cursor:''));ids.push(...page.data.tasks.map(t=>t.id));cursor=page.data.nextCursor;}while(cursor);
+  assert.equal(new Set(ids).size,7);assert.deepEqual(ids.sort(),created.sort());
+  assert.equal((await f.request(103,'/api/tasks?view=all&limit=2')).data.tasks.length,0);
+  const edits=await Promise.all(['Primer canvi','Segon canvi'].map(title=>f.request(102,'/api/tasks/'+created[0],{method:'PATCH',body:input({title,expectedVersion:1})})));
+  assert.deepEqual(edits.map(r=>r.status).sort(),[200,409]);
+  assert.equal((await f.request(102,'/api/tasks/'+created[0])).data.task.version,2);
+ }finally{f.close();}
+});
+test('tasks: expired section capability removes access even for an assigned owner',async()=>{
+ const f=await setup();try{
+  const created=await f.request(102,'/api/tasks',{method:'POST',body:input({visibility:'SECTION',sectionId:id(2),members:[{userId:id(102),responsible:true}]})});
+  assert.equal(created.status,201);
+  f.sql.prepare("UPDATE user_permission_grant SET expires_at=? WHERE user_id=? AND permission_code IN ('tasks.section.read','tasks.section.manage')").run(Date.now()-1,id(102));
+  assert.equal((await f.request(102,'/api/tasks/'+created.data.id)).status,404);
+  assert.equal((await f.request(102,'/api/tasks/'+created.data.id+'/complete',{method:'POST',body:{expectedVersion:1}})).status,404);
+  assert.equal((await f.request(102,'/api/tasks',{method:'POST',body:input({visibility:'SECTION',sectionId:id(2)})})).status,403);
+ }finally{f.close();}
+});

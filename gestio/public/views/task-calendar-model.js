@@ -13,3 +13,8 @@ export function navigateDate(date,view,direction){
  const d=new Date(date+'T12:00:00Z');d.setUTCDate(1);d.setUTCMonth(d.getUTCMonth()+direction);return d.toISOString().slice(0,10);
 }
 export const taskKind=task=>task.visibility==='PERSONAL'?'Personal':'Compartida';
+export function overdue(task,now=Date.now()){
+ const day=new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(now);
+ const time=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/Madrid',hour:'2-digit',minute:'2-digit',hour12:false}).format(now);
+ return task.status==='PENDING'&&task.dueDate&&(task.dueDate<day||task.dueDate===day&&task.dueTime&&task.dueTime<time);
+}

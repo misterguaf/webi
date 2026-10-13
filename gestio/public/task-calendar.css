@@ -17,3 +17,8 @@
 .task-member{display:flex;justify-content:space-between;gap:12px}.task-member label{display:flex;align-items:center;gap:5px}.task-member input{width:auto}
 .calendar-grid.calendar-day{grid-template-columns:1fr}.calendar-list{display:none}
 @media(max-width:700px){#taskCalendar{padding:12px}.calendar-week{grid-template-columns:1fr}.calendar-month{gap:2px}.calendar-month .calendar-day{padding:3px;min-height:85px}.calendar-month .calendar-date,.calendar-month .calendar-task,.calendar-month .calendar-activity{font-size:10px}.calendar-toolbar h2{width:100%;flex-basis:100%}.calendar-toolbar .btn-primary{width:100%}.task-member{flex-wrap:wrap}}
+
+.calendar-weekdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;text-align:center;margin-top:14px;font-size:12px;color:var(--text-secondary)}.calendar-weekdays+.calendar-grid{margin-top:5px}
+@media(max-width:700px){.calendar-month .calendar-day{min-height:80px}.calendar-month .calendar-task,.calendar-month .calendar-activity{font-size:0}.calendar-month .calendar-task:before{font-size:12px;content:'○'}.calendar-month .calendar-task.shared:before{content:'↗'}.calendar-month .calendar-task.task-complete:before{content:'✓'}.calendar-month .calendar-task.task-late:before{content:'!'}.calendar-month .calendar-activity:before{font-size:10px;content:'A'}.calendar-month .calendar-add{min-height:22px}.calendar-month .calendar-date{font-size:12px}}
+
+#taskCalendar .calendar-date{padding:3px;white-space:nowrap;min-width:0}#taskCalendar .calendar-add{padding:0;min-width:0}
