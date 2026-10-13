@@ -1,0 +1,42 @@
+# Gestió «proves» — https://gestioproves.grupscoutparpallo.com
+# Synthetic demo only (DATA_MODE = SYNTHETIC_ONLY), behind Cloudflare Access (e-mail allow-list).
+# Deploy only with `npm run proves:deploy`; it refuses the placeholder values below until they are filled in.
+# Production Gestió stays blocked (gestio/scripts/deploy.js); local development uses gestio/wrangler.toml.
+name = "parpallo-gestio-proves"
+main = "proves/worker.js"
+compatibility_date = "2026-09-01"
+workers_dev = false
+preview_urls = false
+routes = [{ pattern = "gestioproves.grupscoutparpallo.com", custom_domain = true }]
+
+[vars]
+APP_ENV = "production"
+DEPLOYMENT_ENVIRONMENT = "STAGING"
+STAGING_DEMO_LOGIN = "enabled"
+# Zero Trust → Access → Applications → «Gestió proves»: team domain and Application Audience (AUD) tag.
+ACCESS_ISSUER = "https://royal-silence-6c06.cloudflareaccess.com"
+ACCESS_AUDIENCE = "743e48315f92b361aec4e30617f50acb2748ba4f2f15fcef7601ebb336cea888"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = true
+
+[[rules]]
+type = "Data"
+globs = ["**/*.xlsx"]
+fallthrough = true
+
+# Small EU database with the demo only; created with --jurisdiction=eu. No R2 bucket: evidence is a placeholder.
+[[d1_databases]]
+binding = "DB"
+database_name = "parpallo-gestio-proves"
+database_id = "81da6cb1-3478-4d35-b0a2-76a28e240294"
+migrations_dir = "./migrations"
+
+# Nightly reset to the demo: one small batch per minute from 02:00 UTC (03:00/04:00 in Gandia).
+[triggers]
+crons = ["* 2 * * *"]
+
+[observability]
+enabled = true

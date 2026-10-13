@@ -24,7 +24,7 @@ import * as workIncidents from './src/services/work-incident-service.js';
 import * as tasks from './src/services/task-service.js';
 import { AppError } from './src/services/common.js';
 import { financeRoute } from './src/domains/finance/routes.js';
-import { deploymentEnvironment, devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
+import { deploymentEnvironment, devIdentityEnabled, hostAllowed, runtimeEnvironment, stagingDemoLoginEnabled } from './src/environment-policy.js';
 
 // Named entrypoint for the portal service binding only; never routed from the public handler below.
 export { PortalIntake } from './src/intake.js';
@@ -38,6 +38,9 @@ const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(d
     'X-Content-Type-Options':'nosniff','Content-Security-Policy':API_CSP,'X-Frame-Options':'DENY',...headers }
 });
 const devEnabled = (env,url) => devIdentityEnabled(env,url);
+// Synthetic identity selector: local development, or a STAGING deployment for a visitor with a valid Access JWT.
+const demoSelector = async (request,env,url) => devEnabled(env,url) ||
+  (stagingDemoLoginEnabled(env) && await verifyAccessRequest(request,env).then(()=>true,()=>false));
 
 async function readJson(request,maxBytes=2048) {
   if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new AppError(400,'invalid_request');
@@ -71,11 +74,11 @@ async function api(request,env,url,requestId) {
   if (!['GET','POST','PATCH','DELETE'].includes(method)) throw new AppError(405,'method_not_allowed');
   if (method!=='GET' && request.headers.get('Origin')!==url.origin) throw new AppError(403,'invalid_origin');
   if (path==='/api/dev/identities' && method==='GET') {
-    if (!devEnabled(env,url)) throw new AppError(404,'not_found');
-    return json({identities:await identities.syntheticIdentities(db,DEV_ISSUER),requestId});
+    if (!await demoSelector(request,env,url)) throw new AppError(404,'not_found');
+    return json({identities:await identities.syntheticIdentities(db,DEV_ISSUER),environment:deploymentEnvironment(env),requestId});
   }
   if (path==='/api/dev/login' && method==='POST') {
-    if (!devEnabled(env,url)) throw new AppError(404,'not_found');
+    if (!await demoSelector(request,env,url)) throw new AppError(404,'not_found');
     const body=await readJson(request);
     if (typeof body.subject!=='string' || !/^seed-10[1-7]$/.test(body.subject)) throw new AppError(400,'invalid_request');
     const user=await identities.findIdentityUser(db,DEV_ISSUER,body.subject);

@@ -21,18 +21,27 @@ export async function verifyAccessJwt(token, { issuer, audience, jwks, now = Dat
     header = JSON.parse(new TextDecoder().decode(unb64url(parts[0])));
     claims = JSON.parse(new TextDecoder().decode(unb64url(parts[1])));
   } catch { throw new Error('invalid token'); }
-  if (header.alg !== 'RS256' || typeof header.kid !== 'string' || !header.kid ||
+  if (header.alg !== 'RS256' ||
       claims.iss !== issuer || !Array.isArray(claims.aud) || !claims.aud.includes(audience) ||
       claims.type !== 'app' || typeof claims.sub !== 'string' || !claims.sub ||
       !Number.isInteger(claims.exp) || claims.exp * 1000 <= now ||
       !Number.isInteger(claims.nbf) || claims.nbf * 1000 > now ||
       !Number.isInteger(claims.iat) || claims.iat * 1000 > now + 60_000) throw new Error('invalid token');
-  const key = jwks?.keys?.find(item => item.kid === header.kid && item.kty === 'RSA' && item.use === 'sig' && item.alg === 'RS256');
-  if (!key) throw new Error('invalid token');
-  try {
-    const imported = await crypto.subtle.importKey('jwk', key, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
-    if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', imported, unb64url(parts[2]), encoder.encode(`${parts[0]}.${parts[1]}`))) throw new Error('invalid token');
-  } catch { throw new Error('invalid token'); }
+  // The key named by `kid` first; if Access names a key id not (yet) listed, any published RS256 signing key of the
+  // issuer may verify it. The signature is always checked cryptographically against the issuer's own JWKS.
+  const usable = (jwks?.keys ?? []).filter(item => item.kty === 'RSA' && (item.use ?? 'sig') === 'sig' && (item.alg ?? 'RS256') === 'RS256');
+  const named = usable.filter(item => item.kid === header.kid);
+  const candidates = named.length ? named : usable;
+  if (!candidates.length) throw new Error('invalid token');
+  let verified = false;
+  for (const key of candidates) {
+    try {
+      const imported = await crypto.subtle.importKey('jwk', { kty: key.kty, n: key.n, e: key.e, alg: 'RS256', ext: true },
+        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
+      if (await crypto.subtle.verify('RSASSA-PKCS1-v1_5', imported, unb64url(parts[2]), encoder.encode(`${parts[0]}.${parts[1]}`))) { verified = true; break; }
+    } catch { /* try the next published key */ }
+  }
+  if (!verified) throw new Error('invalid token');
   return { issuer: claims.iss, subject: claims.sub, email: typeof claims.email === 'string' ? claims.email : null };
 }
 
@@ -42,7 +51,8 @@ export async function verifyAccessRequest(request, env, now = Date.now()) {
   const issuer = new URL(env.ACCESS_ISSUER);
   if (issuer.protocol !== 'https:' || !issuer.hostname.endsWith('.cloudflareaccess.com') || issuer.pathname !== '/' || issuer.search || issuer.hash) throw new Error('invalid issuer');
   const certUrl = new URL('/cdn-cgi/access/certs', issuer);
-  const response = await fetch(certUrl, { redirect: 'error' });
+  // Workers do not support redirect:'error'; with 'manual' a redirect is a non-ok response and is refused below.
+  const response = await fetch(certUrl, { redirect: 'manual' });
   if (!response.ok) throw new Error('JWKS unavailable');
   const jwks = await response.json();
   return verifyAccessJwt(token, { issuer: issuer.origin, audience: env.ACCESS_AUDIENCE, jwks, now });

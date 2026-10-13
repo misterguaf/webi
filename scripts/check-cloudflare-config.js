@@ -59,6 +59,14 @@ for (const relative of ['gestio/wrangler.toml','family/wrangler.toml']) {
     errors.push(`${relative}: evidencia R2 simulada solo en local, jurisdicción EU obligatoria para futuro binding.`);
 }
 
+// Gestió «proves» (gestioproves.grupscoutparpallo.com): synthetic STAGING only, behind Access, one D1, no R2.
+const proves = readFileSync(join(root, 'gestio/wrangler.proves.toml'), 'utf8');
+if (!/^APP_ENV\s*=\s*"production"\s*$/m.test(proves) || !/^DEPLOYMENT_ENVIRONMENT\s*=\s*"STAGING"\s*$/m.test(proves) ||
+    /DEV_IDENTITY_PROVIDER|r2_buckets|kv_namespaces|durable_objects|\[\[services\]\]|\[env\./.test(proves) ||
+    !/^workers_dev\s*=\s*false\s*$/m.test(proves) || !/^database_name\s*=\s*"parpallo-gestio-proves"\s*$/m.test(proves)) {
+  errors.push('gestio/wrangler.proves.toml: només STAGING sintètic darrere d’Access, una D1 de proves, sense R2 ni proveïdor local.');
+}
+
 if (errors.length) {
   for (const error of errors) console.error(error);
   process.exitCode = 1;
