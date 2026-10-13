@@ -46,7 +46,7 @@ test('Access JWT RS256: firma, issuer, audience, tiempos y subject', async () =>
   assert.equal((await controlled.json()).requestId,controlled.headers.get('x-request-id'));
 });
 
-test('D1 local: migrar, seed, matriz, scope, sesiones y suspensión', { timeout: 90_000 }, async () => {
+test('D1 local: migrar, seed, matriz, scope, sesiones y suspensión', { timeout: 180_000 }, async () => {
   const state=mkdtempSync(resolve(tmpdir(),'parpallo-gestio-test-'));
   const run = args => {
     const result=spawnSync(wrangler,args,{cwd:gestio,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});

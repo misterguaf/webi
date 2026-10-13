@@ -6,7 +6,7 @@ import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
-import { assertLocalConfig, localD1Args, localR2Args, main } from '../gestio/demo/cli.js';
+import { assertIsolatedDemoRoot, assertLocalConfig, localD1Args, localR2Args, main } from '../gestio/demo/cli.js';
 import { buildDemoData, buildTreasuryDemo, buildTreasuryEvidenceBackfill } from '../gestio/demo/data.js';
 
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -15,6 +15,7 @@ const wrangler = resolve(repo, 'node_modules/.bin/wrangler');
 
 function run(command, args, cwd) {
   const env = { ...process.env, WRANGLER_SEND_METRICS: 'false' };
+  if(cwd.startsWith(resolve(tmpdir(),'gestio-demo-test-')))env.GESTIO_DEMO_ISOLATED='1';
   delete env.NODE_TEST_CONTEXT;
   const result = spawnSync(command, args, { cwd, encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, env });
   assert.equal(result.status, 0, `${command} ${args.slice(0, 3).join(' ')}: ${result.stderr || result.stdout}`);
@@ -22,6 +23,7 @@ function run(command, args, cwd) {
 }
 
 test('demo commands are pinned to the local development D1/R2 and reject remote options', async () => {
+  assert.throws(()=>assertIsolatedDemoRoot(repo),/Unsafe isolated demo root/);
   assertLocalConfig(config);
   assert.throws(() => assertLocalConfig(config.replace('APP_ENV = "development"', 'APP_ENV = "production"')));
   assert.throws(() => assertLocalConfig(config.replace('database_name = "parpallo-gestio-local"', 'database_name = "remote"')));

@@ -6,6 +6,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash, randomUUID } from 'node:crypto';
+import { unzipSync,zipSync,strFromU8,strToU8 } from 'fflate';
+import { setCell } from '../gestio/src/domains/finance/treasury-xlsx-template.js';
 import { createBackup, verifyBackup, restoreBackup } from '../gestio/scripts/recovery.js';
 import { PORT_ARGS, readyBase } from './helpers/wrangler-port.js';
 import { assertAllowedEgress } from '../api/_lib/environment.js';
@@ -225,6 +227,21 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal((await finance('rounds/'+round+'/reserve-operations',{kind:'CONTRIBUTION',amountCents:500})).status,201);
     assert.equal((await finance('rounds/'+round+'/closing',{expectedVersion:2})).status,200);
     assert.equal((await finance('rounds/'+round+'/close',{expectedVersion:3})).status,200);
+    // 3.5I: populated task recurrence and imported budget provenance survive D1 recovery.
+    const task=await worker.request('/api/tasks',{method:'POST',cookie:troop,body:{
+      title:'Revisió fictícia setmanal',visibility:'NAMED',members:[{userId:id(101),responsible:true}],
+      dueDate:'2027-01-31',recurrence:'MONTHLY',requestKey:randomUUID()}});
+    assert.equal(task.status,201);
+    assert.equal((await worker.request('/api/tasks/'+task.data.id+'/complete',{method:'POST',cookie:troop,body:{expectedVersion:1}})).status,200);
+    const importedRound=(await finance('rounds',{code:'2027/2028',periodStart:'2027-10-01',periodEnd:'2028-09-30'})).data.id;
+    const parts=unzipSync(new Uint8Array(readFileSync(join(gestio,'templates','PRESSUPOST ANUAL 26_27 (Boceto).xlsx'))));
+    parts['xl/worksheets/sheet1.xml']=strToU8(setCell(strFromU8(parts['xl/worksheets/sheet1.xml']),'A1','PRESSUPOST ANUAL 27/28',11));
+    const importPath='/api/finance/rounds/'+importedRound+'/budget-imports';
+    const preview=await worker.request(importPath,{method:'POST',cookie:group,body:{filename:'Pressupost fictici.xlsx',dataBase64:Buffer.from(zipSync(parts)).toString('base64')}});
+    assert.equal(preview.status,201,JSON.stringify(preview.data));
+    const budgetConfirmed=await worker.request(importPath+'/'+preview.data.id+'/confirm',{method:'POST',cookie:group,body:{
+      acknowledgedWarnings:[...new Set(preview.data.preview.warnings.map(w=>w.code))]}});
+    assert.equal(budgetConfirmed.status,200,JSON.stringify(budgetConfirmed.data));
     assert.equal((await worker.request('/api/users/'+id(106)+'/suspend',{method:'POST',cookie:group})).status,200);
     assert.equal((await worker.request('/api/me',{cookie:crm})).status,401);
     await stopWorker(worker);worker=null;
@@ -233,7 +250,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     const manifest=verifyBackup(backup,config).manifest;
     assert.equal(manifest.synthetic,true);
     assert.equal(manifest.environment,'local-development');
-    assert.equal(manifest.schema_version,47);
+    assert.equal(manifest.schema_version,49);
     assert.deepEqual(manifest.migrations,['0001_identity_policy.sql','0002_domain_audit_incidents.sql',
       '0003_activities_registrations.sql','0004_submission_matching_data.sql',
       '0005_registration_authorizations.sql','0006_annual_fees.sql','0007_annual_fee_integrity.sql',
@@ -251,7 +268,7 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
       '0037_activity_price_snapshot.sql','0038_activity_installment_plans.sql',
       '0039_finance_family_overpayments.sql','0040_finance_family_refunds.sql',
       '0041_fee_obligation_corrections.sql','0042_activity_price_corrections.sql','0043_access_administration.sql',
-      '0044_admissions.sql','0045_section_label_esculta.sql','0046_work_incidents.sql','0047_work_incident_environment.sql']);
+      '0044_admissions.sql','0045_section_label_esculta.sql','0046_work_incidents.sql','0047_work_incident_environment.sql','0048_tasks.sql','0049_budget_import.sql']);
     assert.equal(manifest.table_counts.participant_section_membership,manifest.table_counts.participant,
       'every seeded participant has exactly one section membership row');
     assert.equal(manifest.table_counts.security_incident,1);
@@ -265,7 +282,11 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.ok(manifest.table_counts.notification_outbox>=2);
     assert.equal(manifest.table_counts.annual_fee_round,1);
     assert.equal(manifest.table_counts.annual_fee_payment,0);
-    assert.equal(manifest.table_counts.finance_round,1);
+    assert.equal(manifest.table_counts.finance_round,2);
+    assert.equal(manifest.table_counts.task,2);
+    assert.equal(manifest.table_counts.task_member,2);
+    assert.equal(manifest.table_counts.finance_budget_import,1);
+    assert.equal(manifest.table_counts.finance_budget_import_line,65);
     assert.equal(manifest.table_counts.finance_movement,6);
     assert.equal(manifest.table_counts.finance_movement_description,2);
     assert.equal(manifest.table_counts.finance_allocation,12);
@@ -400,8 +421,8 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.equal(restoredCounts.delegations,manifest.table_counts.delegated_permission);
     assert.equal(restoredCounts.outbox,manifest.table_counts.notification_outbox);
     const restoredFinance=spawnSync(wrangler,['d1','execute','parpallo-gestio-local','--local','--persist-to',restored,
-      '--config','wrangler.toml','--command',"SELECT (SELECT expense_gross_cents FROM finance_round_economics) AS expenses,(SELECT income_cents FROM finance_round_economics) AS income,"+
-      "(SELECT count(*) FROM finance_allocation_current) AS current_allocations,(SELECT current_cents FROM finance_budget_line_amount a JOIN finance_budget_line l ON l.id=a.line_id WHERE l.code='2') AS budget_current",'--json'],
+      '--config','wrangler.toml','--command',"SELECT (SELECT expense_gross_cents FROM finance_round_economics WHERE round_id='"+round+"') AS expenses,(SELECT income_cents FROM finance_round_economics WHERE round_id='"+round+"') AS income,"+
+      "(SELECT count(*) FROM finance_allocation_current) AS current_allocations,(SELECT current_cents FROM finance_budget_line_amount a JOIN finance_budget_line l ON l.id=a.line_id WHERE l.code='2' AND l.round_id='"+round+"') AS budget_current",'--json'],
       {cwd:isolated,encoding:'utf8',env:{...process.env,WRANGLER_SEND_METRICS:'false'}});
     assert.equal(restoredFinance.status,0);
     assert.deepEqual(JSON.parse(restoredFinance.stdout)[0].results[0],{expenses:10000,income:30000,current_allocations:7,budget_current:105000},
@@ -498,6 +519,15 @@ test('FASE 2B: backup, rejection, disaster and D1 restore with application invar
     assert.deepEqual(restoredFamily.data.guardians.filter(row=>row.id===episodeGuardian).map(row=>row.ended),[false,true]);
     assert.deepEqual(list.data.participants.map(row=>row.id),[id(502),id(503)]);
     assert.equal((await worker.request('/api/participants/'+id(504),{cookie:troopRestored})).status,404);
+    const recoveredTask=await worker.request('/api/tasks/'+task.data.id,{cookie:troopRestored});
+    assert.equal(recoveredTask.data.task.status,'COMPLETED');
+    assert.equal(recoveredTask.data.task.members[0].userId,id(101));
+    const recurring=await worker.request('/api/tasks?view=all&from=2027-02-01&to=2027-02-28',{cookie:troopRestored});
+    assert.equal(recurring.data.tasks.length,1);
+    assert.equal(recurring.data.tasks[0].dueDate,'2027-02-28');
+    const recoveredBudget=await worker.request('/api/finance/rounds/'+importedRound+'/budget',{cookie:group});
+    assert.equal(recoveredBudget.status,200,JSON.stringify(recoveredBudget.data));
+    assert.equal(recoveredBudget.data.lines.length,65);
     const tech=await worker.login('seed-107');
     assert.equal((await worker.request('/api/participants',{cookie:tech})).status,403);
     const treasury=await worker.login('seed-104');

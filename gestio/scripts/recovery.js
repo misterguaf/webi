@@ -45,9 +45,12 @@ const TABLES=[
   // 3.5H.2 Noves altes.
   'admission_request','admission_request_event',
   // 3.5H.3 Incidències i millores.
-  'work_incident','task','task_member'
+  'work_incident','task','task_member','finance_budget_import','finance_budget_import_line'
 ];
 const REQUIRED_OBJECTS=[
+  'index:finance_budget_import_confirmed_round','index:finance_budget_import_file_actor',
+  'trigger:finance_budget_import_immutable','trigger:finance_budget_import_no_delete',
+  'trigger:finance_budget_import_line_no_update','trigger:finance_budget_import_line_no_delete',
   'index:task_due_idx','index:task_owner_idx','index:task_member_user_idx','trigger:task_immutable_identity','trigger:task_no_delete',
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
   // 3.5H.1 (0043): one active grant per origin and scope, role-sourced grants and ratification guards.
@@ -406,7 +409,13 @@ function verifyRestoredState(info,state,manifest) {
   const tables=schema.filter(row=>row.type==='table').map(row=>row.name).sort();
   if (JSON.stringify(tables)!==JSON.stringify([...TABLES].sort())) fail('D1_SCHEMA_MISMATCH');
   if (JSON.stringify(schema.map(row=>row.type+':'+row.name))!==JSON.stringify(manifest.schema_objects)) fail('D1_SCHEMA_MISMATCH');
-  const counts=d1Query(info,state,'SELECT '+TABLES.map(name=>'(SELECT count(*) FROM '+name+') AS '+name).join(','))[0];
+  // 3.5I takes the inventory above D1's statement complexity limit. Keep each
+  // count query bounded and preserve the manifest's deterministic table order.
+  const counts={};
+  for(let offset=0;offset<TABLES.length;offset+=50){
+    const names=TABLES.slice(offset,offset+50);
+    Object.assign(counts,d1Query(info,state,'SELECT '+names.map(name=>'(SELECT count(*) FROM '+name+') AS '+name).join(','))[0]);
+  }
   if (JSON.stringify(counts)!==JSON.stringify(manifest.table_counts)) fail('D1_COUNT_MISMATCH');
   const invariant=d1Query(info,state,"SELECT "+
     "(SELECT count(*) FROM app_session s JOIN app_user u ON u.id=s.user_id WHERE u.status!='ACTIVE' AND s.revoked_at IS NULL) AS blocked_sessions,"+

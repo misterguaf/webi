@@ -9,7 +9,7 @@ export function legacyTarget(line,lines){
  }
  for(const name of path)if(camps.has(name))return {sheet:camps.get(name)};
  const name=norm(line.name);
- if(name==='quotes'||name==='quota asde')return {sheet:'Cuotas'};
+ if((line.nature==='INCOME'&&name==='quotes')||(line.nature==='EXPENSE'&&name==='quota asde'))return {sheet:'Cuotas'};
  if(name==='loteria')return {sheet:'Lotería'};
  if(line.nature==='INCOME'){
   if(name==='subvencions')return {cell:'D21'};

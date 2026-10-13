@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:net';
 import { tmpdir } from 'node:os';
-import { dirname, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildDemoData, buildTreasuryDemo, buildTreasuryEvidenceBackfill, buildTreasuryIncomeDemo, buildTreasuryOperationsDemo, demoPdf, treasuryExpenseEvidenceKeys,
   DEMO_MARKER_ID, TREASURY_DEMO_ROUND_ID, TREASURY_INCOME_MARKER_ID, TREASURY_OPERATIONS_MARKER_ID } from './data.js';
@@ -52,6 +52,13 @@ function assertPortFree() {
       ? new Error('Stop the local Gestió server on 127.0.0.1:8788 before demo:seed or demo:reset') : error));
     server.listen(8788, '127.0.0.1', () => server.close(error => error ? reject(error) : resolvePort()));
   });
+}
+// Integration fixtures own a copied project under the OS temp directory. Their D1/R2 cannot
+// share the canonical project's state, so its running server on 8788 is unrelated.
+export function assertIsolatedDemoRoot(directory) {
+  const rel=relative(realpathSync(tmpdir()),realpathSync(directory));
+  if(isAbsolute(rel)||rel==='..'||rel.startsWith('..'+(process.platform==='win32'?'\\':'/'))||
+    !basename(directory).startsWith('gestio-demo-test-'))throw new Error('Unsafe isolated demo root');
 }
 function run(args, { capture = false } = {}) {
   const result = spawnSync(wrangler, args, { cwd: root, env, encoding: 'utf8',
@@ -162,7 +169,8 @@ export async function main(args = process.argv.slice(2)) {
   assertLocalConfig(readFileSync(resolve(root, 'wrangler.toml'), 'utf8'));
   assertStatePath();
   if (!existsSync(wrangler)) throw new Error('Run npm ci first');
-  await assertPortFree();
+  if(process.env.GESTIO_DEMO_ISOLATED==='1')assertIsolatedDemoRoot(repo);
+  else await assertPortFree();
   if (args[0] === 'reset') {
     rmSync(state, { recursive: true, force: true });
     run(localD1Args(['migrations', 'apply']), { capture: true });
