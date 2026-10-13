@@ -374,6 +374,8 @@ export function createBackup(outputPath,configPath=resolve(root,'wrangler.toml')
     // G.3 rebuilds overpayments with a new fee source. finance_allocation has a FK to it,
     // so populate the parent table before importing any allocation rows under active FK checks.
     beforeTable('finance_overpayment','finance_allocation');
+    // 3.5I (C43) recreates finance_import_batch: its rows must exist before the movements that reference them.
+    beforeTable('finance_import_batch','finance_movement');
     writeFileSync(dumpPath,fixed,{mode:0o600});
     chmodSync(join(temp,'dump.sql'),0o600);
     const snapshot=inspectSql(join(temp,'dump.sql'),info);
