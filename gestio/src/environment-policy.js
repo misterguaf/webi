@@ -110,6 +110,8 @@ export const synthetic = Object.freeze({
   evidence: /** @param {Uint8Array} bytes */ bytes => new TextDecoder('latin1').decode(bytes.slice(0, Math.min(bytes.length, 1024)))
     .toLowerCase().includes(SYNTHETIC_EVIDENCE_MARKER),
   evidenceKeyPrefix: 'synthetic/',
+  /** A bank statement (Cuaderno 43) is accepted only when its account holder declares it fictitious. */
+  bankStatementHolder: /** @param {unknown} value */ value => typeof value === 'string' && /\b(FICTICI[AO]?|SINTETIC[AO]?|SYNTHETIC)\b/i.test(value),
   /** Organisational references (delegations, family groups) are demo references. */
   reference: /** @param {unknown} value */ (value, { min = 6, max = 80 } = {}) =>
     typeof value === 'string' && new RegExp(`^DEMO-[A-Z0-9-]{${min},${max}}$`).test(value),

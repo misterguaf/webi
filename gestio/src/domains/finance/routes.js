@@ -5,6 +5,8 @@ import * as movements from './movements.js';
 import * as expenses from './expenses.js';
 import * as budget from './budget.js';
 import * as budgetImports from './budget-import.js';
+import * as bankStatements from './c43-import.js';
+import { movementSuggestions } from './movement-suggestions.js';
 import * as incomes from './incomes.js';
 import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
@@ -13,7 +15,7 @@ import * as activityPrices from './activity-price-corrections.js';
 import * as familyOverpayments from './family-overpayments.js';
 import * as familyRefunds from './family-refunds.js';
 
-const IMPORT_MAX_BYTES = 300 * 1024, BODY_MAX_BYTES = 16 * 1024, EVIDENCE_BODY_MAX_BYTES = 6 * 1024 * 1024;
+const IMPORT_MAX_BYTES = 300 * 1024, C43_MAX_BODY_BYTES = 3 * 1024 * 1024, BODY_MAX_BYTES = 16 * 1024, EVIDENCE_BODY_MAX_BYTES = 6 * 1024 * 1024;
 
 /** @returns {Promise<Response|null>} null when the path is not a finance route. */
 export async function financeRoute({ db, storage, context, requestId, method, path, url, request, readJson, json }) {
@@ -97,6 +99,13 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
   if (path === '/api/finance/import-batches' && method === 'GET') return ok(await movements.listImportBatches(db, context, requestId));
   if (path === '/api/finance/import-batches' && method === 'POST')
     return ok(await movements.importBatch(db, context, requestId, await readJson(request, IMPORT_MAX_BYTES)), 201);
+  // Bank statements in Cuaderno 43: preview without writing, then confirm (recomputed on the server).
+  if (path === '/api/finance/bank-statements/preview' && method === 'POST')
+    return ok(await bankStatements.previewC43Import(db, context, requestId, await readJson(request, C43_MAX_BODY_BYTES)));
+  if (path === '/api/finance/bank-statements' && method === 'POST')
+    return ok(await bankStatements.confirmC43Import(db, context, requestId, await readJson(request, C43_MAX_BODY_BYTES)), 201);
+  if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)\/suggestions$/)) && method === 'GET')
+    return ok(await movementSuggestions(db, context, requestId, match[1]));
   if (path === '/api/finance/movements' && method === 'GET') return ok(await movements.listMovements(db, context, requestId, url.searchParams));
   if (path === '/api/finance/movements' && method === 'POST') return ok(await movements.createManualMovement(db, context, requestId, await body()), 201);
   if ((match = path.match(/^\/api\/finance\/movements\/([^/]+)$/)) && method === 'GET')
