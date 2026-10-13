@@ -2,6 +2,8 @@ import { fillTreasuryTemplate } from './treasury-xlsx-template.js';
 import { fillBudgetTemplate } from './budget-xlsx-template.js';
 import { budgetWorkbookModel, resultWorkbookModel } from './treasury-export-model.js';
 import { audit } from './shared.js';
+import {fillImportedBudget} from './budget-import-export.js';
+import {AppError} from '../../services/common.js';
 // Wrangler bundles these immutable masters as private Data modules. They are never in /public.
 // @ts-ignore Wrangler Data module
 import resultMaster from '../../../templates/Tesorería General 26_27.xlsx';
@@ -15,13 +17,18 @@ const headers = filename => ({
   'Content-Security-Policy':"default-src 'none'",'X-Frame-Options':'DENY'
 });
 
-export async function downloadTreasuryWorkbook(db,context,requestId,roundId,kind) {
+export async function downloadTreasuryWorkbook(db,context,requestId,roundId,kind,storage=null) {
   // These model builders enforce current global finance permissions, including delegation scope,
   // expiry and revocation. No role label by itself authorises this download.
   const model=kind==='budget' ? await budgetWorkbookModel(db,context,requestId,roundId) :
     await resultWorkbookModel(db,context,requestId,roundId);
-  const bytes=kind==='budget' ? await fillBudgetTemplate(budgetMaster,model) :
-    await fillTreasuryTemplate(resultMaster,model);
+  let bytes;
+  if(kind==='budget'&&'imported' in model){
+    const original=await storage?.get(model.imported.objectKey);
+    if(!original)throw new AppError(409,'budget_source_unavailable');
+    const source=original.arrayBuffer?new Uint8Array(await original.arrayBuffer()):original.body;
+    bytes=fillImportedBudget(source,model);
+  }else bytes=kind==='budget'?await fillBudgetTemplate(budgetMaster,model):await fillTreasuryTemplate(resultMaster,model);
   await audit(db,context,requestId,'EXPORT_REQUESTED','finance_round',roundId,Date.now()).run();
   const suffix=model.roundCode.replace('/','-');
   const filename=kind==='budget' ? `Pressupost_Parpallo_${suffix}.xlsx` : `Tresoreria_Parpallo_${suffix}.xlsx`;

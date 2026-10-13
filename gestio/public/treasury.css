@@ -168,3 +168,5 @@ body.drawer-open .dialog-layer{z-index:60}
 .treasury-toolbar>*,.toolbar-row>*{min-width:0}
 .toolbar-row .filter-chips{flex:1 1 auto}
 .treasury-content{grid-template-columns:minmax(0,1fr)}
+
+.budget-import-tree{list-style:none;padding:0;overflow-wrap:anywhere}.budget-import-tree li{padding:7px 0;border-bottom:1px solid var(--border-default)}.budget-import-tree .budget-import-depth-2{padding-left:16px}.budget-import-tree .budget-import-depth-3{padding-left:32px}.budget-import-tree span{color:var(--text-secondary);font-size:12px}

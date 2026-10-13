@@ -1,5 +1,8 @@
 import { h } from '../../ui.js';
 import { errorCopy, formatEur, parseEuros } from './model.js';
+import { renderBudgetImport } from './budget-import.js';
+import { openExpenseForm } from './expense-form.js';
+import { openIncomeForm } from './income-form.js';
 
 const cell = text => h('td', { text: String(text) });
 const option = (value, label) => h('option', { text: label, attrs: { value } });
@@ -16,6 +19,16 @@ export async function renderBudget(root, ctx, round, refresh) {
   const section = h('section', { className: 'activity-surface treasury-block' },
     h('h2', { className: 'block-title', text: 'Pressupost i real' }),
     h('p', { className: 'field-hint', text: 'El pressupost vigent incorpora les revisions aprovades. Les xifres reals venen de despeses reconegudes i ingressos generals conciliats.' }));
+  if(caps.proposeBudget&&round.status!=='CLOSED')renderBudgetImport(section,ctx,round,refresh);
+  if(data.lines.length){
+    const selectedCtx={...ctx,summary:()=>({...ctx.summary(),round})};
+    const actions=h('div',{className:'form-actions'});
+    if(caps.manageExpenses)actions.append(h('button',{className:'btn btn-secondary',text:'Nova despesa en aquesta ronda',attrs:{type:'button'},
+      on:{click:()=>openExpenseForm({ctx:selectedCtx,onDone:created=>ctx.go({path:['despeses',created.id]})})}}));
+    if(caps.manageIncomes)actions.append(h('button',{className:'btn btn-secondary',text:'Nou ingrés en aquesta ronda',attrs:{type:'button'},
+      on:{click:()=>openIncomeForm({ctx:selectedCtx,onDone:created=>ctx.go({path:['ingressos',created.id]})})}}));
+    section.append(actions);
+  }
   if (!budget) {
     section.append(h('p', { className: 'empty-detail', text: 'Encara no s’ha preparat el pressupost de la ronda.' }));
     if (caps.proposeBudget && round.status !== 'CLOSED') section.append(h('button', { className: 'btn btn-primary',

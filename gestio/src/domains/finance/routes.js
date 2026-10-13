@@ -4,6 +4,7 @@ import * as rounds from './rounds.js';
 import * as movements from './movements.js';
 import * as expenses from './expenses.js';
 import * as budget from './budget.js';
+import * as budgetImports from './budget-import.js';
 import * as incomes from './incomes.js';
 import * as evidence from './evidence.js';
 import * as reimbursements from './reimbursements.js';
@@ -19,6 +20,10 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
   const body = () => readJson(request, BODY_MAX_BYTES);
   const ok = (data, status = 200) => json({ ...data, requestId }, status);
   let match;
+  if((match=path.match(/^\/api\/finance\/rounds\/([^/]+)\/budget-imports$/))&&method==='POST')
+    return ok(await budgetImports.previewBudgetImport(db,storage,context,requestId,match[1],await readJson(request,3*1024*1024)),201);
+  if((match=path.match(/^\/api\/finance\/rounds\/([^/]+)\/budget-imports\/([^/]+)\/confirm$/))&&method==='POST')
+    return ok(await budgetImports.confirmBudgetImport(db,context,requestId,match[1],match[2],await body()));
   if (path === '/api/finance/family-overpayments' && method === 'POST')
     return ok(await familyOverpayments.createOverpayment(db, context, requestId, await body()), 201);
   if (path === '/api/finance/family-overpayments' && method === 'GET')
@@ -64,7 +69,7 @@ export async function financeRoute({ db, storage, context, requestId, method, pa
     return ok(await rounds.recordReserves(db, context, requestId, match[1], await body()), 201);
   if ((match = path.match(/^\/api\/finance\/rounds\/([^/]+)\/export\/(result|budget)$/)) && method === 'GET') {
     const { downloadTreasuryWorkbook } = await import('./treasury-export.js');
-    return downloadTreasuryWorkbook(db, context, requestId, match[1], match[2]);
+    return downloadTreasuryWorkbook(db, context, requestId, match[1], match[2], storage);
   }
   // Budget.
   if (path === '/api/finance/budget-rounds' && method === 'GET')

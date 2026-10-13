@@ -94,7 +94,7 @@ export const TABS = [
   { id: 'ingressos', label: 'Ingressos', available: caps => !!t(caps).readIncomes },
   { id: 'despeses', label: 'Despeses', available: caps => !!t(caps).readExpenses },
   { id: 'families', label: 'Famílies', available: caps => !!t(caps).read },
-  { id: 'ronda', label: 'Ronda', available: caps => !!(t(caps).read || t(caps).readBudget) }
+  { id: 'ronda', label: 'Pressupostos', available: caps => !!(t(caps).read || t(caps).readBudget) }
 ];
 export const availableTabs = caps => TABS.filter(tab => tab.available(caps));
 export const canClassify = caps => !!t(caps).classifyMovements;
@@ -193,6 +193,14 @@ export function expenseApiQuery(roundId, filters) {
 // ---------------------------------------------------------------- error copy
 
 const ERRORS = {
+  invalid_budget_xlsx:'No s’ha pogut llegir aquest XLSX. Tria el llibre anual de pressupost.',
+  budget_xlsx_size:'El pressupost XLSX ha de tindre una mida de fins a 2 MB.',
+  budget_xlsx_limits:'Aquest llibre supera els límits de lectura segura.',
+  budget_xlsx_external:'El llibre conté macros o referències externes. Tria una còpia XLSX sense aquests elements.',
+  budget_template_unrecognized:'No s’ha reconegut l’estructura del pressupost anual de Parpalló.',
+  budget_import_conflict:'La ronda o el pressupost ha canviat o ja té dades. No s’ha substituït cap partida. Revisa la ronda triada.',
+  budget_warnings_unacknowledged:'Confirma que has revisat els avisos abans d’importar.',
+  budget_source_unavailable:'No està disponible el llibre original privat d’aquest pressupost. Revisa la recuperació del fitxer.',
   allocation_exceeds_movement: 'L’import assignat supera l’import disponible del moviment.',
   stale_movement: 'Aquesta informació ha canviat. Torna a carregar-la.',
   stale_expense: 'Aquesta informació ha canviat. Torna a carregar-la.',

@@ -50,7 +50,9 @@ export async function getBudget(db, context, requestId, roundId) {
       FROM annual_fee_payment p JOIN finance_round r ON r.annual_fee_round_id=p.round_id
       WHERE r.id=?),0) AS feeCents`).bind(roundId).first();
   if (familyIncome.feeCents > 0) {
-    const feeLines=lines.filter(line => line.nature==='INCOME' && line.code==='1.1' && !line.hasChildren && line.status==='ACTIVE');
+    const imported=await db.prepare("SELECT id FROM finance_budget_import WHERE round_id=? AND status='CONFIRMED'").bind(roundId).first();
+    const feeLines=lines.filter(line => line.nature==='INCOME' && (line.economicGroup==='ANNUAL_FEES' ||
+      (!imported&&line.code==='1.1'&&!lines.some(l=>l.economicGroup==='ANNUAL_FEES'))) && !line.hasChildren && line.status==='ACTIVE');
     if (feeLines.length!==1) throw new AppError(409,'treasury_export_mapping_missing');
     add(feeLines[0].id,familyIncome.feeCents);
   }

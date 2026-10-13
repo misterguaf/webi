@@ -39,7 +39,7 @@ export function resultTemplateModel(roundCode, entries, totals, resultDate, repo
     if (!entry.cents) continue;
     const kind = entry.nature === 'INCOME' ? 'income' : entry.nature === 'EXPENSE' ? 'expense' : null;
     if (!kind) throw new Error('invalid_treasury_export_model');
-    const target = category(entry.nature,entry.code);
+    const target = entry.exportTarget===undefined ? category(entry.nature,entry.code) : entry.exportTarget;
     if (!target) failMapping();
     if (kind === 'income') income += entry.cents; else expense += entry.cents;
     if (target.sheet) {
@@ -72,6 +72,21 @@ export async function budgetWorkbookModel(db,context,requestId,roundId) {
     FROM finance_budget_line l LEFT JOIN finance_budget_line_amount a ON a.line_id=l.id
     WHERE l.round_id=? ORDER BY l.nature,l.code`).bind(roundId).all()).results;
   if (!lines.length) throw new AppError(409,'treasury_export_budget_missing');
+  const imported=await db.prepare("SELECT id,object_key,preview_json FROM finance_budget_import WHERE round_id=? AND status='CONFIRMED'").bind(roundId).first();
+  if(imported){
+    const mapped=(await db.prepare(`SELECT l.id,l.planned_cents AS plannedCents,a.current_cents AS currentCents,i.source_cell AS cell,
+      EXISTS(SELECT 1 FROM finance_budget_line child WHERE child.parent_id=l.id) AS hasChildren
+      FROM finance_budget_line l LEFT JOIN finance_budget_line_amount a ON a.line_id=l.id
+      LEFT JOIN finance_budget_import_line i ON i.line_id=l.id WHERE l.round_id=?`).bind(roundId).all()).results;
+    const cells={};
+    for(const line of mapped)if(!line.hasChildren){
+      const amount=line.currentCents??line.plannedCents??0;
+      if(!line.cell&&amount)failMapping();
+      if(line.cell)cells[line.cell]=amount;
+    }
+    return {roundCode:round.code,budgetStatus:budget.status,cells,
+      imported:{objectKey:imported.object_key,sheetPath:JSON.parse(imported.preview_json).sheetPath}};
+  }
   try { return {...budgetTemplateModel(round.code,lines),budgetStatus:budget.status}; }
   catch (error) {
     if (String(error?.message??'').startsWith('budget_template_unmapped_line:')) failMapping();
@@ -86,7 +101,7 @@ export async function resultWorkbookModel(db,context,requestId,roundId) {
     expense_gross_cents-expense_refund_cents AS expenseCents
     FROM finance_round_economics WHERE round_id=?`).bind(roundId).first();
   const entries=[];
-  const general=(await db.prepare(`SELECT l.code,m.operation_date AS date,m.display_label AS label,a.amount_cents AS cents
+  const general=(await db.prepare(`SELECT l.code,l.id AS lineId,m.operation_date AS date,m.display_label AS label,a.amount_cents AS cents
     FROM finance_allocation_current a JOIN finance_budget_line l ON l.id=a.budget_line_id
     JOIN finance_movement m ON m.id=a.movement_id
     WHERE a.round_id=? AND a.kind='INCOME' ORDER BY m.operation_date,a.id`).bind(roundId).all()).results;
@@ -124,24 +139,24 @@ export async function resultWorkbookModel(db,context,requestId,roundId) {
           WHERE f.kind='ACTIVITY_PAYMENT' AND pa.registration_id=ar.id),0))) AS cents
     FROM activity_registration ar JOIN activity a ON a.id=ar.activity_id
     WHERE ar.finance_round_id=? ORDER BY ar.id`).bind(roundId).all()).results;
-  const activityLines=(await db.prepare(`SELECT activity_id AS activityId,code FROM finance_budget_line
+  const activityLines=(await db.prepare(`SELECT activity_id AS activityId,code,id AS lineId FROM finance_budget_line
     WHERE round_id=? AND nature='INCOME' AND status='ACTIVE' AND activity_id IS NOT NULL
       AND NOT EXISTS(SELECT 1 FROM finance_budget_line c WHERE c.parent_id=finance_budget_line.id)`)
     .bind(roundId).all()).results;
   const linesByActivity=new Map();
   for (const line of activityLines) {
     if (!linesByActivity.has(line.activityId)) linesByActivity.set(line.activityId,[]);
-    linesByActivity.get(line.activityId).push(line.code);
+    linesByActivity.get(line.activityId).push(line);
   }
   for (const row of activities) if (row.cents>0) {
     const codes=linesByActivity.get(row.activityId)??[];
     if (codes.length!==1) failMapping();
-    entries.push({nature:'INCOME',code:codes[0],date:row.date,label:row.label,cents:row.cents});
+    entries.push({nature:'INCOME',code:codes[0].code,lineId:codes[0].lineId,date:row.date,label:row.label,cents:row.cents});
   }
 
   const lines=(await db.prepare(`SELECT e.id,e.expense_date AS date,
     COALESCE(e.concept,e.supplier_label,'Despesa') AS label,e.total_cents AS totalCents,
-    l.line_no AS lineNo,l.amount_cents AS cents,b.code,
+    l.line_no AS lineNo,l.amount_cents AS cents,b.code,b.id AS lineId,
     COALESCE((SELECT sum(a.amount_cents) FROM finance_allocation_current a
       WHERE a.kind='EXPENSE_REFUND' AND a.expense_id=e.id),0) AS refundCents
     FROM finance_expense e JOIN finance_expense_line l ON l.expense_id=e.id AND l.lines_version=e.lines_version
@@ -155,9 +170,13 @@ export async function resultWorkbookModel(db,context,requestId,roundId) {
       const refund=index===group.length-1 ? line.refundCents-assigned :
         Math.floor(line.refundCents*line.cents/line.totalCents);
       assigned+=refund;
-      entries.push({nature:'EXPENSE',code:line.code,date:line.date,label:line.label,cents:line.cents-refund});
+      entries.push({nature:'EXPENSE',code:line.code,lineId:line.lineId,date:line.date,label:line.label,cents:line.cents-refund});
     });
   }
+  const exportMappings=(await db.prepare(`SELECT i.line_id,i.legacy_target FROM finance_budget_import_line i
+    JOIN finance_budget_import p ON p.id=i.import_id WHERE p.round_id=? AND p.status='CONFIRMED'`).bind(roundId).all()).results;
+  const mapping=new Map(exportMappings.map(row=>[row.line_id,row.legacy_target?JSON.parse(row.legacy_target):null]));
+  for(const entry of entries)if(mapping.has(entry.lineId))entry.exportTarget=mapping.get(entry.lineId);
   const close=await db.prepare('SELECT result_cents AS resultCents FROM finance_round_close WHERE round_id=?')
     .bind(roundId).first();
   const reportStatus=round.status!=='CLOSED' ? 'DRAFT' :
