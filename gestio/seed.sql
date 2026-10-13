@@ -336,3 +336,13 @@ SELECT column1,column2,'admin.incidents.manage',1700000000000,NULL,'Fixture sint
   ('00000000-0000-4000-8000-000000000550','00000000-0000-4000-8000-000000000101'),
   ('00000000-0000-4000-8000-000000000551','00000000-0000-4000-8000-000000000105'))
 WHERE EXISTS(SELECT 1 FROM permission WHERE code='admin.incidents.manage');
+
+-- Task roles are granted explicitly; historic schemas have no task permissions and insert no rows.
+INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,expires_at,granted_by,justification)
+SELECT lower(hex(randomblob(4)))||'-'||lower(hex(randomblob(2)))||'-4'||substr(lower(hex(randomblob(2))),2)||'-8'||substr(lower(hex(randomblob(2))),2)||'-'||lower(hex(randomblob(6))),
+ur.user_id,rp.permission_code,ur.valid_from,ur.expires_at,NULL,'Fixture sintético'
+FROM user_role ur JOIN role_permission rp ON rp.role_code=ur.role_code
+WHERE rp.permission_code LIKE 'tasks.%' AND ur.revoked_at IS NULL
+AND NOT (ur.role_code='SECTION_DELEGATE' AND rp.permission_code='tasks.section.manage')
+AND NOT EXISTS(SELECT 1 FROM user_permission_grant g WHERE g.user_id=ur.user_id AND g.permission_code=rp.permission_code AND g.revoked_at IS NULL)
+GROUP BY ur.user_id,rp.permission_code;

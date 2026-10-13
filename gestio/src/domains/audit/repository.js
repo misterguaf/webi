@@ -2,6 +2,7 @@
 // to the lifecycle service, never through HTTP or a generic admin repository.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const ACTIONS = new Set([
+  'TASK_CREATED','TASK_UPDATED','TASK_ASSIGNED','TASK_SHARED','TASK_COMPLETED','TASK_REOPENED','TASK_ARCHIVED',
   'AUTH_LOGIN_SUCCESS','AUTH_LOGIN_FAILED','AUTH_SESSION_CREATED','AUTH_LOGOUT',
   'AUTH_SESSION_REVOKED','AUTH_ALL_SESSIONS_REVOKED','USER_CREATED','USER_DISABLED',
   'USER_ENABLED','USER_SECURITY_SUSPENDED','ROLE_ASSIGNED','ROLE_REMOVED',
@@ -48,7 +49,7 @@ export const ACTIONS = new Set([
   'BUDGET_CREATED','BUDGET_PROPOSED','BUDGET_RETURNED_TO_DRAFT','BUDGET_APPROVED','BUDGET_LINE_CREATED','BUDGET_LINE_REVISED',
   'BUDGET_LINE_DEACTIVATED','BUDGET_REVISION_PROPOSED','BUDGET_REVISION_APPROVED','BUDGET_REVISION_REJECTED'
 ]);
-const RESOURCE_TYPES = new Set(['admission_request','work_incident','app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
+const RESOURCE_TYPES = new Set(['task','admission_request','work_incident','app_user','app_session','participant','user_role','user_permission_grant','health_access_grant','audit_event','security_incident',
   'activity','activity_registration','activity_installment_plan','payment_evidence','delegated_permission','notification_outbox',
   'annual_fee_round','annual_fee_family_group','annual_fee_obligation','annual_fee_payment',
   'annual_fee_submission_person','annual_fee_allocation','annual_fee_issue','annual_fee_installment_plan',

@@ -3,6 +3,7 @@
 import { setupFees } from '../fees.js';
 import { setupFeeStatus } from '../fee-status.js';
 import { setupDashboard } from '../dashboard.js';
+import { setupTaskCalendar } from './task-calendar.js';
 import { ACCOUNT_STATUS_LABELS, ROLE_LABELS, SECTION_LABELS } from '../labels.js';
 
 const $ = id => document.getElementById(id);
@@ -69,6 +70,7 @@ export function createFeeStatusView({ call, reportLoadError }) {
 }
 
 export function createDashboardView({ call, navigateTo, routes, activities }) {
+  const calendar=setupTaskCalendar({call,routes});
   // Dashboard entry points land on the activity detail (3.5D), never on a form.
   const dashboard = setupDashboard({ call, navigateTo,
     openActivity: id => activities.openActivity(id),
@@ -81,5 +83,6 @@ export function createDashboardView({ call, navigateTo, routes, activities }) {
     openIncompleteParticipants: () => routes.go({ page: 'participants', query: { completitud: 'pendents' } }),
     openParticipantReviews: () => routes.go({ page: 'participants', path: ['revisions'] })
   });
-  return { id: 'dashboard', page: 'inici', available: () => true, load() {}, enter: me => dashboard.load(me), unload: () => dashboard.hide() };
+  return { id: 'dashboard', page: 'inici', available: () => true, load() {},
+    enter: me => Promise.all([dashboard.load(me),calendar.load(me)]), unload: () => {calendar.unload();dashboard.hide();} };
 }

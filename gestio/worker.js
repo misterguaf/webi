@@ -21,6 +21,7 @@ import * as admissions from './src/services/admissions-service.js';
 import * as quotes from './src/services/quotes-service.js';
 import * as activityFeed from './src/services/activity-feed-service.js';
 import * as workIncidents from './src/services/work-incident-service.js';
+import * as tasks from './src/services/task-service.js';
 import { AppError } from './src/services/common.js';
 import { financeRoute } from './src/domains/finance/routes.js';
 import { deploymentEnvironment, devIdentityEnabled, hostAllowed, runtimeEnvironment } from './src/environment-policy.js';
@@ -107,6 +108,14 @@ async function api(request,env,url,requestId) {
   if (path==='/api/me/sessions/revoke-all' && method==='POST') {
     await auth.revokeAll(db,context,requestId);return json({ok:true,requestId},200,{'Set-Cookie':cookieHeader(url,'',0)});
   }
+  if(path==='/api/tasks/users'&&method==='GET') return json({...await tasks.taskUsers(db,context,requestId,url.searchParams),requestId});
+  if(path==='/api/tasks/summary'&&method==='GET') return json({...await tasks.taskSummary(db,context),requestId});
+  if(path==='/api/tasks'&&method==='GET') return json({...await tasks.listTasks(db,context,requestId,url.searchParams),requestId});
+  if(path==='/api/tasks'&&method==='POST') return json({...await tasks.createTask(db,context,requestId,await readJson(request)),requestId},201);
+  const taskMatch=path.match(/^\/api\/tasks\/([^/]+)(?:\/(complete|reopen|archive))?$/);
+  if(taskMatch&&!taskMatch[2]&&method==='GET') return json({...await tasks.taskDetail(db,context,requestId,taskMatch[1]),requestId});
+  if(taskMatch&&!taskMatch[2]&&method==='PATCH') return json({...await tasks.editTask(db,context,requestId,taskMatch[1],await readJson(request)),requestId});
+  if(taskMatch&&taskMatch[2]&&method==='POST') return json({...await tasks.transitionTask(db,context,requestId,taskMatch[1],taskMatch[2],await readJson(request)),requestId});
   let match=path.match(/^\/api\/me\/sessions\/([^/]+)$/);
   if (match && method==='DELETE') {
     await auth.revokeOne(db,context,requestId,match[1]);

@@ -37,6 +37,8 @@ export async function capabilities(db, context, now = Date.now()) {
 
   return {
     version: CAPABILITIES_VERSION,
+    tasks: { personal: true, sectionRead: scope('tasks.section.read'), sectionManage: scope('tasks.section.manage'),
+      groupRead: global('tasks.group.read'), groupManage: global('tasks.group.manage') },
     // Section reference catalogue (id ↔ code, no personal data) so forms can send section ids.
     sections: sections.map(row => ({ id: row.id, code: row.code })),
     participants: {

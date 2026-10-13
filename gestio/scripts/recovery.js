@@ -45,9 +45,10 @@ const TABLES=[
   // 3.5H.2 Noves altes.
   'admission_request','admission_request_event',
   // 3.5H.3 Incidències i millores.
-  'work_incident'
+  'work_incident','task','task_member'
 ];
 const REQUIRED_OBJECTS=[
+  'index:task_due_idx','index:task_owner_idx','index:task_member_user_idx','trigger:task_immutable_identity','trigger:task_no_delete',
   'index:app_session_user_active_idx','index:audit_event_request_idx','index:user_role_unrevoked_unique',
   // 3.5H.1 (0043): one active grant per origin and scope, role-sourced grants and ratification guards.
   'index:user_permission_active_unique','index:user_permission_source_role_idx','trigger:user_permission_grant_source_guard',

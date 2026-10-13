@@ -19,6 +19,10 @@
 
 /** @type {Readonly<Record<string, Readonly<PermissionDefinition>>>} */
 export const PERMISSIONS = Object.freeze({
+  'tasks.section.read': { kind: 'SCOPED', delegable: true },
+  'tasks.section.manage': { kind: 'SCOPED', delegable: true },
+  'tasks.group.read': { kind: 'GLOBAL', scopedHolders: 'ALLOWED' },
+  'tasks.group.manage': { kind: 'GLOBAL', delegable: true },
   'participants.profile.read': { kind: 'SCOPED', delegable: true },
   'participants.profile.manage': { kind: 'SCOPED', delegable: true },
   'participants.contact.read': { kind: 'SCOPED', delegable: true,
