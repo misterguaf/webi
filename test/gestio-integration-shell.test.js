@@ -112,7 +112,7 @@ test('visible copy: section names (Esculta), no backend states, codes or interna
 
 test('common states: the global banner is for network/server failures and belongs to the page that had it; filters never send impossible values', async () => {
   const app = source('app.js');
-  assert.match(app, /if \(!\(error\?\.status >= 400 && error\?\.status < 500\)\) \$\('shellLoadError'\)\.hidden = false/, '4xx are explained by each screen');
+  assert.match(app, /if \(!\(error\?\.status >= 400 && error\?\.status < 500\)\) \{? ?\$\('shellLoadError'\)\.hidden = false/, '4xx are explained by each screen');
   assert.match(app, /if \(page !== shownPage\) \{ \$\('shellLoadError'\)\.hidden = true; shownPage = page; \}/, 'the banner clears on page change');
   const feed = await import('../gestio/public/views/activity-feed/model.js');
   assert.deepEqual([feed.parseFilters({ des: '2026-99-99' }).des, feed.parseFilters({ fins: '2026-02-30' }).fins, feed.parseFilters({ des: '2026-10-01' }).des], ['', '', '2026-10-01']);

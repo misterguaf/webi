@@ -1,0 +1,134 @@
+/* Access screen «Capvespre al prat» (docs/design/screens/LOGIN.md).
+   The scene is decoration built by login-scene.js; the card is plain markup in index.html and works without it. */
+
+/* The scene is a sunset, so the card always uses the dark tokens, whatever theme the shell uses. */
+#login{
+  color-scheme:dark;
+  --surface-primary:#161821;--surface-elevated:#1D202B;--border-default:#303343;
+  --text-primary:#F6F7FB;--text-secondary:#A7AABC;--iris-primary:#8E7DFF;--iris-strong:#A394FF;--iris-soft:#292347;
+  --lg-warning-soft:rgba(240,184,90,.14);--lg-warning-text:#F0B85A;--lg-danger-soft:rgba(255,124,136,.14);--lg-danger-text:#FF8A95;
+  /* Spring (stiffness 400, damping 30) sampled into linear(): the lab's single spring personality. */
+  --lg-spring:linear(0, 0.017, 0.061, 0.125, 0.2, 0.283, 0.368, 0.452, 0.532, 0.608, 0.677, 0.739, 0.794, 0.841, 0.882, 0.917, 0.945, 0.968, 0.987, 1.001, 1.011, 1.019, 1.024, 1.027, 1.028, 1.028, 1.027, 1.026, 1.024, 1.022, 1.019, 1.017, 1.015, 1.012, 1.01, 1.008, 1.007, 1.005, 1.004, 1.003, 1);
+  position:fixed;inset:0;z-index:60;overflow:hidden;background:#140C16;color:var(--text-primary)
+}
+#login[hidden]{display:none}
+#login *{box-sizing:border-box}
+/* Until the first session check answers, show nothing: a signed-in user never sees the scene flash. */
+body.auth-pending #login,body.auth-pending .app-shell{visibility:hidden}
+
+/* ------------------------------------------------------------ stage */
+.lg-stage{--px:0;--py:0;position:absolute;inset:0;overflow:hidden;background:#140C16;transform-origin:70% 66%}
+.lg-scene{position:absolute;inset:0;animation:lg-fade 900ms var(--ease-standard) both}
+@keyframes lg-fade{from{opacity:0}}
+.lg-scene svg{position:absolute;inset:0;width:100%;height:100%;display:block;stroke:none;fill:none}
+.lg-l{transition:transform 600ms var(--ease-enter)}
+.lg-l0,.lg-l1{transform:translate(calc(var(--px) * -2px),calc(var(--py) * -1px))}
+.lg-l2{transform:translate(calc(var(--px) * -4px),calc(var(--py) * -2px))}
+.lg-l3{transform:translate(calc(var(--px) * -7px),calc(var(--py) * -3px))}
+.lg-l4,.lg-l5{transform:translate(calc(var(--px) * -12px),calc(var(--py) * -4px))}
+.lg-l6{transform:translate(calc(var(--px) * -20px),calc(var(--py) * -6px))}
+.lg-sun{animation:lg-sun 9s ease-in-out infinite alternate}
+@keyframes lg-sun{to{opacity:.88}}
+.lg-star{fill:#FFE9C4;animation:lg-twinkle var(--t,6s) ease-in-out var(--d,0s) infinite alternate}
+@keyframes lg-twinkle{from{opacity:.15}to{opacity:.7}}
+
+/* Deer: filled anatomical silhouettes; joints animated with WAAPI (LOGIN.md §4). */
+.deer{--deer:#120A13}
+.deer .part{fill:var(--deer)}
+.deer .rim{stroke:url(#lgRim);stroke-width:2.6;stroke-linejoin:round}
+.deer .limb-far .part{fill:var(--deer-far,#24131F);stroke:none}
+.deer .deer-shadow{fill:#000;opacity:.32}
+/* Running: ears pinned back, tail raised; eased in and out so the change is never abrupt. */
+.deer .ears,.deer .tail{transition:transform 600ms var(--ease-standard)}
+.deer.is-running .ears{transform:rotate(-16deg)}
+.deer.is-running .tail{transform:rotate(-28deg)}
+.deer-mid{--deer:#1E1019;--deer-far:#2C1726}
+.deer-far{--deer:#1E0F1C;--deer-far:#2A1526}
+.deer-far .rim,.deer-mid .rim{stroke-opacity:.5}
+
+/* Landscape */
+.lg-crest{fill:none;stroke:url(#lgCrest);stroke-width:1.5;stroke-linejoin:round}
+.lg-rays{mix-blend-mode:screen;opacity:.14;transform-origin:1120px 610px;animation:lg-rays 46s ease-in-out infinite alternate}
+@keyframes lg-rays{from{transform:rotate(-1.6deg)}to{transform:rotate(1.6deg)}}
+.lg-cloud{animation:lg-drift var(--t,120s) ease-in-out infinite alternate}
+.lg-mist{--dx:70px;animation:lg-drift 64s ease-in-out infinite alternate}
+.lg-mist-b{--dx:-60px;animation-duration:48s}
+@keyframes lg-drift{to{transform:translateX(var(--dx,-60px))}}
+.lg-bird{animation:lg-fly var(--t,60s) linear var(--d,0s) infinite}
+.lg-bird path{fill:none;stroke:#2A1630;stroke-width:1.5;stroke-linecap:round;transform-box:fill-box;transform-origin:center;animation:lg-flap .52s ease-in-out infinite alternate}
+@keyframes lg-fly{from{transform:translate(1720px,var(--y))}to{transform:translate(-120px,calc(var(--y) - 60px))}}
+@keyframes lg-flap{to{transform:scaleY(-.5)}}
+.lg-frame{fill:#0E070F}
+.lg-frame-rim{fill:#0E070F;stroke:url(#lgRimL);stroke-width:3.5;stroke-linejoin:round}
+.lg-blades{transform-box:fill-box;transform-origin:50% 100%;animation:lg-sway var(--t,4s) ease-in-out var(--d,0s) infinite alternate}
+.lg-blades path{fill:none;stroke:#140A14;stroke-linecap:round}
+.lg-blades .lg-lit{stroke:url(#lgTip)}
+.lg-blades .lg-heads{fill:#140A14;stroke:none}
+@keyframes lg-sway{from{transform:rotate(-1.6deg)}to{transform:rotate(1.8deg)}}
+.lg-puff{fill:#F4B06A;stroke:none;transform-box:fill-box;transform-origin:center}
+
+/* Ambience: motes in the sunlight, grain, scrim behind the card */
+.lg-motes{position:absolute;inset:0;pointer-events:none}
+.lg-mote{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);border-radius:50%;
+  background:radial-gradient(circle,rgba(255,236,190,.95),rgba(255,210,140,0) 70%);opacity:0;
+  animation:lg-mote var(--t,14s) linear var(--d,0s) infinite}
+@keyframes lg-mote{0%{opacity:0;transform:translate(0,0)}15%{opacity:.85}85%{opacity:.6}100%{opacity:0;transform:translate(var(--dx,40px),var(--dy,-120px))}}
+.lg-grain{position:absolute;inset:0;pointer-events:none;opacity:.07;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+.lg-scrim{position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(90deg,rgba(14,8,16,.62) 0%,rgba(14,8,16,.34) 32%,rgba(14,8,16,0) 58%),linear-gradient(0deg,rgba(14,8,16,.45),transparent 30%)}
+
+/* ------------------------------------------------------------ card */
+.lg-main{position:absolute;inset:0;z-index:5;display:grid;align-items:center;justify-items:start;padding:var(--space-8) clamp(24px,7vw,120px);pointer-events:none}
+.lg-card{pointer-events:auto;width:min(400px,100%);display:grid;gap:var(--space-4);padding:var(--space-8);
+  border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-panel);color:var(--text-primary);
+  background:color-mix(in srgb,var(--surface-primary) 70%,transparent);box-shadow:0 30px 80px rgba(0,0,0,.45),inset 0 1px rgba(255,255,255,.08);
+  backdrop-filter:blur(28px) saturate(150%);-webkit-backdrop-filter:blur(28px) saturate(150%);
+  animation:lg-card-in 390ms var(--lg-spring) 150ms both}
+@keyframes lg-card-in{from{opacity:0;transform:translateY(14px) scale(.985)}}
+.lg-brand{display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)}
+.lg-brand img{width:40px;height:40px;object-fit:contain;transform:scale(1.2)}
+.lg-brand span{display:grid;line-height:17px}.lg-brand b{font-size:15px;letter-spacing:-.02em}.lg-brand small{font-size:11px;color:var(--text-secondary)}
+.lg-card h1{margin:0;font-size:34px;line-height:40px;font-weight:690;letter-spacing:-.045em}
+.lg-lead{margin:calc(var(--space-2) * -1) 0 var(--space-2);color:var(--text-secondary);font-size:14px;line-height:21px}
+.lg-note{margin:0;padding:var(--space-3);border-radius:var(--radius-control);font-size:13px;line-height:19px;background:var(--surface-elevated);color:var(--text-secondary)}
+.lg-note[data-tone="warning"]{background:var(--lg-warning-soft);color:var(--lg-warning-text)}
+.lg-note[data-tone="error"]{background:var(--lg-danger-soft);color:var(--lg-danger-text)}
+.lg-local{display:grid;gap:var(--space-1);font-size:12px;font-weight:600;color:var(--text-secondary)}
+.lg-local select{min-height:40px;padding:0 var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary);color:var(--text-primary);font:inherit;font-weight:500}
+.lg-local small{font-weight:500;line-height:17px}
+#loginButton.lg-enter{min-height:46px;width:100%;margin:0;font-size:15px;border-radius:var(--radius-card)}
+.lg-enter svg{width:16px;height:16px;transition:transform var(--motion-default) var(--ease-enter)}
+.lg-enter:hover svg{transform:translateX(3px)}
+.lg-secure,.lg-help{display:flex;align-items:center;gap:var(--space-2);margin:0;font-size:12px;color:var(--text-secondary)}
+.lg-secure svg{width:14px;height:14px}
+.lg-card[data-mode="local"] .lg-secure{display:none}
+.lg-help{padding-top:var(--space-3);border-top:1px solid var(--border-default)}
+
+/* ------------------------------------------------------------ chrome around the card */
+.lg-caption{position:absolute;left:clamp(24px,7vw,120px);bottom:var(--space-6);z-index:5;margin:0;color:rgba(255,236,214,.72);font-size:12px;letter-spacing:.02em;font-style:italic}
+.lg-pause{position:absolute;right:var(--space-6);bottom:var(--space-6);z-index:6;display:inline-flex;align-items:center;gap:var(--space-2);min-height:34px;padding:0 var(--space-3);
+  border:1px solid rgba(255,255,255,.16);border-radius:var(--radius-pill);background:rgba(20,12,22,.45);color:rgba(255,240,224,.9);font:inherit;font-size:12px;font-weight:580;
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);cursor:pointer}
+.lg-pause:hover{background:rgba(20,12,22,.65)}
+.lg-pause svg{width:14px;height:14px}
+/* The curtain ends on the shell background (the user's theme), so the hand-off to the app is seamless. */
+.lg-curtain{position:absolute;inset:0;z-index:20;pointer-events:none;opacity:0;background:var(--bg-primary)}
+
+/* Paused (WCAG 2.2.2) or hidden tab: everything holds still. */
+.lg-stage.is-paused,.lg-stage.is-paused *{animation-play-state:paused!important}
+@media(prefers-reduced-motion:reduce){
+  .lg-stage *{animation:none!important;transition:none!important}
+  .lg-mote{display:none}
+  .lg-card{animation:none}
+}
+
+/* ------------------------------------------------------------ mobile: card as a bottom sheet */
+@media(max-width:767px){
+  .lg-main{align-items:end;justify-items:stretch;padding:var(--space-4)}
+  .lg-card{width:100%;padding:var(--space-6)}
+  .lg-card h1{font-size:28px;line-height:34px}
+  .lg-scrim{background:linear-gradient(0deg,rgba(14,8,16,.7) 0%,rgba(14,8,16,.2) 55%,transparent 75%)}
+  .lg-caption{display:none}
+  .lg-pause{top:var(--space-4);bottom:auto;right:var(--space-4)}
+}

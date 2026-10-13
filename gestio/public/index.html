@@ -12,11 +12,12 @@
   <link rel="stylesheet" href="/activities.css">
   <link rel="stylesheet" href="/participants.css">
   <link rel="stylesheet" href="/treasury.css">
+  <link rel="stylesheet" href="/login.css">
   <link rel="stylesheet" href="/admin.css">
   <script src="/theme-init.js"></script>
 <link rel="stylesheet" href="/task-calendar.css">
 </head>
-<body data-page="login">
+<body data-page="login" class="auth-pending">
 <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="svg-sprite">
   <symbol id="icon-home" viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></symbol>
   <symbol id="icon-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 10h18M8 14h3M8 17h3"/></symbol>
@@ -38,7 +39,66 @@
   <symbol id="icon-arrow-left" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
   <symbol id="icon-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
   <symbol id="icon-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a1 1 0 0 1 1-1h10"/></symbol>
+  <symbol id="icon-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="icon-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="icon-pause" viewBox="0 0 24 24"><path d="M9 6v12M15 6v12"/></symbol>
+  <symbol id="icon-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z"/></symbol>
 </svg>
+<!-- Access screen «Capvespre al prat» (docs/design/screens/LOGIN.md). The scene is filled by login-scene.js;
+     the card works without it. Production sign-in goes through Cloudflare Access: no password field here. -->
+<section id="login" aria-labelledby="loginTitle">
+  <div id="loginStage" class="lg-stage" aria-hidden="true">
+    <div class="lg-scene">
+      <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMax slice" focusable="false">
+        <defs>
+          <linearGradient id="lgSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#21183A"/><stop offset=".42" stop-color="#5E3358"/><stop offset=".66" stop-color="#C4614B"/><stop offset=".8" stop-color="#EE9A57"/><stop offset="1" stop-color="#F7C277"/></linearGradient>
+          <radialGradient id="lgSunGlow"><stop offset="0" stop-color="#FFF2CC"/><stop offset=".18" stop-color="#FFD991" stop-opacity=".85"/><stop offset=".55" stop-color="#F2A55E" stop-opacity=".28"/><stop offset="1" stop-color="#F2A55E" stop-opacity="0"/></radialGradient>
+          <linearGradient id="lgRim" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#F6B36B" stop-opacity="0"/><stop offset=".55" stop-color="#F6B36B" stop-opacity=".25"/><stop offset="1" stop-color="#FFD594" stop-opacity=".85"/></linearGradient>
+          <linearGradient id="lgCrest" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="1600" y2="0"><stop offset="0" stop-color="#F6B36B" stop-opacity="0"/><stop offset=".5" stop-color="#F6B36B" stop-opacity=".25"/><stop offset=".7" stop-color="#FFD9A0" stop-opacity=".9"/><stop offset=".86" stop-color="#F6B36B" stop-opacity=".35"/><stop offset="1" stop-color="#F6B36B" stop-opacity=".1"/></linearGradient>
+          <linearGradient id="lgCloud" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4A2A4F" stop-opacity=".1"/><stop offset=".55" stop-color="#8E4A63" stop-opacity=".55"/><stop offset="1" stop-color="#F29A6A" stop-opacity=".85"/></linearGradient>
+          <radialGradient id="lgRay" gradientUnits="userSpaceOnUse" cx="1120" cy="610" r="900"><stop offset="0" stop-color="#FFE7B8" stop-opacity=".55"/><stop offset=".6" stop-color="#FFD08A" stop-opacity=".12"/><stop offset="1" stop-color="#FFD08A" stop-opacity="0"/></radialGradient>
+          <linearGradient id="lgValley" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3A55F" stop-opacity="0"/><stop offset=".6" stop-color="#F3A55F" stop-opacity=".32"/><stop offset="1" stop-color="#E88D5A" stop-opacity="0"/></linearGradient>
+          <linearGradient id="lgRimL" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#F6B36B" stop-opacity="0"/><stop offset=".6" stop-color="#F6B36B" stop-opacity=".2"/><stop offset="1" stop-color="#FFD594" stop-opacity=".75"/></linearGradient>
+          <linearGradient id="lgTip" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#140A14"/><stop offset=".72" stop-color="#140A14"/><stop offset="1" stop-color="#F2A15E"/></linearGradient>
+        </defs>
+        <rect width="1600" height="900" fill="url(#lgSky)"/>
+        <rect y="440" width="1600" height="260" fill="url(#lgValley)" opacity=".7"/>
+        <g id="lgStars"></g>
+        <g class="lg-l lg-l0" id="lgClouds"></g>
+        <g class="lg-l lg-l1"><circle cx="1120" cy="610" r="460" fill="url(#lgSunGlow)"/><g id="lgRays" class="lg-rays"></g><circle class="lg-sun" cx="1120" cy="610" r="46" fill="#FFF0C6"/></g>
+        <g class="lg-l lg-l1" id="lgBirds"></g>
+        <g class="lg-l lg-l2" id="lgRidgeFar"></g>
+        <g class="lg-l lg-l2"><rect class="lg-mist" x="-200" y="540" width="2000" height="110" fill="url(#lgValley)"/></g>
+        <g class="lg-l lg-l3"><rect class="lg-mist lg-mist-b" x="-200" y="560" width="2000" height="90" fill="url(#lgValley)"/><g id="lgRidgeMid"></g><g id="lgFarHerd"></g></g>
+        <g class="lg-l lg-l4"><g id="lgMeadow"></g><g id="lgNearHerd"></g><g id="lgDust"></g></g>
+        <g class="lg-l lg-l5" id="lgGrass"></g>
+        <g class="lg-l lg-l6" id="lgFrame"></g>
+      </svg>
+    </div>
+    <div id="lgMotes" class="lg-motes"></div>
+    <div class="lg-grain"></div>
+    <div class="lg-scrim"></div>
+  </div>
+  <div class="lg-main">
+    <div id="loginCard" class="lg-card">
+      <div class="lg-brand"><img src="/parpallo-mark.png" alt="" width="40" height="40"><span><b>Gestió</b><small>Grup Scout Parpalló</small></span></div>
+      <h1 id="loginTitle">Benvinguda.</h1>
+      <p id="loginLead" class="lg-lead">Entra per a continuar amb la gestió del grup.</p>
+      <p id="loginNote" class="lg-note" role="status" hidden></p>
+      <div id="loginLocal" class="lg-local" hidden>
+        <label for="identity">Identitat de prova</label>
+        <select id="identity"></select>
+        <small id="localDataNotice" hidden>Només dades fictícies. No introduïu informació de menors, salut ni econòmica real.</small>
+      </div>
+      <button id="loginButton" class="btn btn-primary lg-enter" type="button"><span id="loginButtonLabel">Entra amb el teu compte</span><svg aria-hidden="true"><use href="#icon-arrow-right"></use></svg></button>
+      <p class="lg-secure"><svg aria-hidden="true"><use href="#icon-lock"></use></svg>Accés protegit amb verificació en dos passos.</p>
+      <p class="lg-help">No pots entrar? Parla amb coordinació.</p>
+    </div>
+  </div>
+  <p class="lg-caption">Com la cérvola del Parpalló, fa 20.000 anys.</p>
+  <button id="loginPause" class="lg-pause" type="button" aria-pressed="false"><svg aria-hidden="true"><use href="#icon-pause"></use></svg><span>Atura l'animació</span></button>
+  <div id="loginCurtain" class="lg-curtain" aria-hidden="true"></div>
+</section>
 <div class="app-shell">
   <aside class="sidebar" aria-label="Navegació principal">
     <div class="sidebar-top">
@@ -57,7 +117,6 @@
       <p id="demoIndicator" class="demo-indicator" hidden>Entorn local · dades de demostració</p>
       <div id="shellLoadError" class="shell-load-error" role="alert" hidden><span>No s'han pogut carregar algunes dades.</span><button id="retryShellData" type="button">Torna-ho a provar</button></div>
 
-  <section id="login"><h2>Identitat de prova</h2><p>Selector disponible únicament en desenvolupament local.</p><select id="identity"></select> <button id="loginButton">Entrar</button><p id="localDataNotice" class="login-data-notice" hidden>Només dades fictícies. No introduïu informació de menors, salut ni econòmica real.</p></section>
   <section id="dashboard" data-page="inici" hidden>
     <section id="taskCalendar" aria-label="Calendari i tasques"></section>
     <div class="dashboard-greeting"><p id="dashboardDate" class="dashboard-date"></p><h2 id="dashboardGreeting"></h2><p id="dashboardPhrase" role="status"></p><button id="dashboardNewActivity" type="button" hidden>Nova activitat</button></div>
@@ -138,5 +197,6 @@
   <div id="profilePopover" class="popover" role="dialog" aria-label="Perfil i preferències" hidden><div class="popover-title">Compte i preferències</div><button id="profileAccount" type="button"><svg aria-hidden="true"><use href="#icon-user"></use></svg>El meu compte</button><button id="profileSessions" type="button"><svg aria-hidden="true"><use href="#icon-settings"></use></svg>Sessions</button><hr><div class="popover-title">Tema</div><div class="theme-options" role="group" aria-label="Tema"><button type="button" data-theme-choice="system" aria-pressed="true">Sistema</button><button type="button" data-theme-choice="light" aria-pressed="false">Clar</button><button type="button" data-theme-choice="dark" aria-pressed="false">Fosc</button></div><hr><button id="logout" type="button" hidden><svg aria-hidden="true"><use href="#icon-log-out"></use></svg>Tanca sessió</button></div>
 </div>
 <div id="searchLayer" class="search-layer" hidden><div class="search-dialog" role="dialog" aria-modal="true" aria-label="Buscar en Gestió"><div class="search-input-row"><svg aria-hidden="true"><use href="#icon-search"></use></svg><input id="searchInput" type="search" aria-label="Busca una secció" placeholder="Busca una secció…" autocomplete="off"><button id="closeSearch" type="button" aria-label="Tanca la cerca">Esc</button></div><div class="search-results"><div class="search-results-label">Navegació</div><div id="searchResults"></div></div></div></div>
+<script type="module" src="/login-scene.js"></script>
 <script type="module" src="/app.js"></script>
 </body></html>
