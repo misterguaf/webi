@@ -128,7 +128,7 @@ test('movement list: status, position, dates, direction and search filters on th
   } finally { s.f.close(); }
 });
 
-test('original description: refused by default (audited), revealed on demand with the permission, never in lists or details', async () => {
+test('original description: only for who classifies (3.5I decision) or an explicit grant, on demand, audited, never in lists or details', async () => {
   const s = await setup();
   try {
     const content = csv(['2026-11-03,,10000,R-001,TRF. Família Reveal Demo (fictícia),1500000']);
@@ -137,18 +137,16 @@ test('original description: refused by default (audited), revealed on demand wit
     const detail = await s.detail(row.id);
     assert.equal(detail.movement.hasDescription, true);
     assert.ok(!JSON.stringify(detail).includes('Reveal'), 'the detail carries no original text');
-    const denied = await s.call(104, `/api/finance/movements/${row.id}/description`);
-    assert.equal(denied.status, 403, 'nobody has the reveal permission by default, not even Tresoreria');
-    assert.equal(s.count('audit_event', "action='AUTHZ_DENY' AND resource_type='finance_movement'"), 1);
-    assert.equal((await s.call(101, `/api/finance/movements/${row.id}/description`)).status, 403);
-    s.f.sql.exec(`INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,justification) VALUES('${id(9701)}','${id(104)}','finance.bank_description.reveal',1,'Fixture')`);
+    for (const user of [102, 105, 107]) assert.equal((await s.call(user, `/api/finance/movements/${row.id}/description`)).status, 403, `user ${user}`);
+    assert.ok(s.count('audit_event', "action='AUTHZ_DENY' AND resource_type='finance_movement'") >= 1, 'refusals are audited');
+    assert.equal((await s.call(101, `/api/finance/movements/${row.id}/description`)).status, 200, 'general coordination classifies movements');
     const revealed = await s.call(104, `/api/finance/movements/${row.id}/description`);
     assert.equal(revealed.data.description, 'TRF. Família Reveal Demo (fictícia)');
     const audits = s.f.sql.prepare("SELECT * FROM audit_event WHERE action='BANK_DESCRIPTION_REVEALED'").all();
-    assert.equal(audits.length, 1);
+    assert.equal(audits.length, 2, 'the general coordination and the Treasury consultations, each audited');
     assert.ok(!JSON.stringify(audits).includes('Reveal Demo'), 'the audit never stores the description');
     await s.call(104, `/api/finance/movements/${row.id}/description`);
-    assert.equal(s.count('audit_event', "action='BANK_DESCRIPTION_REVEALED'"), 2, 'every consultation is audited (no cache)');
+    assert.equal(s.count('audit_event', "action='BANK_DESCRIPTION_REVEALED'"), 3, 'every consultation is audited (no cache)');
   } finally { s.f.close(); }
 });
 

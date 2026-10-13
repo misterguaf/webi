@@ -301,10 +301,10 @@ export async function receiptCandidates(db, context, requestId, id) {
   return { fees, activities, overpayments, refunds: [], suggestionOnly: true };
 }
 // The protected original description: explicit permission, audited without the value (LEGAL DECISION REQUIRED).
-/** Product decision (3.5I C43): people expressly authorised to consult bank movements may read the concepts they
- * classify and reconcile. The explicit grant still exists; TECH_ADMIN and section roles get neither. Audited. */
+/** Product decision (3.5I C43): the people who classify and reconcile bank movements read the concepts they need for
+ * it. The explicit grant still exists; read-only delegates, TECH_ADMIN and section roles get neither. Audited. */
 export async function canReadBankConcepts(db, context) {
-  return (await authorize(db, context, { permission: 'finance.movement.read' })).allow ||
+  return (await authorize(db, context, { permission: 'finance.movement.classify' })).allow ||
     (await authorize(db, context, { permission: 'finance.bank_description.reveal' })).allow;
 }
 export async function revealDescription(db, context, requestId, id) {

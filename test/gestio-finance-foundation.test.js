@@ -139,7 +139,8 @@ test('permissions: treasury and general coordination act; section coordination, 
     }
     assert.equal((await s.call(101, '/api/finance/rounds')).status, 200);
     const treasury = (await s.call(104, '/api/me')).data.capabilities.treasury;
-    assert.equal(treasury.read, true); assert.equal(treasury.approveBudget, false); assert.equal(treasury.revealDescriptions, false);
+    assert.equal(treasury.read, true); assert.equal(treasury.approveBudget, false);
+    assert.equal(treasury.revealDescriptions, true, '3.5I decision: who classifies bank movements reads their concepts');
     const coordination = (await s.call(101, '/api/me')).data.capabilities.treasury;
     assert.equal(coordination.approveBudget, true); assert.equal(coordination.importMovements, false, 'import is an explicit grant for coordination');
     assert.ok(s.f.denials(107) > 0, 'denials are audited');
@@ -181,9 +182,7 @@ test('movements: synthetic import, idempotency by file and fingerprint, near mat
     assert.throws(() => s.f.sql.exec(`UPDATE finance_movement SET amount_cents=1 WHERE id='${flagged.id}'`), /movement_immutable/);
     assert.throws(() => s.f.sql.exec(`DELETE FROM finance_movement WHERE id='${flagged.id}'`), /movement_immutable/);
     assert.throws(() => s.f.sql.exec(`DELETE FROM finance_movement_description WHERE movement_id='${flagged.id}'`), /movement_description_immutable/);
-    // The protected original: explicit grant, audited without the value.
-    assert.equal((await s.call(104, `/api/finance/movements/${flagged.id}/description`)).status, 403);
-    s.f.sql.exec(`INSERT INTO user_permission_grant(id,user_id,permission_code,valid_from,justification) VALUES('${id(9851)}','${id(104)}','finance.bank_description.reveal',1,'Fixture')`);
+    // The protected original: read by who classifies (3.5I decision), on demand, audited without the value.
     const revealed = await s.call(104, `/api/finance/movements/${flagged.id}/description`);
     assert.equal(revealed.data.description, 'TRF. Altra família Demo (fictícia)');
     assert.equal(s.audits('BANK_DESCRIPTION_REVEALED').length, 1);

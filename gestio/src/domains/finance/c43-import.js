@@ -126,7 +126,7 @@ const counts = rows => ({ detected: rows.length, new: rows.filter(row => row.sta
   possibleDuplicates: rows.filter(row => row.status === 'POSSIBLE_DUPLICATE').length,
   incidents: rows.filter(row => row.incidents.length).length });
 
-/** Analyse a statement without writing. Concepts are shown to people authorised to consult bank movements. */
+/** Analyse a statement without writing. Concepts are shown to the people who classify bank movements. */
 export async function previewC43Import(db, context, requestId, input, now = Date.now()) {
   await allow(db, context, requestId, 'finance.movement.import', 'finance_import_batch');
   const bytes = readInput(input, false);
