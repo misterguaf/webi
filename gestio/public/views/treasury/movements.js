@@ -2,6 +2,7 @@
 // filters, detail, classification (enabled kinds only), correction keeping history, duplicate review and
 // the audited, on-demand original description. Nothing here is a security boundary.
 import { confirmDialog, h, icon, toast } from '../../ui.js';
+import { MATCH_LABEL, NATURE_LABEL, STRENGTH, matchAllocation } from './bank-import-model.js';
 import { field, moneyInput, openDrawer, budgetLineButton } from './forms.js';
 import { openExpenseForm } from './expense-form.js';
 import { openIncomeForm } from './income-form.js';
@@ -12,7 +13,7 @@ import {
 } from './model.js';
 
 export const statusBadge = ({ label, tone }) => h('span', { className: `badge tone-${tone}`, text: label });
-const amountNode = cents => h('span', { className: `amount ${cents < 0 ? 'amount-out' : 'amount-in'}`, text: formatEur(cents, { signed: true }) });
+export const amountNode = cents => h('span', { className: `amount ${cents < 0 ? 'amount-out' : 'amount-in'}`, text: formatEur(cents, { signed: true }) });
 
 // ---------------------------------------------------------------- list
 
@@ -40,7 +41,9 @@ export async function renderMovementList(root, ctx, query) {
       options.map(option => h('option', { text: option.label, attrs: { value: option.value, selected: option.value === filters[key] } }))));
   const date = (key, label) => h('label', { className: 'select-field date-field' }, h('span', { text: label }),
     h('input', { dataset: { filter: key }, attrs: { type: 'date', value: filters[key] }, on: { change: event => setFilter(key, event.target.value) } }));
-  const toolbar = h('div', { className: 'activity-toolbar treasury-toolbar' },
+  const importButton = ctx.caps().treasury?.importMovements ? h('button', { className: 'btn btn-secondary import-open', attrs: { type: 'button' },
+    on: { click: () => ctx.go({ path: ['moviments', 'importar'] }) } }, icon('plus'), 'Importar extracte') : null;
+  const toolbar = h('div', { className: 'activity-toolbar treasury-toolbar' }, importButton,
     h('div', { className: 'filter-chips', attrs: { role: 'group', 'aria-label': 'Estat' } }, MOVEMENT_STATUS_CHOICES.map(choice =>
       h('button', { className: 'filter-chip', dataset: choice.value === filters.estat ? { filter: 'estat' } : {}, text: choice.label, attrs: { type: 'button', 'aria-pressed': String(choice.value === filters.estat) },
         on: { click: () => setFilter('estat', choice.value) } }))),
@@ -139,6 +142,7 @@ export async function renderMovementDetail(root, ctx, id) {
       fact('Data', formatDay(m.operationDate)), fact('Posició', `${m.positionName} · ${POSITION_KIND[m.positionKind] ?? ''}`),
       fact('Assignat', formatEur(m.allocatedCents)), fact('Pendent', formatEur(m.state === 'ACTIVE' ? m.unallocatedCents : 0))),
     duplicateBlock(data, ctx, reload),
+    canClassify(caps) && m.state === 'ACTIVE' && unallocated && !privateReimbursements ? suggestionBlock(data, ctx, reload) : null,
     h('div', { className: 'activity-surface info-surface' },
       h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Descripció' }),
         h('dl', { className: 'info-list' },
@@ -155,6 +159,60 @@ export async function renderMovementDetail(root, ctx, id) {
           entry.allocations.length ? h('ul', { className: 'history-items' }, entry.allocations.map(item => h('li', { text: `${allocationLabel(item)} · ${formatEur(item.amountCents)}` })))
             : h('span', { className: 'tx-sub', text: 'Sense classificació' }))))) : null)].filter(Boolean));
   root.querySelector('.detail-title')?.focus({ preventScroll: true });
+}
+// ---------------------------------------------------------------- suggestions (3.5I)
+/** Explainable proposals for a pending movement. Nothing is applied until a person confirms one; confirmation
+ * goes through the existing reconciliation endpoints, which decide whether it is valid. */
+function suggestionBlock(data, ctx, reload) {
+  const m = data.movement;
+  const node = h('div', { className: 'activity-surface info-surface suggestion-surface', attrs: { 'aria-busy': 'true' } },
+    h('h3', { className: 'info-title', text: 'Suggeriments' }), h('p', { className: 'tx-sub', text: 'Buscant coincidències…' }));
+  const fresh = !data.allocations.length && m.unallocatedCents === Math.abs(m.amountCents);
+  const apply = async (title, body, send) => {
+    if (!await confirmDialog({ title, body, confirm: 'Confirma' })) return;
+    try { await send(); toast('Moviment classificat.', { tone: 'ok' }); await reload(); }
+    catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
+  };
+  const allocate = allocation => ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST',
+    body: JSON.stringify({ expectedVersion: m.allocationVersion, allocations: [allocation] }) });
+  void ctx.call(`/api/finance/movements/${m.id}/suggestions`).then(s => {
+    const parts = [h('h3', { className: 'info-title', text: 'Suggeriments' }),
+      h('p', { className: 'tx-sub', text: 'Són propostes a partir del concepte, l’import i la data. Revisa-les amb el banc i el justificant abans de confirmar.' })];
+    const facts = [];
+    if (s.nature) facts.push(infoRow('Tipus probable', `${NATURE_LABEL[s.nature.kind] ?? s.nature.kind} · ${s.nature.reason}`));
+    if (s.round) facts.push(infoRow('Ronda', s.round.status === 'ONE' ? s.round.code : s.round.status === 'MANY' ? 'Per decidir' : 'Cap ronda oberta'));
+    if (s.budgetLine) facts.push(infoRow('Partida suggerida', `${s.budgetLine.code} · ${s.budgetLine.path.join(' › ')}`));
+    if (s.alternatives.length) facts.push(infoRow('Partides possibles', s.alternatives.map(item => `${item.code} · ${item.path.join(' › ')}`).join(' / ')));
+    if (facts.length) parts.push(h('dl', { className: 'info-list' }, facts));
+    if (s.budgetLine?.reasons?.length) parts.push(h('p', { className: 'tx-sub', text: s.budgetLine.reasons.join(' ') }));
+    if (fresh && s.budgetLine && s.nature?.kind === 'INCOME')
+      parts.push(h('div', { className: 'detail-actions' }, h('button', { className: 'btn btn-secondary', text: `Classifica a ${s.budgetLine.code}`, attrs: { type: 'button' },
+        on: { click: () => void apply('Classificar com a ingrés?', `${formatEur(m.amountCents, { signed: true })} a «${s.budgetLine.path.join(' › ')}».`,
+          () => allocate({ kind: 'INCOME', budgetLineId: s.budgetLine.id, amountCents: Math.abs(m.amountCents) })) } })));
+    if (s.matches.length) parts.push(h('ul', { className: 'candidate-list', attrs: { role: 'list', 'aria-label': 'Coincidències suggerides' } }, s.matches.map(match => {
+      const allocation = matchAllocation(match);
+      const who = [MATCH_LABEL[match.type], match.participants?.length ? match.participants.join(', ') : null, match.activityName ?? match.label ?? null,
+        match.roundCode ? `Ronda ${match.roundCode}` : null].filter(Boolean).join(' · ');
+      return h('li', { className: 'candidate' },
+        h('div', { className: 'candidate-main' }, h('span', { text: who }), statusBadge(STRENGTH[match.strength] ?? STRENGTH.WEAK)),
+        h('p', { className: 'tx-sub', text: `Import: ${formatEur(match.amountCents)} · Pendent: ${formatEur(match.outstandingCents)} · Estat: pendent de confirmació` }),
+        h('ul', { className: 'reason-list' }, match.reasons.map(reason => h('li', { text: reason }))),
+        fresh && allocation ? h('button', { className: 'btn btn-small btn-secondary', text: 'Confirmar', attrs: { type: 'button' },
+          on: { click: () => void apply('Confirmar la coincidència?', `${who}: ${formatEur(match.amountCents)}. Es concilia este moviment amb el pagament; les regles de Tresoreria ho tornen a comprovar.`,
+            () => allocate(allocation)) } }) : null);
+    })));
+    if (s.transfer && fresh) parts.push(h('div', { className: 'detail-actions' }, h('button', { className: 'btn btn-secondary', attrs: { type: 'button' },
+      text: `Confirmar traspàs amb ${s.transfer.positionName} (${formatDay(s.transfer.date)})`,
+      on: { click: () => void apply('Confirmar el traspàs intern?', 'Els dos moviments queden vinculats com un traspàs entre comptes propis: no compten com a ingrés ni com a despesa.',
+        () => ctx.call('/api/finance/internal-transfers', { method: 'POST', body: JSON.stringify(m.amountCents < 0
+          ? { fromMovementId: m.id, toMovementId: s.transfer.id, fromExpectedVersion: m.allocationVersion, toExpectedVersion: s.transfer.allocationVersion }
+          : { fromMovementId: s.transfer.id, toMovementId: m.id, fromExpectedVersion: s.transfer.allocationVersion, toExpectedVersion: m.allocationVersion }) })) } })));
+    if (!fresh && (s.matches.length || s.budgetLine)) parts.push(h('p', { className: 'tx-sub', text: 'El moviment ja té una part classificada: usa «Classifica» per a afegir la resta.' }));
+    if (s.notes.length) parts.push(h('ul', { className: 'reason-list notes' }, s.notes.map(note => h('li', { text: note }))));
+    if (!s.matches.length && !s.budgetLine && !s.transfer && !s.notes.length) parts.push(h('p', { className: 'empty-detail', text: 'Cap suggeriment: classifica’l manualment.' }));
+    node.replaceChildren(...parts); node.removeAttribute('aria-busy');
+  }).catch(error => { node.replaceChildren(h('h3', { className: 'info-title', text: 'Suggeriments' }), h('p', { className: 'tx-sub', text: errorCopy(error) })); node.removeAttribute('aria-busy'); });
+  return node;
 }
 const backLink = ctx => h('a', { className: 'back-link', attrs: { href: '#/tresoreria/moviments' }, on: { click: event => { event.preventDefault(); ctx.back('moviments'); } } }, icon('arrow-left'), 'Moviments');
 export const fact = (label, value) => h('div', { className: 'fact' }, h('span', { className: 'fact-label', text: label }), h('span', { className: 'fact-value fact-value-small', text: value }));

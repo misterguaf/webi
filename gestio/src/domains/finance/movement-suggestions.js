@@ -42,12 +42,17 @@ function nature(amountCents, common, words, transfer) {
 function budgetLineSuggestion(lines, words, nature) {
   const byId = new Map(lines.map(line => [line.id, line]));
   const parents = new Set(lines.map(line => line.parentId).filter(Boolean));
+  // Words that name a heading of this budget (Campament de Nadal, Campament d’Estiu…): when the text names one,
+  // only lines under that heading are compatible. A Christmas bus is never suggested as a summer bus.
+  const headingWords = new Set(lines.filter(line => parents.has(line.id) && line.nature === nature).flatMap(line => tokens(line.name)));
   const scored = [];
   for (const line of lines) {
-    if (parents.has(line.id) || line.nature !== nature || line.economicGroup === 'ANNUAL_FEES' || line.activityId) continue;
+    if (parents.has(line.id) || line.status !== 'ACTIVE' || line.nature !== nature || line.economicGroup === 'ANNUAL_FEES' || line.activityId) continue;
     const path = []; for (let node = line, guard = 0; node && guard < 10; guard++) { path.unshift(node); node = node.parentId ? byId.get(node.parentId) : null; }
     const own = tokens(line.name).filter(word => words.includes(word));
     if (!own.length) continue;
+    const pathWords = new Set(path.flatMap(node => tokens(node.name)));
+    if (words.some(word => headingWords.has(word) && !pathWords.has(word))) continue;
     const above = [...new Set(path.slice(0, -1).flatMap(node => tokens(node.name)))].filter(word => words.includes(word) && !own.includes(word));
     scored.push({ id: line.id, code: line.code, path: path.map(node => node.name), score: 2 * own.length + above.length, matched: [...own, ...above] });
   }
@@ -101,8 +106,9 @@ export async function movementSuggestions(db, context, requestId, id) {
   // Budget line of the round (income or expense leaves only), when the round is clear.
   let budget = { line: null, alternatives: [] };
   if (round.status === 'ONE' && ['INCOME', 'EXPENSE', 'BANK_CHARGES'].includes(kind.kind)) {
-    const lines = (await db.prepare(`SELECT id,code,name,parent_id AS parentId,nature,economic_group AS economicGroup,activity_id AS activityId
-      FROM finance_budget_line WHERE round_id=? AND status='ACTIVE'`).bind(round.id).all()).results;
+    // Every line of the round shapes the tree (a heading with inactive children is still a heading, never assignable).
+    const lines = (await db.prepare(`SELECT id,code,name,parent_id AS parentId,nature,status,economic_group AS economicGroup,activity_id AS activityId
+      FROM finance_budget_line WHERE round_id=?`).bind(round.id).all()).results;
     budget = budgetLineSuggestion(lines, words, kind.kind === 'INCOME' ? 'INCOME' : 'EXPENSE');
     if (!budget.line) notes.push(budget.alternatives.length ? 'Diverses partides encaixen igual de bé: tria-la tu.' : 'Cap partida del pressupost d’esta ronda encaixa: queda pendent de classificar.');
   }

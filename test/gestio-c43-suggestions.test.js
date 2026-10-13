@@ -127,6 +127,17 @@ test('budget lines come from the round budget: a clear path is suggested, ties a
     const tie = (await s.suggest(anyBus)).data;
     assert.equal(tie.budgetLine, null);
     assert.deepEqual(tie.alternatives.map(item => item.id).sort(), [s.lines.christmasBus, s.lines.easterBus].sort(), 'equally good lines are offered, not chosen');
+    // A heading named in the text that is not on the line's path rules the line out (never a wrong camp).
+    const summer = await s.call(104, '/api/finance/budget-lines', 'POST', { roundId: s.round, code: '2.3', name: 'Campament d’Estiu', nature: 'EXPENSE',
+      parentId: s.f.sql.prepare("SELECT id FROM finance_budget_line WHERE code='2' AND nature='EXPENSE'").get().id });
+    await s.call(104, '/api/finance/budget-lines', 'POST', { roundId: s.round, code: '2.3.1', name: 'Autobús', nature: 'EXPENSE', parentId: summer.data.id });
+    const [summerTrip] = await s.importStatement([{ date: '2026-10-13', amountCents: -48100, common: '03', concepts: ['AUTOCARES FICTICIOS CAMPAMENT NADAL'] }]);
+    const christmas = (await s.suggest(summerTrip)).data;
+    assert.ok(!christmas.budgetLine || christmas.budgetLine.path.includes('Campament de Nadal'), JSON.stringify(christmas.budgetLine));
+    s.f.sql.prepare("UPDATE finance_budget_line SET status='INACTIVE' WHERE id=?").run(s.lines.christmasBus);
+    const withoutChristmasBus = (await s.suggest(summerTrip)).data;
+    assert.equal(withoutChristmasBus.budgetLine, null, 'with no Christmas bus line, the summer bus is not offered for a Christmas trip');
+    assert.deepEqual(withoutChristmasBus.alternatives, []);
     const income = (await s.suggest(lottery)).data;
     assert.deepEqual([income.nature.kind, income.budgetLine?.id], ['INCOME', s.lines.lottery], 'income goes to income lines only');
     const none = (await s.suggest(unknown)).data;

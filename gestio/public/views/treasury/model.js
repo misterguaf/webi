@@ -54,7 +54,7 @@ export const ALLOCATION_KIND = { INCOME: 'Ingrés', EXPENSE_SETTLEMENT: 'Pagamen
   FEE_PAYMENT: 'Quota anual', ACTIVITY_PAYMENT: 'Pagament d’activitat',
   FAMILY_OVERPAYMENT: 'Excés familiar', FAMILY_REFUND: 'Devolució a família' };
 export const BATCH_STATUS = { IMPORTED: 'Importada', PARTIALLY_FLAGGED: 'Amb possibles duplicats' };
-export const BATCH_FORMAT = { SYNTHETIC_CSV_V1: 'CSV sintètic' };
+export const BATCH_FORMAT = { SYNTHETIC_CSV_V1: 'CSV sintètic', C43: 'Extracte bancari (C43)' };
 export const COUNTERPARTY_KIND = { PERSON: 'Persona', ORGANIZATION: 'Entitat' };
 export const movementStatus = code => MOVEMENT_STATUS[code] ?? { label: 'Estat desconegut', tone: 'muted' };
 export const expenseStatus = code => EXPENSE_STATUS[code] ?? { label: 'Estat desconegut', tone: 'muted' };
