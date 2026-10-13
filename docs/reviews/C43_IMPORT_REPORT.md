@@ -68,3 +68,23 @@ confirmació i resultat. Detall del moviment: bloc «Suggeriments» amb motius i
 
 `test/gestio-c43-parser.test.js` (6), `gestio-c43-import.test.js` (8), `gestio-c43-suggestions.test.js` (6),
 `gestio-c43-ui.test.js` (3). Flux complet provat al navegador amb un extracte sintètic en un servidor aïllat.
+
+## Una sola realitat econòmica (Inscripcions + Quotes + C43)
+
+`POST /api/finance/movements/:id/fee-reconciliations` (`fee-reconciliation.js`) concilia un cobrament bancari amb
+quotes en UN lot atòmic que reutilitza els serveis canònics: la revisió de Quotes (`feeReviewPlan`, extreta de
+`reviewFeePayment` sense canviar-ne el comportament) i el conjunt d’assignacions de Tresoreria
+(`movementAllocationPlan`, extret d’`allocateMovement`).
+
+- Justificant de la família pendent + moviment: es verifica aquell justificant amb l’import del banc, s’assigna a les
+  quotes i es vincula el moviment. El justificant es conserva.
+- Sense justificant: es crea el pagament canònic de Quotes per a la transferència (`origin='BANK'`,
+  `source_movement_id`, migració 0051 additiva), verificat i vinculat en el mateix lot. No s’envia cap correu.
+- Quota ja pagada: el moviment es vincula a aquell pagament (`allocations/add`); Quotes no canvia; si ja estava
+  conciliada amb un altre moviment, el nou queda pendent amb l’avís de possible pagament repetit.
+- Mai per damunt del pendent de cada quota (tornat a comprovar dins del lot: dues confirmacions simultànies no poden
+  cobrir la mateixa quota), mai per damunt del moviment; un excés queda al moviment, pendent de classificar.
+- L’ingrés de Tresoreria continua sent, per pagament, el mínim entre el vinculat al banc i l’assignat a quotes.
+
+Els conceptes bancaris els poden llegir les persones autoritzades a consultar moviments (`finance.movement.read`),
+amb auditoria; el motor de suggeriments els processa al servidor i no els retorna mai.
