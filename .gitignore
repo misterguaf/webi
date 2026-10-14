@@ -7,7 +7,7 @@
 .dev.vars
 .dev.vars.*
 
-node_modules/
+node_modules
 .vercel/
 .netlify/
 .wrangler/

@@ -828,3 +828,78 @@ The first implementation of the Gestió shell will validate:
 Minor token adjustments after visual testing are expected.
 
 Major changes to the design language should update this document first.
+
+---
+
+# 24. Iris implemented in phase J (14 October 2026)
+
+This section records the shipped source in `gestio/public/`, rather than proposing a new visual direction.
+Human acceptance of phase J remains pending. The earlier sections describe the design intent; the CSS is
+the implementation authority for exact values and cascade order.
+
+## Tokens and typography
+
+`shell.css` defines the light palette on `:root` and the dark palette on `:root[data-theme="dark"]`.
+The page uses the system stack `-apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", sans-serif`;
+Inter is a fallback name, not a downloaded font dependency. Body text is 14/20 px, page titles 26/32 px.
+
+| Token family | Implemented values / purpose |
+| --- | --- |
+| Light surfaces | `--bg-primary:#F6F7FB`, `--surface-primary:#FFFFFF`, `--surface-elevated:#EFF0F6` |
+| Dark surfaces | `#0E0F13`, `#161821`, `#1D202B` respectively |
+| Text | Light primary `#171821`, secondary **`#63667A`**; dark `#F6F7FB`, `#A7AABC` |
+| Iris | Light `#6E5CF5` / `#5946E8`; dark `#8E7DFF` / `#A394FF` |
+| Filled primary control | `--iris-button:#6E5CF5`, `--on-iris:#FFFFFF` in both themes; dark accent is not its fill |
+| Semantic state | `--success-text/soft`, `--warning-text/soft`, `--danger-text/soft`, `--info-text/soft` |
+| Money | `--money-in-text`, `--money-out-text`, `--money-transfer`; sign and icon accompany colour |
+| Sections | `--section-{manada,tropa,escolta,clan,group}` with text and soft variants; provisional section colours |
+| Spacing | `--space-1..6`: 4, 8, 12, 16, 20, 24 px; 8/10/12/16: 32/40/48/64 px |
+| Radius | small 8, control 10, card 14, large 18, panel 22 px; pill 999 px |
+| Control sizes | small 30, medium 36, large 40, touch token 44 px; coarse-pointer rules enlarge controls |
+
+The implemented secondary light text supersedes the provisional `#6D7080` in section 3.1.
+Use semantic variables, not copies of palette literals, in future module styles.
+
+## Shared component layer
+
+`iris.css` loads after the module styles. Reuse `.btn` with primary/secondary/quiet/danger/strong variants,
+`.badge` and semantic `.tone-*`, `.segmented/.segment`, `.filter-chips/.filter-chip`, `.form-field`,
+`.field-label/.field-hint/.field-error`, `.info-list`, `.data-table`, `.empty-state`, and `.inline-error`.
+Module CSS still owns screen layout: Iris does not replace the Participants editor, evidence viewer,
+treasury drawer or task dialog with different workflows.
+
+`ui.js` provides `h`, `icon`, `guardBusy`, toasts, confirmation/form dialogs, menus, focus trapping,
+announcements and overlay dismissal. Text buttons with recognised verbs receive an icon; their labels
+remain the accessible names. Icons come from the inline SVG symbols in `index.html`; CSS masks use local
+`icons/*.svg`. Keep them monochrome, decorative (`aria-hidden`) when accompanied by a label, and use an
+explicit name for icon-only buttons. No external icon or animation package is required.
+
+Successful asynchronous actions update only after the server confirms. `aria-busy` prevents repeated
+clicks; field errors preserve the entered values. Error toasts persist by default and can be dismissed;
+the region holds at most three toasts. Modal-opening page buttons suppress their spinner while the
+overlay is awaiting the person's decision. Financial and destructive confirmations remain explicit.
+
+## Motion and accessibility
+
+Motion durations are 100/160/220/300/420 ms, with shared enter/exit/standard easing and a 420 ms spring.
+The implemented effects are hover/press feedback, panel entry, field errors, skeletons and toast exit.
+Module and Iris media rules respect `prefers-reduced-motion`. Real pending operations may retain a
+status indicator; reduced motion is not a false completion state. The original login scene
+«Capvespre al prat» remains in `login-scene.js` and `login.css`, independent of Iris module layouts.
+
+Use visible `:focus-visible` rings, labelled controls, status/error announcements and meaningful heading
+order. The calendar's view buttons form a keyboard-operated radio group; ArrowLeft/ArrowRight change
+view. Overlays restore focus and are dismissed when the session ends. Never infer API authority from
+an available button: server capabilities and section restrictions remain the security boundary.
+
+## Responsive rules and use
+
+The shell uses a full sidebar on wide screens, a compact sidebar on tablet, and a bottom bar plus
+«Més» on mobile. Calendar layout switches at 700 px; its filters scroll internally and the period wraps
+without overlapping the date picker. Treasury shows list and detail together from 1280 px; below that,
+the detail occupies the available width. Tables, tabs and long legacy lists use their own scroll boxes.
+Do not hide an action just to fit a row: wrap it, provide the established menu, or use internal scrolling.
+
+Future screens should use these primitives and the existing modules as references. Preserve cent-based
+money formatting, explicit validation, stale-edit handling and capability checks. New domain behaviour
+requires its own design and regression evidence; it must not be introduced as a palette adjustment.

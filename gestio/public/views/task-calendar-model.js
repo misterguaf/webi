@@ -1,5 +1,10 @@
 export const today=()=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(Date.now());
 export const dateLabel=value=>new Date(value+'T12:00:00Z').toLocaleDateString('ca-ES',{weekday:'short',day:'numeric',month:'short'});
+// Activity list responses use snake_case timestamps; compare calendar dates in the group's timezone.
+export function activityOn(activity,day){
+ const madrid=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(ms);
+ return madrid(activity.starts_at)<=day&&madrid(activity.ends_at)>=day;
+}
 export function addDays(date,days){const d=new Date(date+'T12:00:00Z');d.setUTCDate(d.getUTCDate()+days);return d.toISOString().slice(0,10);}
 export function calendarDays(date,view){
  if(view==='day')return [date];

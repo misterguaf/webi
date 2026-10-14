@@ -51,6 +51,11 @@ function assertCommitted() {
   if (status.stdout.trim()) throw new Error(`Només es publica codi commitejat. Canvis pendents a gestio/:\n${status.stdout}`);
 }
 
+export function provesDeploymentArgs(sha) {
+  if (!/^[a-f0-9]{40}$/.test(sha)) throw new Error('Cal un SHA Git complet per identificar el desplegament.');
+  return ['deploy', '--config', configPath, '--tag', sha, '--message', `Gestió Proves commit ${sha}`];
+}
+
 function check() {
   assertProvesConfig(readFileSync(configPath, 'utf8'));
   const who = run(['whoami'], { capture: true });
@@ -89,9 +94,13 @@ export function main(args = process.argv.slice(2)) {
   if (command === 'check') { console.log('Configuració de proves correcta i sessió de Cloudflare activa.'); return; }
   if (command === 'reset') { reset(); return; }
   assertCommitted();
+  const head = spawnSync('git', ['rev-parse', 'HEAD'], { cwd: repo, encoding: 'utf8' });
+  if (head.status !== 0) throw new Error('No s’ha pogut identificar el commit a publicar.');
+  const deployArgs = provesDeploymentArgs(head.stdout.trim());
   const snapshot = writeSnapshot();
-  run(remote(['d1', 'migrations', 'apply', DATABASE]));
-  run(['deploy', '--config', configPath]);
+  // A visual-only candidate with the same journal tip does not execute unnecessary migrations.
+  if (remoteLatestMigration() !== snapshot.latestMigration) run(remote(['d1', 'migrations', 'apply', DATABASE]));
+  run(deployArgs);
   if (flags.includes('--reset')) reset(snapshot);
   console.log(`Publicat a https://${HOST}`);
 }

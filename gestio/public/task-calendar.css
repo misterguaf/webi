@@ -134,6 +134,10 @@ button.task-check:active{transform:scale(.88)}
 @media(max-width:700px){
   #taskCalendar{padding:var(--space-4) var(--space-3)}
   .calendar-toolbar{flex-direction:column;align-items:stretch}
+  .calendar-head,.calendar-filters{min-width:0}
+  .calendar-nav{flex-wrap:wrap}
+  .calendar-period{min-width:0;white-space:normal}
+  .date-jump{flex:none}
   .calendar-views{width:100%;display:grid;grid-template-columns:repeat(4,1fr)}
   .calendar-views .segment{justify-content:center;padding:0 4px}
   .calendar-period{flex:1;font-size:14px;text-align:center}

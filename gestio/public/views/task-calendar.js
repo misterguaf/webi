@@ -4,7 +4,7 @@
 // rules as 3.5I. Activities are placed with their real dates (starts_at / ends_at).
 import { h, button, icon, confirmDialog, toast, trackOverlay, announce } from '../ui.js';
 import { fetchAllPages } from '../api.js';
-import { today,dateLabel,calendarDays,navigateDate,taskKind,overdue } from './task-calendar-model.js';
+import { today,dateLabel,calendarDays,navigateDate,taskKind,overdue,activityOn } from './task-calendar-model.js';
 import {SECTION_LABELS} from '../labels.js';
 const option=(value,text)=>h('option',{text,attrs:{value}});
 const errorText=error=>error.code==='stale_task'?'La tasca ha canviat. Tanca-la i torna-la a obrir.':
@@ -13,7 +13,6 @@ const errorText=error=>error.code==='stale_task'?'La tasca ha canviat. Tanca-la 
 const VIEWS=[['month','Mes','grid'],['week','Setmana','columns'],['day','Dia','day'],['list','Llista','list']];
 const RECURRENCE={DAILY:'Cada dia',WEEKLY:'Cada setmana',MONTHLY:'Cada mes'};
 const longDay=value=>{const text=new Date(value+'T12:00:00Z').toLocaleDateString('ca-ES',{weekday:'long',day:'numeric',month:'long'});return text[0].toLocaleUpperCase('ca-ES')+text.slice(1);};
-const madrid=ms=>new Intl.DateTimeFormat('sv-SE',{timeZone:'Europe/Madrid'}).format(ms);
 const iconButton=(label,name,onClick,attrs={})=>h('button',{className:'btn btn-secondary btn-small btn-icon',attrs:{type:'button','aria-label':label,title:label,...attrs},on:{click:onClick}},icon(name));
 export function setupTaskCalendar({call,routes}){
  const root=document.getElementById('taskCalendar');let me=null,epoch=0,date=today(),view='week',filter='mine',tasks=[],events=[],summary={};
@@ -70,7 +69,6 @@ export function setupTaskCalendar({call,routes}){
    h('div',{className:'task-main'},button(task.title,()=>detail(task.id),{className:'task-title'}),h('span',{className:'task-meta'},meta.filter(Boolean)),error),
    h('span',{className:'task-status'},statusBadge(task)));
  }
- function activityOn(a,value){return madrid(a.starts_at)<=value&&madrid(a.ends_at)>=value;}
  const audience=a=>a.audience==='GENERAL'?'GENERAL':String(a.sections||'').split(',')[0]||'GENERAL';
  function eventLink(a,className='calendar-activity'){return h('a',{className,dataset:{section:audience(a)},
   attrs:{href:'#/activitats/'+a.id,'aria-label':'Activitat: '+a.name},on:{click:event=>{event.preventDefault();routes.go({page:'activitats',path:[a.id]});}}},
