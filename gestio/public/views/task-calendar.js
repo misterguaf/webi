@@ -167,9 +167,12 @@ export function setupTaskCalendar({call,routes}){
     h('dl',{className:'info-list'},fact('Data',t.dueDate?longDay(t.dueDate):'Sense data'),fact('Hora',t.dueTime),fact('Repetició',t.recurrence?RECURRENCE[t.recurrence]??'Recurrent':null),
      fact('Persones',t.members.map(m=>m.name+(m.responsible?' · responsable':'')).join(', '))),notice);
    const actions=h('div',{className:'dialog-actions task-dialog-actions'});
+   // The native modal dialog makes the rest of the page inert, so it closes before the confirmation opens
+   // (and comes back if the archive is cancelled).
    if(data.actions.edit)actions.append(h('button',{className:'btn btn-quiet task-archive',attrs:{type:'button'},on:{click:async()=>{
-    if(!await confirmDialog({title:'Arxivar la tasca?',body:'Deixarà d’aparéixer al calendari. No s’esborra.',confirm:'Arxiva',tone:'danger'}))return;
-    try{await change(t,'archive');close();toast('Tasca arxivada',{tone:'ok'});}catch(error){notice.replaceChildren(h('div',{className:'inline-error',attrs:{role:'alert'}},h('p',{text:errorText(error)})));}}}},icon('trash'),h('span',{text:'Arxiva'})));
+    close();
+    if(!await confirmDialog({title:'Arxivar la tasca?',body:'Deixarà d’aparéixer al calendari. No s’esborra.',confirm:'Arxiva',tone:'danger'})){void detail(t.id);return;}
+    try{await change(t,'archive');toast('Tasca arxivada',{tone:'ok'});}catch(error){toast(errorText(error),{tone:'danger'});}}}},icon('trash'),h('span',{text:'Arxiva'})));
    if(data.actions.edit)actions.append(h('button',{className:'btn btn-secondary',attrs:{type:'button'},on:{click:()=>{close();return form(t,t.dueDate);}}},icon('pencil'),h('span',{text:'Edita'})));
    if(data.actions.complete)actions.append(h('button',{className:'btn btn-primary',attrs:{type:'button'},on:{click:async()=>{try{await change(t,t.status==='COMPLETED'?'reopen':'complete');close();
     toast(t.status==='COMPLETED'?'Tasca reoberta':'Tasca completada',{tone:'ok'});}

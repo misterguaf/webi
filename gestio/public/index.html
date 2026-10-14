@@ -194,7 +194,7 @@
       <label>Motiu de la correcció, si ja hi ha quotes emeses <input id="familyGroupsReason" maxlength="240" autocomplete="off"></label></div>
       <button id="familyGroupsCreate" type="button" class="btn btn-primary">Agrupa els educands seleccionats en este ordre</button>
     </fieldset>
-    <h3>Grups confirmats</h3><ul id="familyGroupsList" class="legacy-list"></ul>
+    <h3>Grups confirmats</h3><ul id="familyGroupsList" class="legacy-list legacy-scroll" tabindex="0" aria-label="Grups confirmats"></ul>
   </section>
   <section id="feeStatusPanel" class="legacy-panel" data-page="quotes" hidden><header class="legacy-head"><div><h2>Estat de les quotes de les teues seccions</h2>
     <p class="muted">Consulta bàsica dels participants de les teues seccions. Els imports i la gestió corresponen a Tresoreria.</p></div></header>
@@ -226,14 +226,14 @@
       <label>Referència interna del grup familiar <input id="feeGroupReference" placeholder="DEMO-FAMILY-001"></label>
       <label>Motiu de la correcció, si ja hi ha quotes emeses <input id="feeGroupReason" maxlength="240" autocomplete="off"></label>
     </div>
-    <div class="legacy-actions"><button id="feeCreateGroup" type="button" class="btn btn-secondary">Agrupa educands seleccionats en este ordre</button></div><ul id="feeGroups" class="legacy-list"></ul>
+    <div class="legacy-actions"><button id="feeCreateGroup" type="button" class="btn btn-secondary">Agrupa educands seleccionats en este ordre</button></div><ul id="feeGroups" class="legacy-list legacy-scroll" tabindex="0" aria-label="Grups familiars"></ul>
     <h3>Obligacions</h3>
     <div class="legacy-toolbar">
     <label>Filtra per secció <select id="feeSectionFilter"><option value="">Totes</option><option value="00000000-0000-4000-8000-000000000001">Manada</option><option value="00000000-0000-4000-8000-000000000002">Tropa</option><option value="00000000-0000-4000-8000-000000000003">Esculta</option><option value="00000000-0000-4000-8000-000000000004">Clan</option></select></label>
     <label>Filtra per estat <select id="feeStatusFilter"><option value="">Tots</option><option value="PENDING">Pendents</option><option value="PARTIAL">Parcials</option><option value="PAID">Pagades</option><option value="ISSUE">Amb incidència</option></select></label>
     <label>Busca pel nom <input id="feeObligationSearch"></label><button id="feeFilterButton" type="button" class="btn btn-secondary">Filtra</button>
     </div>
-    <ul id="feeObligations" class="legacy-list"></ul><div id="feeObligationDetail"></div>
+    <ul id="feeObligations" class="legacy-list legacy-scroll" tabindex="0" aria-label="Obligacions"></ul><div id="feeObligationDetail"></div>
     </div>
     <h3>Transferències pendents de revisar</h3><ul id="feePayments" class="legacy-list"></ul><div id="feePaymentDetail"></div>
     <h3>Incidències</h3><ul id="feeIssues" class="legacy-list"></ul>

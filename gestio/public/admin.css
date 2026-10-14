@@ -97,3 +97,10 @@
   :is(.activity-feed-view,.incidents-view) .select-field{display:flex!important;flex:1 1 100%;justify-content:space-between}
   :is(.activity-feed-view,.incidents-view) .select-field :is(select,input){flex:1;min-width:0;max-width:70%;min-height:40px}
 }
+
+/* Phase J: «Què pot fer ara» as compact lists (no bullets), the scope as secondary text. */
+.admin-summary-module{background:var(--surface-primary)}
+.admin-summary-module h4{font-size:13px;font-weight:650;color:var(--text-primary)}
+.admin-summary-module ul{list-style:none;padding:0!important}
+.admin-summary-module li{margin:0;padding:5px 0;border-top:1px solid var(--border-subtle);line-height:18px}
+.admin-summary-module li:first-child{border-top:0}

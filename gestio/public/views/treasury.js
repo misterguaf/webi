@@ -22,8 +22,10 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
   // Phase J split view: the movement list stays on screen (same node, no refetch) while a movement is open beside it.
   let movementList = { key: null, node: null };
   const go = ({ path = [], query = {} }, options) => routes.go({ page: 'tresoreria', path, query }, options);
+  // Any write may change a movement's state: the cached list is refetched on the next render instead of reused.
+  const write = (path, init) => { if (init?.method && init.method !== 'GET') movementList.key = null; return call(path, init); };
   const ctx = {
-    call, caps: () => me?.capabilities ?? {}, summary: () => summary, go,
+    call: write, caps: () => me?.capabilities ?? {}, summary: () => summary, go,
     back: tab => go({ path: [tab], query: lastQuery[tab] ?? {} }),
     refreshSummary,
     movementChanged: () => { const node = movementList.node; if (node?.isConnected) void renderMovementList(node, ctx, lastQuery.moviments).then(() => markSelected(node)); }

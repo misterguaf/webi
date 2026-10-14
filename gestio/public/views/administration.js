@@ -1,7 +1,7 @@
 // Administració (3.5H.1, docs/decisions/ADMIN_DECISIONS.md): Usuaris, Rols i permisos, Delegacions,
 // Ratificacions and Sessions, next to the existing "El meu compte" sections. The view answers "what can this
 // person actually do?" and offers only what the server may accept; the server still decides every act.
-import { confirmDialog, formDialog, h, toast } from '../ui.js';
+import { confirmDialog, formDialog, h, icon, toast } from '../ui.js';
 import { field, openDrawer, showErrors } from './treasury/forms.js';
 import {
   DELEGATION_DEFAULT_DAYS, DELEGATION_FILTERS, DELEGATION_STATE, ORIGIN, RATIFICATION, applyPackage, availableTabs, errorCopy,
@@ -89,7 +89,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
     search.addEventListener('input', paint);
     paint();
     content.replaceChildren(
-      h('div', { className: 'toolbar-row' }, h('div', { className: 'search-field' }, search),
+      h('div', { className: 'toolbar-row' }, h('label', { className: 'search-field' }, icon('search'), search),
         adminCaps().manageUsers ? h('button', { className: 'btn btn-primary', text: 'Nou usuari', attrs: { type: 'button' }, on: { click: () => openProvision() } }) : null),
       h('div', { className: 'activity-surface' }, list));
   }
@@ -97,7 +97,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
   async function renderUser(content, userId) {
     const access = await call(`/api/admin/users/${userId}/access`);
     const reload = () => renderUser(content, userId);
-    const back = h('a', { className: 'back-link', attrs: { href: '#/administracio/usuaris' }, on: { click: event => { event.preventDefault(); go(['usuaris']); } } }, 'Usuaris');
+    const back = h('a', { className: 'back-link', attrs: { href: '#/administracio/usuaris' }, on: { click: event => { event.preventDefault(); go(['usuaris']); } } }, icon('arrow-left'), h('span', { text: 'Usuaris' }));
     const summary = access.summary.length ? h('div', { className: 'admin-summary' }, access.summary.map(module => h('div', { className: 'admin-summary-module' },
       h('h4', { text: module.label }),
       h('ul', {}, module.permissions.map(perm => h('li', {}, h('span', { text: perm.label }),

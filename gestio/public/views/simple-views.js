@@ -51,14 +51,16 @@ export function createAccountView({ call, message, reportLoadError, reload }) {
 export function createFeesView({ call, message, reportLoadError }) {
   const loadFees = setupFees({ call, message, reportLoadError });
   // 3.5I-Q: these are the Treasury tools of Quotes, shown only at #/quotes/eines; Quotes is the main screen.
-  let loaded = false;
-  const show = route => { $('feePanel').hidden = !(loaded && route?.path?.[0] === 'eines');
+  let loaded = false, lastRoute = null;
+  const show = route => { lastRoute = route; $('feePanel').hidden = !(loaded && route?.path?.[0] === 'eines');
     if (!$('feePanel').hidden && route?.query?.pagament) void loadFees.showPayment(route.query.pagament); };
   return { id: 'fees', page: 'quotes', available: caps => !!(caps.fees.read?.all || caps.fees.reviewPayments),
     load: async me => { loaded = await loadFees({ reviewOnly: !me.capabilities.fees.read?.all, readContacts: !!me.capabilities.fees.readContacts });
-      $('feePanel').dataset.loaded = String(!!loaded); $('feePanel').hidden = true; },
+      $('feePanel').dataset.loaded = String(!!loaded); $('feePanel').hidden = true;
+      // A deep link to #/quotes/eines enters before the tools finish loading: show them once they are ready.
+      if (document.body.dataset.page === 'quotes') show(lastRoute); },
     enter: (_me, route) => show(route),
-    unload() { loaded = false; delete $('feePanel').dataset.loaded; $('feePanel').hidden = true; $('feeRound').replaceChildren(); $('feeRoundForm').reset(); for (const id of FEE_LISTS) $(id).replaceChildren(); } };
+    unload() { loaded = false; lastRoute = null; delete $('feePanel').dataset.loaded; $('feePanel').hidden = true; $('feeRound').replaceChildren(); $('feeRoundForm').reset(); for (const id of FEE_LISTS) $(id).replaceChildren(); } };
 }
 
 // Basic PAID/PARTIAL/PENDING/ISSUE view for section-scoped status readers (3.5C.1).

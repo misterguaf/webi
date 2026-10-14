@@ -38,7 +38,8 @@ export const MODULES = Object.freeze([
   { id: 'fees', label: 'Quotes', match: code => code.startsWith('finance.fee.') || code.startsWith('finance.family.') },
   { id: 'treasury', label: 'Tresoreria', match: code => code.startsWith('finance.') },
   { id: 'administration', label: 'Administració', match: code => code.startsWith('auth.') || code.startsWith('admin.') || code === 'audit.event.read' || code === 'security.incident.manage' },
-  { id: 'health', label: 'Salut', match: code => code.startsWith('health.') }
+  { id: 'health', label: 'Salut', match: code => code.startsWith('health.') },
+  { id: 'tasks', label: 'Calendari i tasques', match: code => code.startsWith('tasks.') }
 ]);
 export const moduleOf = code => MODULES.find(module => module.match(code))?.id ?? 'other';
 
@@ -66,7 +67,9 @@ const LABELS = {
   'auth.permission.provision': 'Tramitar delegacions', 'auth.permission.ratify': 'Ratificar canvis d’autoritat',
   'auth.session.revoke': 'Tancar sessions d’altres persones', 'health.record.read': 'Consultar dades de salut', 'health.grant.manage': 'Concedir accés a salut',
   'security.incident.manage': 'Gestionar incidents de seguretat', 'admin.incidents.manage': 'Gestionar incidències i millores',
-  'admissions.read': 'Consultar noves altes', 'admissions.manage': 'Gestionar noves altes', 'admissions.decide': 'Acceptar o rebutjar noves altes'
+  'admissions.read': 'Consultar noves altes', 'admissions.manage': 'Gestionar noves altes', 'admissions.decide': 'Acceptar o rebutjar noves altes',
+  'tasks.section.read': 'Consultar tasques de secció', 'tasks.section.manage': 'Gestionar tasques de secció',
+  'tasks.group.read': 'Consultar tasques del grup', 'tasks.group.manage': 'Gestionar tasques del grup'
 };
 export const permissionLabel = code => LABELS[code] ?? code;
 

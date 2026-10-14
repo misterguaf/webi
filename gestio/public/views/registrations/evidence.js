@@ -1,7 +1,7 @@
 // Payment evidence (3.5F §14–§15) shared by the activity tab and the global queue: authenticated
 // preview inside Gestió (image or PDF, same-origin), named download as fallback, verification with
 // confirmation. Nothing is preloaded: each preview or download is one explicit, audited request.
-import { confirmDialog, h, toast, trackOverlay, trapTab } from '../../ui.js';
+import { confirmDialog, h, icon, toast, trackOverlay, trapTab } from '../../ui.js';
 import { attemptLine, evidenceKind, formatEuros, parseEurosToCents, paymentActions, paymentLine, validateVerifiedAmount } from './model.js';
 
 const formatMoney = cents => new Intl.NumberFormat('ca-ES', { style: 'currency', currency: 'EUR' }).format(cents / 100);
@@ -82,16 +82,18 @@ export function openEvidencePreview(payment) {
 export function evidenceBlock({ call, payment, onChanged, attemptOnly = false }) {
   const available = payment.evidence?.available !== false;
   // In the activity tab the obligation line is already on the row: each block shows only its attempt.
+  // Phase J: three zones — what was paid (amount, state, attempt), the proof (view/download), the review actions.
   const nodes = attemptOnly ? [h('span', { className: 'evidence-flag', text: attemptLine(payment) })]
     : [h('span', { className: 'evidence-amount', text: formatMoney(payment.amountCents) }),
       h('span', { className: 'evidence-state', text: paymentLine(payment) }),
       h('span', { className: 'evidence-flag', text: attemptLine(payment) })];
   if (payment.registrationState === 'WITHDRAWN') nodes.push(h('span', { className: 'evidence-flag', text: 'Inscripció retirada' }));
+  const proof = [];
   if (available) {
-    nodes.push(h('button', { className: 'link-button', text: 'Veure justificant', attrs: { type: 'button' }, on: { click: () => openEvidencePreview(payment) } }),
-      h('a', { className: 'link-button', text: 'Descarrega', attrs: { href: url(payment.id, 'download'), download: '' } }));
-  } else nodes.push(h('span', { className: 'evidence-state', text: 'Justificant eliminat per la política de conservació' }));
-  nodes.push(h('span', { className: 'review-spacer' }));
+    proof.push(h('button', { className: 'link-button', attrs: { type: 'button' }, on: { click: () => openEvidencePreview(payment) } }, icon('eye'), h('span', { text: 'Veure justificant' })),
+      h('a', { className: 'link-button', attrs: { href: url(payment.id, 'download'), download: '' } }, icon('download'), h('span', { text: 'Descarrega' })));
+  } else proof.push(h('span', { className: 'evidence-state', text: 'Justificant eliminat per la política de conservació' }));
+  const buttons = [];
   const status = h('p', { className: 'field-error evidence-error', attrs: { hidden: true, role: 'alert' } });
   const actions = paymentActions(payment);
   if (actions.includes('verify')) {
@@ -101,7 +103,7 @@ export function evidenceBlock({ call, payment, onChanged, attemptOnly = false })
       if (cents == null) return;
       await review('VERIFIED', verify, cents);
     });
-    nodes.push(verify);
+    buttons.push(verify);
   }
   if (actions.includes('issue')) {
     const issue = h('button', { className: 'btn btn-quiet btn-small', text: 'Marca incidència', attrs: { type: 'button' } });
@@ -109,7 +111,7 @@ export function evidenceBlock({ call, payment, onChanged, attemptOnly = false })
       if (!await confirmDialog({ title: 'Marcar una incidència?', body: 'Queda registrat que hi ha un problema amb el pagament. Els imports ja verificats es mantenen. La família rep un avís la primera vegada.', confirm: 'Marca incidència', tone: 'strong' })) return;
       await review('ISSUE', issue);
     });
-    nodes.push(issue);
+    buttons.push(issue);
   }
   async function review(decision, button, amountCents = null) {
     button.setAttribute('aria-busy', 'true'); button.disabled = true; status.hidden = true;
@@ -126,5 +128,6 @@ export function evidenceBlock({ call, payment, onChanged, attemptOnly = false })
       if (['invalid_transition', 'stale_payment'].includes(error.code)) onChanged();
     }
   }
-  return h('div', { className: 'evidence-wrap' }, h('div', { className: 'evidence' }, nodes), status);
+  return h('div', { className: 'evidence-wrap' }, h('div', { className: 'evidence' }, h('div', { className: 'evidence-summary' }, nodes),
+    h('div', { className: 'evidence-proof' }, proof), buttons.length ? h('div', { className: 'evidence-actions' }, buttons) : null), status);
 }

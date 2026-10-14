@@ -100,3 +100,4 @@
   .dashboard-fees-panel #dashboardFees{padding:var(--space-4)}
 }
 @media(prefers-reduced-motion:reduce){.dashboard-activity-card,.dashboard-attention-item,.attention-chevron,.dashboard-card-action svg{transition:none!important}}
+.dashboard-section-head .link-button{white-space:nowrap;flex:none}

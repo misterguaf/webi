@@ -28,13 +28,13 @@ export function guardBusy(node, listener) {
 const ACTION_ICONS = [
   [/^(Guarda|Guardar|Desa)/, 'check'], [/^(Crea|Nou |Nova |Nou$|Afegeix|Afig|Agrupa)/, 'plus'], [/^(Edita|Editar|Corregeix|Corregir)/, 'pencil'],
   [/^Classifica/, 'tag'], [/^(Concilia|Vincula|Torna a vincular)/, 'link'], [/^(Confirma|Accepta|Aprova|Reconeix|Marca com a vista|Aplica)/, 'check'],
-  [/^Verifica/, 'check-circle'], [/^(Publica|Envia|Proposa)/, 'send'], [/^(Importa|Puja)/, 'upload'], [/^(Descarrega|Exporta)/, 'download'],
+  [/^Verifica/, 'check-circle'], [/^Revisa el llibre/, 'eye'], [/^(Publica|Envia|Proposa)/, 'send'], [/^(Importa|Puja)/, 'upload'], [/^(Descarrega|Exporta)/, 'download'],
   [/^(Torna-ho a (intentar|provar)|Actualitza|Reobri|Reactiva|Torna a obrir)/, 'refresh'], [/^(Busca|Cerca)/, 'search'],
   [/^(Anul·la|Rebutja|Revoca|Descarta|Dona de baixa|Retira|Finalitza|Elimina|Arxiva)/, 'x-circle'], [/^(Ratifica|Concedeix|Acredita|Marca com a acreditada)/, 'shield'],
   [/^(Carrega’n més|Mostra’n més|Mostra-les totes)/, 'chevron'], [/^(Mostra|Veure)/, 'eye'], [/^(Assenyala|Obri una incidència|Marcar una incidència|Marca incidència)/, 'alert'],
   [/^(Prepara|Inicia)/, 'play'], [/^(Escala|Continua)/, 'arrow-right'], [/^(Torna a carregar|Canvia)/, 'refresh'], [/^(Treu)/, 'x-circle'],
-  [/^(Registra|És un moviment vàlid|És aquesta persona)/, 'check'], [/^Resol/, 'check-circle'], [/^Llista de/, 'list'], [/^Tanca (totes|les)/, 'log-out'],
-  [/^Torna a (Participants|Activitats)/, 'arrow-left'], [/^Reassigna/, 'link'], [/^Neteja/, 'x-small']];
+  [/^(Registra|És un moviment vàlid|És aquesta persona)/, 'check'], [/^Resol/, 'check-circle'], [/^Llista de/, 'list'], [/^Tanca (totes|les)/, 'log-out'], [/^Tanca la ronda/, 'lock'], [/^Obri la ronda/, 'play'],
+  [/^Torna a (Participants|Activitats)/, 'arrow-left'], [/^Reassigna/, 'link'], [/^Neteja/, 'x-small'], [/^Obri /, 'arrow-right']];
 const actionIcon = text => ACTION_ICONS.find(([pattern]) => pattern.test(text))?.[1] ?? null;
 
 export function h(tag, props = {}, ...children) {

@@ -335,3 +335,66 @@ input[type="checkbox"],input[type="radio"]{accent-color:var(--iris-button);width
 @media(max-width:767px){.drawer-cancel-mobile{display:inline-flex!important}}
 /* A pending quota is a state, not an action for the reader: neutral with a clock (COLOR_CODING.md §4.1). */
 .badge.quota-status.tone-attention{--tone:var(--text-secondary);--tone-text:var(--text-secondary);--tone-soft:var(--neutral-soft);--glyph:var(--g-clock)}
+.conflict-banner>.btn,.duplicate-hint>.btn,.inline-error>.btn{flex:0 0 auto}
+
+/* ============================================================ data tables (budget and other tabular reads) */
+.table-scroll{overflow-x:auto;border:1px solid var(--border-subtle);border-radius:var(--radius-card);background:var(--surface-primary)}
+.data-table{width:100%;border-collapse:collapse;font-size:14px;line-height:20px}
+.data-table thead th{position:sticky;top:0;padding:10px 12px;background:var(--surface-primary);border-bottom:1px solid var(--border-default);color:var(--text-secondary);font-size:12px;font-weight:600;text-align:left;white-space:nowrap}
+.data-table :is(tbody th,td){padding:10px 12px;border-top:1px solid var(--border-subtle);text-align:left;vertical-align:baseline}
+.data-table tbody tr:first-child :is(th,td){border-top:0}
+.data-table .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.data-table tbody tr{transition:background-color var(--motion-fast)}
+.data-table tbody tr:hover{background:var(--surface-hover)}
+input[type="file"]{max-width:100%;color:var(--text-secondary);font:inherit;font-size:13px}
+input[type="file"]::file-selector-button{min-height:var(--control-md);margin-right:var(--space-3);padding:0 14px;border:1px solid var(--border-control);border-radius:var(--radius-control);background:var(--surface-primary);
+  color:var(--text-primary);font:inherit;font-weight:600;cursor:pointer;transition:background-color var(--motion-fast)}
+input[type="file"]::file-selector-button:hover{background:var(--surface-hover)}
+input[type="file"]:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:var(--radius-control)}
+.form-actions{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.form-actions:empty{display:none}
+.detail-message,.form-notice{font-weight:500}
+.detail-message>p,.form-notice>p,.inline-error>p{flex:1;min-width:12ch;margin:0}
+
+/* ============================================================ disclosures: one chevron for every details/summary */
+.page-main details>summary{list-style:none;cursor:pointer}
+.page-main details>summary::-webkit-details-marker{display:none}
+.page-main details>summary:not(.btn)::before{content:"";display:inline-block;flex:none;width:16px;height:16px;margin-right:6px;vertical-align:-3px;background:currentColor;
+  -webkit-mask:var(--g-chevron) center/contain no-repeat;mask:var(--g-chevron) center/contain no-repeat;transition:transform var(--motion-fast) var(--ease-standard)}
+.page-main details[open]>summary:not(.btn)::before{transform:rotate(90deg)}
+.page-main details>summary:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px;border-radius:var(--radius-small)}
+@media(prefers-reduced-motion:reduce){.page-main details>summary::before{transition:none!important}}
+
+/* Administració · Rols i permisos: catalogue cards and package list */
+.admin-card{padding:0;overflow:hidden}
+.admin-card>summary{display:flex;align-items:baseline;flex-wrap:wrap;gap:2px 4px;padding:var(--space-3) var(--space-4);transition:background-color var(--motion-fast)}
+.admin-card>summary:hover{background:var(--surface-hover)}
+.admin-card>summary::before{align-self:center;margin-right:4px!important}
+.admin-card>summary strong{font-weight:600}
+.admin-card ul{list-style:none;margin:0!important;padding:0 var(--space-4) var(--space-2)!important;border-top:1px solid var(--border-subtle)}
+.admin-card li{margin:0;padding:8px 0;border-top:1px solid var(--border-subtle);font-size:13px;line-height:18px}
+.admin-card li:first-child{border-top:0}
+.admin-package-list{list-style:none;display:grid;margin:0;padding:0 var(--space-4)!important;border:1px solid var(--border-default);border-radius:var(--radius-card);background:var(--surface-primary)}
+.admin-package-list li{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 6px;margin:0;padding:10px 0;border-top:1px solid var(--border-subtle);font-size:14px}
+.admin-package-list li:first-child{border-top:0}
+.admin-package-list .tx-sub{color:var(--text-secondary);font-size:13px}
+.admin-content>.block-title{margin-top:var(--space-2)}
+.badge.badge-count::before{display:none}
+.badge.badge-count{min-width:24px;justify-content:center;font-variant-numeric:tabular-nums}
+.admin-cards{align-items:start}
+.treasury-view .family-empty{padding:var(--space-5) var(--space-4)}
+#message:empty{position:absolute;width:1px;height:1px;min-height:0;margin:0;overflow:hidden;clip-path:inset(50%)}
+.block-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3);flex-wrap:wrap}.block-head>:is(h2,h3,h4){margin:0!important}
+/* Long legacy lists (family groups, obligations) scroll inside their own box so the tools after them stay reachable. */
+.page-main .legacy-panel ul.legacy-list.legacy-scroll{max-height:min(440px,60vh);overflow:auto;overscroll-behavior:contain}
+.page-main .legacy-panel ul.legacy-list.legacy-scroll:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+#feePanel>h3,#feeManagePanel>h3{margin-top:var(--space-5)!important;padding-top:var(--space-4);border-top:1px solid var(--border-subtle)}
+.legacy-fieldset>legend{float:left;width:100%;margin:0;padding:0!important}
+.legacy-fieldset>.btn{justify-self:start}
+.duplicate-banner .detail-actions,.conflict-banner .detail-actions{display:flex;flex-wrap:wrap;gap:var(--space-2);min-width:0}
+/* A page button that opened a dialog/drawer and waits for it is not "working" yet: no spinner behind the overlay.
+   Once the overlay closes, the spinner shows only while the real request runs. */
+body:has(.dialog-layer,.drawer-layer,.sheet-layer) .app-shell .btn[aria-busy="true"]{color:var(--btn-fg)!important;cursor:pointer}
+body:has(.dialog-layer,.drawer-layer,.sheet-layer) .app-shell .btn[aria-busy="true"]>*{visibility:visible}
+body:has(.dialog-layer,.drawer-layer,.sheet-layer) .app-shell .btn[aria-busy="true"]::after{display:none}
+.sidebar .nav-link{gap:10px;padding-inline:10px}
