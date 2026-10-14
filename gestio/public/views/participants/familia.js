@@ -90,7 +90,7 @@ export function createFamiliaTab({ call, caps, onChanged }) {
     reveal.addEventListener('click', async () => {
       if (reveal.getAttribute('aria-expanded') === 'true') { valueSpan.textContent = '•••'; reveal.textContent = 'Mostra el contacte'; reveal.setAttribute('aria-expanded', 'false'); return; }
       try { const { contact } = await call(`/api/contacts/${ct.id}`); valueSpan.textContent = contact.value; reveal.textContent = 'Amaga'; reveal.setAttribute('aria-expanded', 'true'); }
-      catch (error) { if (error.status !== 401) toast('No s’ha pogut consultar el contacte.'); }
+      catch (error) { if (error.status !== 401) toast('No s’ha pogut consultar el contacte.', { tone: 'danger' }); }
     });
     const row = h('li', { className: 'contact-item' },
       h('span', { className: 'contact-kind', text: `${contactKindLabel(ct.kind)}${ct.isPrimary ? ' · principal' : ''}` }),
@@ -106,7 +106,7 @@ export function createFamiliaTab({ call, caps, onChanged }) {
 
   function sectionAllows(scope, sectionId) { return !!scope && (scope.all || scope.sections.some(s => s.id === sectionId)); }
   function refresh() { cache = null; onChanged(); }
-  function requested() { toast('Sol·licitud enviada a Secretaria'); refresh(); }
+  function requested() { toast('Sol·licitud enviada a Secretaria', { tone: 'ok' }); refresh(); }
 
   async function addGuardian(participant) {
     const values = await formDialog({ title: 'Afegeix un tutor', confirm: 'Afegeix', fields: [
@@ -154,8 +154,8 @@ export function createFamiliaTab({ call, caps, onChanged }) {
     try {
       const result = await request();
       if (result?.requested && onRequested) { onRequested(); return; }
-      toast(success); refresh();
-    } catch (error) { if (error.status !== 401) toast(errorCopy(error.code)); }
+      toast(success, { tone: 'ok' }); refresh();
+    } catch (error) { if (error.status !== 401) toast(errorCopy(error.code), { tone: 'danger' }); }
   }
 
   return { render, clear() { token++; cache = null; }, markStale() { if (cache) cache.stale = true; }, current: () => activityId };

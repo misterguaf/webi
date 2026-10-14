@@ -1,4 +1,4 @@
-import { h } from '../../ui.js';
+import { confirmDialog, h } from '../../ui.js';
 import { errorCopy, formatEur, parseEuros } from './model.js';
 import { renderBudget } from './budget.js';
 
@@ -84,8 +84,8 @@ export async function renderRound(root, ctx, selectedId=null) {
     on: { click: () => void action(`/api/finance/rounds/${round.id}/open`, { expectedVersion: round.version }) } }));
   if (caps.closeRounds && round.status === 'CLOSING') actions.push(h('button', { className: 'btn btn-primary',
     text: 'Tanca la ronda oficialment', attrs: { type: 'button' },
-    on: { click: () => { if (window.confirm('El resultat oficial quedarà fixat i no es podrà reescriure. Vols tancar la ronda?'))
-      void action(`/api/finance/rounds/${round.id}/close`, { expectedVersion: round.version }); } } }));
+    on: { click: async () => { if (await confirmDialog({ title: 'Tancar la ronda oficialment?', body: 'El resultat oficial quedarà fixat i no es podrà reescriure.', confirm: 'Tanca la ronda', tone: 'strong' }))
+      await action(`/api/finance/rounds/${round.id}/close`, { expectedVersion: round.version }); } } }));
   const official = detail.officialClose;
   root.replaceChildren(
     roundChooser,caps.manageRounds?newRound():null,

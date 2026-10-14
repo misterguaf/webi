@@ -188,3 +188,23 @@ body.drawer-open .dialog-layer{z-index:60}
   .import-list .tx-row{grid-template-columns:minmax(0,1fr) auto;row-gap:var(--space-1)}
   .import-list .tx-date{grid-column:1/-1}
 }
+
+/* Phase J: Moviments as a split work surface (list + detail) on wide screens; a page on narrow ones. */
+body[data-page="tresoreria"] .page-main,body[data-page="tresoreria"] .page-header{max-width:1480px}
+.treasury-split{display:grid;grid-template-columns:minmax(0,1fr);gap:var(--space-5);align-items:start}
+.treasury-list-pane,.treasury-detail-pane{display:grid;gap:var(--space-4);min-width:0}
+.treasury-detail-pane{position:sticky;top:var(--space-4);max-height:calc(100vh - var(--space-8));overflow:auto;overscroll-behavior:contain;padding:var(--space-4) var(--space-5) var(--space-5);
+  background:var(--surface-primary);border:1px solid var(--border-default);border-radius:var(--radius-large);box-shadow:var(--shadow-medium);animation:detail-in var(--motion-medium) var(--ease-enter)}
+.treasury-detail-pane .activity-surface{box-shadow:none}
+.tx-row[aria-current="true"]{background:var(--iris-tint)!important;box-shadow:inset 3px 0 0 var(--iris-primary)}
+@media(min-width:1280px){
+  .treasury-split.has-detail{grid-template-columns:minmax(0,1fr) 440px}
+  .treasury-split.has-detail .tx-head,.treasury-split.has-detail .tx-row{grid-template-columns:96px minmax(0,1fr) 120px 170px}
+  .treasury-split.has-detail :is(.tx-head span:nth-child(2),.tx-head span:nth-child(6),.tx-row .tx-position,.tx-row .tx-action){display:none}
+  .treasury-split.has-detail .summary-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:1279px){
+  .treasury-split.has-detail .treasury-list-pane{display:none}
+  .treasury-detail-pane{position:static;max-height:none;overflow:visible;padding:0;border:0;background:transparent;box-shadow:none}
+}
+@media(prefers-reduced-motion:reduce){.treasury-detail-pane{animation:none}}

@@ -110,7 +110,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
         role.ratification_status !== 'NOT_REQUIRED' ? badge(RATIFICATION[role.ratification_status]) : null),
       adminCaps().manageRoles ? h('button', { className: 'btn btn-quiet btn-small', text: 'Retira el rol', attrs: { type: 'button' }, on: { click: async () => {
         if (!await confirmDialog({ title: `Retirar «${role.label}»?`, body: 'La persona perd a l’instant tots els permisos que venien amb aquest rol.', confirm: 'Retira', tone: 'danger' })) return;
-        try { await call(`/api/users/${userId}/roles/${role.id}`, { method: 'DELETE' }); toast('Rol retirat'); await reload(); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
+        try { await call(`/api/users/${userId}/roles/${role.id}`, { method: 'DELETE' }); toast('Rol retirat', { tone: 'ok' }); await reload(); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
       } } }) : null)));
     const rows = h('ul', { className: 'allocation-list admin-access' }, access.items.map(item => h('li', { className: 'allocation-item' },
       h('span', { className: 'allocation-kind' }, badge({ label: ORIGIN[item.origin], tone: item.origin === 'ROLE' ? 'muted' : item.origin === 'DIRECT' ? 'attention' : 'warning' })),
@@ -121,7 +121,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
         item.origin !== 'ROLE' && item.ratificationStatus && item.ratificationStatus !== 'NOT_REQUIRED' ? badge(RATIFICATION[item.ratificationStatus]) : null),
       item.origin === 'DIRECT' && adminCaps().managePermissions ? h('button', { className: 'btn btn-quiet btn-small', text: 'Retira', attrs: { type: 'button' }, on: { click: async () => {
         if (!await confirmDialog({ title: 'Retirar el permís?', body: 'Deixa d’estar disponible a la següent petició de la persona.', confirm: 'Retira', tone: 'danger' })) return;
-        try { await call(`/api/users/${userId}/permissions/${item.grantId}`, { method: 'DELETE' }); toast('Permís retirat'); await reload(); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
+        try { await call(`/api/users/${userId}/permissions/${item.grantId}`, { method: 'DELETE' }); toast('Permís retirat', { tone: 'ok' }); await reload(); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
       } } }) : null)));
     content.replaceChildren(back,
       h('header', { className: 'detail-header' }, h('h2', { className: 'detail-title', text: access.user.display_name, attrs: { tabindex: '-1' } }),
@@ -224,7 +224,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
         try { await call(`/api/users/${created.id}/invitations`, { method: 'POST', body: JSON.stringify({ email: draft.email.trim().toLowerCase() }) }); }
         catch (error) { toast(`Usuari creat, però la invitació ha fallat: ${errorCopy(error)}`, { tone: 'danger', timeout: 7000 }); }
       }
-      toast('Usuari creat'); go(['usuaris', created.id]); return true;
+      toast('Usuari creat', { tone: 'ok' }); go(['usuaris', created.id]); return true;
     } });
   }
 
@@ -268,7 +268,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
       const { errors, body } = provisionRequest({ displayName: 'xx', roles: [state], grants: [] });
       if (errors.roles) { drawer.showError(errors.roles); return false; }
       await call(`/api/users/${access.user.id}/roles`, { method: 'POST', body: JSON.stringify(body.roles[0]) });
-      toast('Rol assignat'); await reload(); return true;
+      toast('Rol assignat', { tone: 'ok' }); await reload(); return true;
     } });
   }
 
@@ -286,7 +286,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
       picked = null;
       if (!grant) { drawer.showError('Tria un permís.'); return false; }
       await call(`/api/users/${access.user.id}/permissions`, { method: 'POST', body: JSON.stringify({ permissionCode: grant.permissionCode, ...(grant.sectionId ? { sectionId: grant.sectionId } : {}) }) });
-      toast('Permís concedit'); await reload(); return true;
+      toast('Permís concedit', { tone: 'ok' }); await reload(); return true;
     } });
   }
 
@@ -324,10 +324,10 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
         badge(DELEGATION_STATE[row.state] ?? DELEGATION_STATE.ACTIVE),
         h('span', { className: 'admin-row-actions' },
           row.state === 'PENDING_AUTHORISATION' && row.authorized_by === me.user.id ? h('button', { className: 'btn btn-secondary btn-small', text: 'Confirma que ho autoritze', attrs: { type: 'button' },
-            on: { click: async () => { try { await call(`/api/delegations/${row.id}/confirm`, { method: 'POST', body: '{}' }); toast('Delegació autoritzada'); await renderDelegations(content, query); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); } } } }) : null,
+            on: { click: async () => { try { await call(`/api/delegations/${row.id}/confirm`, { method: 'POST', body: '{}' }); toast('Delegació autoritzada', { tone: 'ok' }); await renderDelegations(content, query); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); } } } }) : null,
           !['REVOKED', 'EXPIRED'].includes(row.state) ? h('button', { className: 'btn btn-quiet btn-small', text: 'Revoca', attrs: { type: 'button' }, on: { click: async () => {
             if (!await confirmDialog({ title: 'Revocar la delegació?', body: 'Deixa de ser efectiva a l’instant.', confirm: 'Revoca', tone: 'danger' })) return;
-            try { await call(`/api/delegations/${row.id}/revoke`, { method: 'POST', body: '{}' }); toast('Delegació revocada'); await renderDelegations(content, query); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
+            try { await call(`/api/delegations/${row.id}/revoke`, { method: 'POST', body: '{}' }); toast('Delegació revocada', { tone: 'ok' }); await renderDelegations(content, query); } catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
           } } }) : null)))) : empty('Cap delegació en aquesta vista.')));
   }
   async function openDelegation(reload) {
@@ -354,7 +354,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
       if (!showErrors(drawer.submit.form, errors)) { drawer.showError('Revisa els camps marcats.'); return false; }
       await call('/api/delegations', { method: 'POST', body: JSON.stringify({ userId, permissionCode: permission.value, authorizedBy,
         authorizationReference: reference.value.trim(), expiresAt: expires.value, ...(!sectionField.hidden && section.value ? { sectionId: section.value } : {}) }) });
-      toast('Delegació creada'); await reload(); return true;
+      toast('Delegació creada', { tone: 'ok' }); await reload(); return true;
     } });
   }
 
@@ -370,7 +370,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
         body = JSON.stringify({ ratificationReference: values.reference.trim() });
       } else if (!await confirmDialog({ title: 'Revocar?', body: 'La persona perd aquesta autoritat a l’instant.', confirm: 'Revoca', tone: 'danger' })) return;
       try { await call(`/api/admin/ratifications/${item.kind}/${item.id}/${decision}`, { method: 'POST', ...(body ? { body } : {}) });
-        toast(decision === 'ratify' ? 'Ratificat' : 'Revocat'); await renderRatifications(content); }
+        toast(decision === 'ratify' ? 'Ratificat' : 'Revocat', { tone: 'ok' }); await renderRatifications(content); }
       catch (error) { toast(errorCopy(error), { tone: 'danger', timeout: 6000 }); }
     };
     content.replaceChildren(
@@ -392,7 +392,7 @@ export function createAdministrationView({ call, reportLoadError, routes, setPag
   // ---------------------------------------------------------------- Sessions (other people)
   async function revokeSessions(userId, name) {
     if (!await confirmDialog({ title: `Tancar les sessions de ${name}?`, body: 'Haurà de tornar a entrar. No dona accés a les seues dades.', confirm: 'Tanca-les', tone: 'danger' })) return;
-    try { await call(`/api/admin/users/${userId}/sessions/revoke-all`, { method: 'POST', body: '{}' }); toast('Sessions tancades'); }
+    try { await call(`/api/admin/users/${userId}/sessions/revoke-all`, { method: 'POST', body: '{}' }); toast('Sessions tancades', { tone: 'ok' }); }
     catch (error) { toast(errorCopy(error), { tone: 'danger' }); }
   }
   async function renderSessions(content) {

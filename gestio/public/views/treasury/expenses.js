@@ -100,7 +100,7 @@ export async function renderExpenseDetail(root, ctx, id) {
     const trigger = event.currentTarget;
     if (!await confirmDialog({ title: 'Reconéixer la despesa?', body: `A partir d’ara ${formatEur(e.totalCents)} comptaran com a despesa de la ronda, una sola vegada.`, confirm: 'Reconeix' })) return;
     trigger.setAttribute('aria-busy', 'true');
-    try { await ctx.call(`/api/finance/expenses/${e.id}/recognise`, { method: 'POST', body: JSON.stringify({ expectedVersion: e.version }) }); toast('Despesa reconeguda'); await reload(); }
+    try { await ctx.call(`/api/finance/expenses/${e.id}/recognise`, { method: 'POST', body: JSON.stringify({ expectedVersion: e.version }) }); toast('Despesa reconeguda', { tone: 'ok' }); await reload(); }
     catch (error) { trigger.removeAttribute('aria-busy'); toast(errorCopy(error), { tone: 'danger', timeout: 6000 }); }
   } } }));
   if (e.status === 'RECOGNISED' && canManageExpenses(ctx.caps())) actions.push(h('button', { className: 'btn btn-secondary',
@@ -143,7 +143,7 @@ export async function renderExpenseDetail(root, ctx, id) {
             on: { change: async event => {
               const file = event.currentTarget.files?.[0]; if (!file) return;
               try { await ctx.call(`/api/finance/expenses/${e.id}/evidence`, { method: 'POST', body: JSON.stringify(await receiptPayload(file)) });
-                toast('Justificant adjunt'); await reload(); }
+                toast('Justificant adjunt', { tone: 'ok' }); await reload(); }
               catch (error) { toast(error instanceof Error && !error.code && !error.status ? error.message : errorCopy(error), { tone: 'danger' }); }
             } } })) : null),
       data.reimbursement ? h('div', { className: 'info-block' }, h('h3', { className: 'info-title', text: 'Reemborsament' }),
@@ -177,7 +177,7 @@ function openExpenseCancellation(expense, ctx, onDone) {
       confirm: 'Anul·la despesa', tone: 'danger' })) return false;
     await ctx.call(`/api/finance/expenses/${expense.id}/void`, { method: 'POST', body: JSON.stringify({
       expectedVersion: expense.version, reason: reason.value.trim() }) });
-    toast('Despesa anul·lada'); await onDone(); return true;
+    toast('Despesa anul·lada', { tone: 'ok' }); await onDone(); return true;
   } });
 }
 
@@ -189,6 +189,6 @@ function openEvidenceReplacement(expense, current, ctx, onDone) {
     if (!input.files?.[0]) { drawer.showError('Tria un PDF o una imatge.'); return false; }
     await ctx.call(`/api/finance/expenses/${expense.id}/evidence/${current.id}/replace`, { method: 'POST',
       body: JSON.stringify(await receiptPayload(input.files[0])) });
-    toast('Justificant substituït'); await onDone(); return true;
+    toast('Justificant substituït', { tone: 'ok' }); await onDone(); return true;
   } });
 }

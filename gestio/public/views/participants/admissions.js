@@ -57,7 +57,7 @@ export function createAdmissionsInbox({ call, routes }) {
     if (mine !== token) return;
     const a = data.admission, reload = () => renderDetail(root, id);
     const post = async (op, body = {}, success) => {
-      try { await call(`/api/admissions/${id}/${op}`, { method: 'POST', body: JSON.stringify({ expectedVersion: a.version, ...body }) }); toast(success); await reload(); }
+      try { await call(`/api/admissions/${id}/${op}`, { method: 'POST', body: JSON.stringify({ expectedVersion: a.version, ...body }) }); toast(success, { tone: 'ok' }); await reload(); }
       catch (error) { toast(errorCopy(error), { tone: 'danger', timeout: 7000 }); if (error.code === 'stale_admission') await reload(); }
     };
     const handlers = {

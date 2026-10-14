@@ -87,7 +87,7 @@ export async function openExpenseForm({ ctx, movement = null, onDone }) {
       created = await ctx.call('/api/finance/expenses', { method: 'POST', body: JSON.stringify({ ...result.body,
         ...(recognise.checked ? { recognise: true } : {}), ...(evidence ? { evidence } : {}) }) });
     }
-    toast('Despesa creada'); await onDone?.(created); return true;
+    toast('Despesa creada', { tone: 'ok' }); await onDone?.(created); return true;
   } });
 }
 
@@ -141,7 +141,7 @@ export async function openExpenseEdit({ ctx, data, onDone }) {
         expectedVersion: expense.version, counterpartyId: counterparty.value,
         advancedById: method.value === 'ADVANCED' ? advanced.value : null,
         ...(reason ? { reason: reason.value.trim() } : {}) }) });
-      toast(expense.status === 'PROPOSED' ? 'Proposta actualitzada' : 'Despesa corregida');
+      toast(expense.status === 'PROPOSED' ? 'Proposta actualitzada' : 'Despesa corregida', { tone: 'ok' });
       await onDone?.(); return true;
     } });
 }

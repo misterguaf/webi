@@ -115,7 +115,7 @@ export function createQuotesView({ call, reportLoadError, routes, setPageHeader 
     }
     const reload = () => renderDetail(participantId, query);
     const act = async (path, body, success) => {
-      try { await call(path, { method: 'POST', body: JSON.stringify(body) }); toast(success); await reload(); }
+      try { await call(path, { method: 'POST', body: JSON.stringify(body) }); toast(success, { tone: 'ok' }); await reload(); }
       catch (error) { toast(errorCopy(error), { tone: 'danger', timeout: 7000 }); }
     };
     const extra = overpaymentCopy(q.overpayments);

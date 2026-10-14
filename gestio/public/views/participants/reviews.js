@@ -52,8 +52,8 @@ export function createReviewQueue({ call, onOpenParticipant, onCount }) {
     return box;
   }
   const run = async (root, request, success) => {
-    try { await request(); toast(success); await render(root); }
-    catch (error) { if (error.status !== 401) toast(error.code === 'invalid_transition' ? 'L’estat ha canviat.' : 'No s’ha pogut completar l’acció.'); }
+    try { await request(); toast(success, { tone: 'ok' }); await render(root); }
+    catch (error) { if (error.status !== 401) toast(error.code === 'invalid_transition' ? 'L’estat ha canviat.' : 'No s’ha pogut completar l’acció.', { tone: 'danger' }); }
   };
   const acknowledge = (r, root) => run(root, () => call(`/api/participant-reviews/${r.id}/acknowledge`, { method: 'POST', body: JSON.stringify({}) }), 'Marcada com a vista');
   const escalate = async (r, root) => { if (await confirmDialog({ title: 'Escalar el cas?', body: 'El cas passarà a coordinació general. No es canvia cap dada.', confirm: 'Escala', tone: 'strong' })) run(root, () => call(`/api/participant-reviews/${r.id}/escalate`, { method: 'POST', body: JSON.stringify({}) }), 'Cas escalat'); };

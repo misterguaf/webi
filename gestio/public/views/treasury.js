@@ -19,12 +19,28 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
   const root = $('treasuryView');
   let me = null, summary = null, token = 0;
   const lastQuery = { moviments: {}, ingressos: {}, despeses: {} };
+  // Phase J split view: the movement list stays on screen (same node, no refetch) while a movement is open beside it.
+  let movementList = { key: null, node: null };
   const go = ({ path = [], query = {} }, options) => routes.go({ page: 'tresoreria', path, query }, options);
   const ctx = {
     call, caps: () => me?.capabilities ?? {}, summary: () => summary, go,
     back: tab => go({ path: [tab], query: lastQuery[tab] ?? {} }),
-    refreshSummary
+    refreshSummary,
+    movementChanged: () => { const node = movementList.node; if (node?.isConnected) void renderMovementList(node, ctx, lastQuery.moviments).then(() => markSelected(node)); }
   };
+  const markSelected = node => { const id = currentId;
+    for (const row of node.querySelectorAll('.tx-row[data-id]')) { if (row.dataset.id === id) row.setAttribute('aria-current', 'true'); else row.removeAttribute('aria-current'); } };
+  let currentId = null;
+  async function renderMovements(content, id) {
+    currentId = id ?? null;
+    const key = JSON.stringify(lastQuery.moviments);
+    const reuse = movementList.node && movementList.key === key;
+    if (!reuse) movementList = { key, node: h('div', { className: 'treasury-list-pane' }) };
+    const detail = id ? h('div', { className: 'treasury-detail-pane', attrs: { role: 'region', 'aria-label': 'Detall del moviment' } }) : null;
+    content.replaceChildren(h('div', { className: 'treasury-split' + (id ? ' has-detail' : '') }, movementList.node, detail));
+    const list = reuse ? Promise.resolve() : renderMovementList(movementList.node, ctx, lastQuery.moviments);
+    await Promise.all([list.then(() => markSelected(movementList.node)), id ? renderMovementDetail(detail, ctx, id) : null]);
+  }
   async function refreshSummary() {
     try {
       summary = await call('/api/finance/summary');
@@ -62,7 +78,7 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
       if (onScreen()) setPageHeader({ title: 'Tresoreria', subtitle: summary?.round ? `Ronda ${summary.round.code}` : 'Sense ronda econòmica oberta' });
       if (tab.id === 'inici') renderHome(content, ctx, summary);
       else if (importing) renderBankImport(content, ctx);
-      else if (tab.id === 'moviments') await (id ? renderMovementDetail(content, ctx, id) : renderMovementList(content, ctx, route.query ?? {}));
+      else if (tab.id === 'moviments') await renderMovements(content, id);
       else if (tab.id === 'ingressos') await (id ? renderIncomeDetail(content, ctx, id) : renderIncomeList(content, ctx, route.query ?? {}));
       else if (tab.id === 'ronda') await renderRound(content, ctx);
       else if (tab.id === 'families') await renderFamilyPayments(content,ctx);
@@ -84,6 +100,6 @@ export function createTreasuryView({ call, reportLoadError, routes, setPageHeade
       try { await refreshSummary(); } catch { /* shown when the page is entered */ }
     },
     async enter(nextMe, route) { me = nextMe; root.hidden = false; await render(route); },
-    unload() { token++; me = null; summary = null; root.hidden = true; root.replaceChildren(); setNavBadge('tresoreria', 0); }
+    unload() { token++; me = null; summary = null; movementList = { key: null, node: null }; root.hidden = true; root.replaceChildren(); setNavBadge('tresoreria', 0); }
   };
 }

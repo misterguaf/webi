@@ -38,10 +38,10 @@ export function createActivitiesView({ call, reportLoadError, routes, setPageHea
     reload: id => detail.fetch(id),
     onCreated: created => {
       invalidate(); highlight = created.id;
-      toast('Esborrany creat');
+      toast('Esborrany creat', { tone: 'ok' });
       openActivity(created.id);
     },
-    onSaved: () => { invalidate(); toast('Canvis guardats'); void detail.reload({ keepTab: true }); }
+    onSaved: () => { invalidate(); toast('Canvis guardats', { tone: 'ok' }); void detail.reload({ keepTab: true }); }
   });
   const detail = createActivityDetail({ root: detailRoot, call, caps, sections,
     go: (next, options) => routes.go(next, options),

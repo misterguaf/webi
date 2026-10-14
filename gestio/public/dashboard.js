@@ -1,4 +1,5 @@
 import {fetchAllPages} from './api.js';
+import {icon} from './ui.js';
 import {attentionPhrase,basicFeeSummary,dateLabel,deadlineLabel,feeIssueAttention,financialSummary,greeting,
   queueAttention,registrationCountLabel,sectionLabel,summaryAttention,upcomingActivities} from './dashboard-model.js';
 
@@ -10,6 +11,7 @@ const dateRange=activity=>{
   return start===end?start:`${start} – ${end}`;
 };
 const isUnavailable=error=>error?.status===403 || error?.status===404;
+const audienceCodes=activity=>activity.audience==='GENERAL'?['GENERAL']:String(activity.sections||'').split(',').filter(Boolean);
 
 export function setupDashboard({call,navigateTo,openActivity,openRegistrations,openPayments,openRegistrationQueue=()=>openPayments('pendents'),openFeeIssues,createActivity,openIncompleteParticipants,openParticipantReviews}) {
   let generation=0;
@@ -35,7 +37,10 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
           item.kind==='registrations-global'?()=>openRegistrationQueue():
           item.kind==='incomplete'?()=>openIncompleteParticipants():
           item.kind==='reviews'||item.kind==='escalated'?()=>openParticipantReviews():()=>openFeeIssues();
-        list.append(button(item.text+'  →',action,'dashboard-attention-item'));
+        // Phase J: one clickable row per item (icon by kind, the count first, a chevron that says «this opens»).
+        // The icon tile (by kind) and the chevron are drawn by CSS; the button text stays exactly the item's text.
+        const row=button(item.text,action,'dashboard-attention-item');row.setAttribute('data-kind',item.kind);
+        list.append(row);
       }
       $('dashboardAttention').append(list);
     }else if(count===0){
@@ -56,17 +61,29 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     if(!upcoming.length){target.append(make('p','dashboard-empty','No hi ha cap activitat pròxima.'));return;}
     const grid=make('div','dashboard-activity-grid');
     for(const activity of upcoming){
+      // Phase J: audience stripe (provisional section colours), status, facts and one action that covers the card.
       const card=make('article','dashboard-activity-card');
+      const stripe=make('span','audience-stripe');stripe.setAttribute('aria-hidden','true');
+      for(const code of audienceCodes(activity)){const part=make('span');part.setAttribute('data-section',code);stripe.append(part);}
       const top=make('div','dashboard-card-top');
       top.append(make('span','dashboard-status '+(activity.status==='DRAFT'?'dashboard-status-draft':''),
         activity.status==='DRAFT'?'Esborrany':'Publicada'));
-      card.append(top,make('h3','',activity.name),make('p','dashboard-activity-context',`${sectionLabel(activity)} · ${dateRange(activity)}`));
+      const review=activity.registrations?.actionable??activity.registrations?.needsReview??0;
+      if(review)top.append(make('span','badge tone-attention',`${review} per revisar`));
+      const context=make('p','dashboard-activity-context');
+      for(const code of audienceCodes(activity)){const dot=make('span','section-dot');dot.setAttribute('data-section',code);context.append(dot);}
+      context.append(make('span','',` ${sectionLabel(activity)} · ${dateRange(activity)}`));
+      card.append(stripe,top,make('h3','',activity.name),context);
       const details=make('div','dashboard-activity-details');
       const total=registrationCountLabel(activity.registrations);
-      if(total)details.append(make('span','',total));
-      details.append(make('span','',activity.status==='DRAFT'?'Encara no publicada':deadlineLabel(activity.registration_deadline)));
-      card.append(details,button(activity.status==='DRAFT'?'Continuar editant':'Obri activitat',
-        ()=>openActivity(activity.id),'dashboard-card-action'));
+      if(total){const fact=make('span','fact-inline');fact.append(icon('people'),make('span','',total));details.append(fact);}
+      const soon=activity.status!=='DRAFT'&&activity.registration_deadline>=Date.now()&&activity.registration_deadline-Date.now()<3*86400000;
+      const deadline=make('span','fact-inline'+(soon?' is-soon':''));
+      deadline.append(icon('clock'),make('span','',activity.status==='DRAFT'?'Encara no publicada':deadlineLabel(activity.registration_deadline)));
+      details.append(deadline);
+      const action=button(activity.status==='DRAFT'?'Continuar editant':'Obri activitat',()=>openActivity(activity.id),'dashboard-card-action');
+      action.append(icon('chevron-right'));
+      card.append(details,action);
       grid.append(card);
     }
     target.append(grid);
@@ -82,9 +99,9 @@ export function setupDashboard({call,navigateTo,openActivity,openRegistrations,o
     progress.setAttribute('aria-label','Percentatge cobrat');progress.setAttribute('aria-valuemin','0');
     progress.setAttribute('aria-valuemax','100');progress.setAttribute('aria-valuenow',String(summary.percent));
     const fill=make('span','');fill.style.width=`${summary.percent}%`;progress.append(fill);
-    const counts=make('div','dashboard-finance-counts');
-    counts.append(make('span','',`${summary.paid} pagades`),make('span','',`${summary.partial} parcials`),
-      make('span','',`${summary.issues} incidències`));
+    const counts=make('ul','dashboard-finance-counts');
+    for(const [label,value,tone] of [['pagades',summary.paid,'ok'],['parcials',summary.partial,'warning'],['incidències',summary.issues,'danger']]){
+      const item=make('li','');item.setAttribute('data-tone',tone);item.append(make('span','fee-dot'),make('span','',label[0].toLocaleUpperCase('ca-ES')+label.slice(1)),make('b','',String(value)));counts.append(item);}
     content.append(primary,progress,counts);panel.hidden=false;
   }
   function renderBasicFees(statuses){

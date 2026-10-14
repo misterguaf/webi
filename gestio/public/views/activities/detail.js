@@ -121,7 +121,7 @@ export function createActivityDetail({ root, call, caps, sections, go, back, onE
   async function transition(activity, request, { success, onDone }) {
     try {
       await request();
-      toast(success);
+      toast(success, { tone: 'ok' });
       onChanged();
       await reload({ keepTab: false });
       onDone?.();
@@ -155,7 +155,7 @@ export function createActivityDetail({ root, call, caps, sections, go, back, onE
     try {
       await call(`/api/activities/${activity.id}`, { method: 'DELETE', body: JSON.stringify({ expectedVersion: activity.version }) });
       current = null;
-      toast('Esborrany descartat');
+      toast('Esborrany descartat', { tone: 'ok' });
       onChanged({ discarded: activity.id });
       back({ replace: true });
     } catch (error) {
@@ -233,7 +233,7 @@ export function createActivityDetail({ root, call, caps, sections, go, back, onE
     const code = h('code', { className: 'public-code', text: activity.public_code });
     const copy = h('button', { className: 'btn btn-quiet btn-small', attrs: { type: 'button', 'aria-label': 'Copia el codi públic' } }, icon('copy'), h('span', { text: 'Copia' }));
     copy.addEventListener('click', async () => {
-      try { await navigator.clipboard.writeText(activity.public_code); toast('Codi copiat'); } catch { toast('No s’ha pogut copiar el codi'); }
+      try { await navigator.clipboard.writeText(activity.public_code); toast('Codi copiat', { tone: 'ok' }); } catch { toast('No s’ha pogut copiar el codi', { tone: 'danger' }); }
     });
     return h('div', { className: 'information' },
       block('Quan i on', row('Inici', dateTime(activity.starts_at)), row('Final', dateTime(activity.ends_at)),

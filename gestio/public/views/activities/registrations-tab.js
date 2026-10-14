@@ -141,7 +141,7 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
         if (shown) { contacts.delete(row.id); redraw(); return; }
         contact.setAttribute('aria-busy', 'true');
         try { contacts.set(row.id, (await call(`/api/registrations/${row.id}/contact`)).contact); redraw(); }
-        catch (error) { contact.removeAttribute('aria-busy'); if (error.status !== 401) toast('No s’ha pogut consultar el contacte.'); }
+        catch (error) { contact.removeAttribute('aria-busy'); if (error.status !== 401) toast('No s’ha pogut consultar el contacte.', { tone: 'danger' }); }
       });
       item.append(h('div', { className: 'reg-tools' }, contact));
       if (shown) item.append(h('dl', { className: 'reg-contact' },
@@ -210,7 +210,7 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
       button.setAttribute('aria-busy', 'true'); button.disabled = true;
       try {
         await call(`/api/registrations/${row.id}/review`, { method: 'POST', body: JSON.stringify(body) });
-        toast(decision === 'MATCH' ? 'Inscripció vinculada' : 'Inscripció rebutjada');
+        toast(decision === 'MATCH' ? 'Inscripció vinculada' : 'Inscripció rebutjada', { tone: 'ok' });
         expanded.delete(row.id); refresh();
       } catch (error) {
         if (error.status === 401) return;
@@ -236,8 +236,8 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
 
   // ---- row actions (§12.2, §12.3, §13.2)
   async function post(path, body, success) {
-    try { await call(path, { method: 'POST', body: JSON.stringify(body) }); toast(success); refresh(); }
-    catch (error) { if (error.status === 401) return; toast(regError(error.code)); if (['invalid_transition', 'stale_registration'].includes(error.code)) refresh(); }
+    try { await call(path, { method: 'POST', body: JSON.stringify(body) }); toast(success, { tone: 'ok' }); refresh(); }
+    catch (error) { if (error.status === 401) return; toast(regError(error.code), { tone: 'danger' }); if (['invalid_transition', 'stale_registration'].includes(error.code)) refresh(); }
   }
   async function correctSection(row, activity) {
     const targets = correctionTargets(activity, caps(), row, sections());
@@ -273,7 +273,7 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
   async function correctPrice(row) {
     let plan;
     try {plan=(await call(`/api/finance/registrations/${row.id}/installment-plan`)).plan;}
-    catch(error){toast(regError(error.code));return;}
+    catch(error){toast(regError(error.code), { tone: 'danger' });return;}
     const fields=[
       {name:'amount',label:'Import correcte en euros',type:'number',required:true,
         value:(row.expected_amount_cents/100).toFixed(2),attrs:{min:'0.01',max:'10000',step:'0.01'}},
@@ -284,18 +284,18 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     if (!values)return;
     const amountCents=Math.round(Number(values.amount)*100);
     if (!Number.isSafeInteger(amountCents)||amountCents<1||amountCents>1000000||values.reason.trim().length<3){
-      toast('Revisa l’import i el motiu de la correcció.');return;
+      toast('Revisa l’import i el motiu de la correcció.', { tone: 'danger' });return;
     }
     const planParts=plan?.parts.map((part,index)=>({amountCents:Math.round(Number(values[`part${index}`])*100),targetAt:part.targetAt}));
     if(planParts && (planParts.some(part=>!Number.isSafeInteger(part.amountCents)||part.amountCents<1)||
       planParts.reduce((sum,part)=>sum+part.amountCents,0)!==amountCents)){
-      toast('La suma dels terminis ha de coincidir amb l’import corregit.');return;
+      toast('La suma dels terminis ha de coincidir amb l’import corregit.', { tone: 'danger' });return;
     }
     try {await call(`/api/finance/registrations/${row.id}/price`,{method:'PATCH',
       body:JSON.stringify({amountCents,expectedVersion:row.version,reason:values.reason.trim(),
         ...(planParts?{planParts}:{})})});
-      toast(`Preu corregit a ${formatMoney(amountCents)}`);refresh();}
-    catch(error){toast(regError(error.code));if(error.status===409)refresh();}
+      toast(`Preu corregit a ${formatMoney(amountCents)}`, { tone: 'ok' });refresh();}
+    catch(error){toast(regError(error.code), { tone: 'danger' });if(error.status===409)refresh();}
   }
 
   async function decideRefund(row) {
@@ -308,12 +308,12 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     if (!values)return;
     const amountCents=Math.round(Number(values.amount)*100);
     if (!Number.isSafeInteger(amountCents)||amountCents<0||values.reason.trim().length<3){
-      toast('Revisa la decisió, l’import i el motiu.');return;
+      toast('Revisa la decisió, l’import i el motiu.', { tone: 'danger' });return;
     }
     try {await call(`/api/finance/withdrawn-registrations/${row.id}/refund-decision`,{method:'POST',
       body:JSON.stringify({decision:values.decision,amountCents,reason:values.reason.trim()})});
-      toast('Decisió de devolució registrada');refresh();}
-    catch(error){toast(regError(error.code));if(error.status===409)refresh();}
+      toast('Decisió de devolució registrada', { tone: 'ok' });refresh();}
+    catch(error){toast(regError(error.code), { tone: 'danger' });if(error.status===409)refresh();}
   }
 
   async function authorizeActivityPlan(activity) {
@@ -322,8 +322,8 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     if (!search)return;
     let candidates;
     try {candidates=(await call(`/api/finance/activity-installment-candidates?activityId=${activity.id}&q=${encodeURIComponent(search.name.trim())}`)).candidates;}
-    catch(error){toast(regError(error.code));return;}
-    if (!candidates.length){toast('No hi ha persones disponibles amb eixe nom.');return;}
+    catch(error){toast(regError(error.code), { tone: 'danger' });return;}
+    if (!candidates.length){toast('No hi ha persones disponibles amb eixe nom.', { tone: 'danger' });return;}
     const transport=activity.transportOptions?.length?activity.transportOptions.map(option=>({value:option.code,
       label:option.code==='GROUP'?'Transport del grup':'Transport de la família'})):[{value:'NONE',label:'Sense opció de transport'}];
     const choice=await formDialog({title:'Tria la persona i el transport',confirm:'Continua',fields:[
@@ -333,12 +333,12 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
     if (!choice)return;
     const person=candidates.find(row=>row.id===choice.participant);
     const amountCents=person?.prices?.[choice.transport];
-    if (!Number.isSafeInteger(amountCents)||amountCents<2){toast('No s’ha pogut calcular el preu aplicable.');return;}
+    if (!Number.isSafeInteger(amountCents)||amountCents<2){toast('No s’ha pogut calcular el preu aplicable.', { tone: 'danger' });return;}
     const count=await formDialog({title:'Nombre de terminis',confirm:'Continua',fields:[
       {name:'count',label:'Terminis',type:'number',required:true,value:'2',attrs:{min:'2',max:'100',step:'1'}}]});
     if (!count)return;
     const n=Number(count.count);
-    if (!Number.isInteger(n)||n<2||n>100||amountCents<n){toast('Indica entre 2 i 100 terminis vàlids.');return;}
+    if (!Number.isInteger(n)||n<2||n>100||amountCents<n){toast('Indica entre 2 i 100 terminis vàlids.', { tone: 'danger' });return;}
     const base=Math.floor(amountCents/n),remainder=amountCents-base*n;
     const fields=Array.from({length:n},(_,index)=>[
       {name:`amount${index}`,label:`Termini ${index+1} · euros`,type:'number',required:true,
@@ -350,12 +350,12 @@ export function createRegistrationsTab({ call, caps, sections, onChanged, setFil
       targetAt:values[`date${index}`]?Date.parse(`${values[`date${index}`]}T00:00:00Z`):null}));
     if(parts.some(part=>!Number.isSafeInteger(part.amountCents)||part.amountCents<1)||
       parts.reduce((sum,part)=>sum+part.amountCents,0)!==amountCents){
-      toast('La suma dels terminis ha de coincidir amb el preu aplicable.');return;
+      toast('La suma dels terminis ha de coincidir amb el preu aplicable.', { tone: 'danger' });return;
     }
     try {await call('/api/finance/activity-installment-plans',{method:'POST',body:JSON.stringify({
       activityId:activity.id,participantId:person.id,transportCode:choice.transport==='NONE'?null:choice.transport,parts})});
-      toast('Fraccionament excepcional autoritzat');refresh();}
-    catch(error){toast(regError(error.code));}
+      toast('Fraccionament excepcional autoritzat', { tone: 'ok' });refresh();}
+    catch(error){toast(regError(error.code), { tone: 'danger' });}
   }
 
   // ---- confirmed list (§17)

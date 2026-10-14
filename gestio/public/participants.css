@@ -119,3 +119,66 @@ body[data-page="participants"] .page-main,body[data-page="participants"] .page-h
 .toolbar-reviews{margin-left:auto}
 .toolbar-reviews+.toolbar-cta{margin-left:var(--space-2)}
 @media(max-width:767px){.toolbar-reviews{display:none!important}}
+
+/* ------------------------------------------------------------ phase J (gestio/lab/fase-j) */
+.participant-row{grid-template-columns:40px minmax(0,1fr) auto auto 18px;min-height:60px;transition:background-color var(--motion-fast)}
+.participant-row .person-signal{grid-column:auto;justify-self:end}
+.person-avatar{width:36px;height:36px;border-radius:50%;font-size:13px}
+.person-section{display:inline-flex;align-items:center;gap:6px;color:var(--text-secondary)}
+.group-title{padding:10px var(--space-5)!important;background:var(--surface-sunken);border-bottom:1px solid var(--border-subtle);font-size:12px!important}
+.record-header{gap:var(--space-3)}
+.record-identity{display:grid;grid-template-columns:auto minmax(0,1fr);gap:var(--space-5);align-items:start}
+.record-avatar{width:64px;height:64px;font-size:22px;box-shadow:inset 0 0 0 3px var(--sec,var(--iris-primary))}
+.record-heading{display:grid;gap:8px;min-width:0}
+.record-heading .detail-heading{margin-top:0}
+.record-heading .detail-context{display:inline-flex;align-items:center;gap:6px}
+.record-notice{display:grid;gap:4px;padding:12px 14px 12px 42px;border-radius:var(--radius-card);background:var(--iris-tint);position:relative;font-size:13px;line-height:18px}
+.record-notice::before{content:"";position:absolute;left:14px;top:13px;width:18px;height:18px;background:var(--iris-primary);-webkit-mask:var(--g-alert) center/contain no-repeat;mask:var(--g-alert) center/contain no-repeat}
+.record-notice p{margin:0!important}
+.record-notice-title{font-size:14px;font-weight:600}
+.record-notice-actions{display:flex;flex-wrap:wrap;gap:var(--space-2);margin-top:6px}
+.record-notice-actions:empty{display:none}
+.detail-fees{align-items:center}
+.fee-chip{background:transparent;padding:0;gap:8px}
+.fee-round{font-size:13px}
+.participant-fitxa{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:var(--space-4);padding:0;border:0;background:transparent;box-shadow:none}
+.participant-fitxa .info-block,.participant-fitxa .info-block+.info-block{padding:var(--space-5);border:1px solid var(--border-default);border-radius:var(--radius-large);background:var(--surface-primary)}
+.participant-fitxa .info-title{font-size:15px!important;line-height:20px!important;color:var(--text-primary)!important;letter-spacing:-.01em!important}
+.history-list{gap:0}
+.history-list li{position:relative;grid-template-columns:auto 1fr auto;padding:8px 0 8px 26px}
+.history-list li::before{content:"";position:absolute;left:4px;top:13px;width:10px;height:10px;border-radius:50%;background:var(--surface-primary);box-shadow:0 0 0 2px var(--border-control)}
+.history-list li::after{content:"";position:absolute;left:8px;top:27px;bottom:-9px;width:2px;background:var(--border-subtle)}
+.history-list li:last-child::after{display:none}
+.history-list li.history-current::before{background:var(--iris-primary);box-shadow:0 0 0 3px var(--iris-tint-strong)}
+.family-block{border-radius:var(--radius-large)}
+.guardian-item{border-radius:var(--radius-card);border-color:var(--border-subtle);padding:var(--space-4)}
+.guardian-rep{background:var(--info-soft);color:var(--info-text);font-weight:600}
+.guardian-rep::before{background:var(--info)}
+.guardian-rep.rep-accredited{background:var(--success-soft);color:var(--success-text)}
+.guardian-rep.rep-accredited::before{background:var(--success)}
+.contact-item{min-height:40px;border-top:1px solid var(--border-subtle);padding-top:6px}
+.contact-item:first-child{border-top:0}
+.contact-value{font-weight:600;letter-spacing:.02em}
+.review-item{border-radius:var(--radius-large)}
+@media(max-width:767px){
+  .participant-row{grid-template-columns:36px minmax(0,1fr) auto;row-gap:4px}
+  .participant-row .person-section{grid-column:2;grid-row:2;justify-self:start}
+  .participant-row .person-signal{grid-column:2;grid-row:3;justify-self:start}
+  .record-identity{grid-template-columns:auto minmax(0,1fr);gap:var(--space-3)}
+  .record-avatar{width:52px;height:52px;font-size:18px}
+}
+.participant-row .row-chevron{grid-column:5}
+.participant-row .person-signal{grid-column:4}
+@media(max-width:767px){.participant-row .row-chevron{display:none}}
+.participant-row>*{grid-row:1}
+.participant-row .person-avatar{grid-column:1}.participant-row .person-name{grid-column:2}.participant-row .person-section{grid-column:3}
+.participant-toolbar .search-field{flex:1 1 240px;max-width:320px}
+.participant-toolbar .toolbar-cta{margin-left:auto}
+.participant-toolbar .toolbar-admissions{margin-left:auto}
+.participant-toolbar .toolbar-admissions~.toolbar-cta,.participant-toolbar .toolbar-reviews~.toolbar-cta{margin-left:0}
+.participant-toolbar .toolbar-reviews{margin-left:0}
+@media(max-width:767px){
+  .participant-row>*{grid-row:auto}
+  .participant-row .person-avatar{grid-row:1/4}
+  .participant-row .person-name{grid-row:1}
+}

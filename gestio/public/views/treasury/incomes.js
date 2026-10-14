@@ -75,7 +75,7 @@ export async function renderIncomeDetail(root, ctx, id) {
       const trigger = event.currentTarget;
       if (!await confirmDialog({ title: 'Anul·lar l’ingrés?', body: 'L’ingrés no s’esborra: queda anul·lat i fora de les xifres. Fes-ho només si es va registrar per error.', confirm: 'Anul·la', tone: 'danger' })) return;
       trigger.setAttribute('aria-busy', 'true');
-      try { await ctx.call(`/api/finance/incomes/${id}/void`, { method: 'POST', body: JSON.stringify({ expectedVersion: income.version }) }); toast('Ingrés anul·lat'); await reload(); }
+      try { await ctx.call(`/api/finance/incomes/${id}/void`, { method: 'POST', body: JSON.stringify({ expectedVersion: income.version }) }); toast('Ingrés anul·lat', { tone: 'ok' }); await reload(); }
       catch (error) { trigger.removeAttribute('aria-busy'); toast(errorCopy(error), { tone: 'danger', timeout: 6000 }); }
     } } }));
   const status = income.state === 'VOID' ? 'Aquest ingrés està anul·lat i no compta.'
@@ -129,6 +129,6 @@ function openReconcile(data, ctx, onDone) {
     const movement = await ctx.call(`/api/finance/movements/${chosen.value}`);
     await ctx.call(`/api/finance/movements/${chosen.value}/allocations`, { method: 'POST', body: JSON.stringify({ expectedVersion: movement.movement.allocationVersion,
       allocations: [...allocationPayload(movement.allocations), result.allocation] }) });
-    toast('Ingrés conciliat'); await onDone?.(); return true;
+    toast('Ingrés conciliat', { tone: 'ok' }); await onDone?.(); return true;
   } });
 }

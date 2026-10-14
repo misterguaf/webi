@@ -41,6 +41,6 @@ export async function openIncomeForm({ ctx, movement = null, onDone }) {
         body: JSON.stringify({ expectedVersion: movement.allocationVersion, ...result.body }) });
       created = { id: response.incomeId };
     } else created = await ctx.call('/api/finance/incomes', { method: 'POST', body: JSON.stringify(result.body) });
-    toast(movement ? 'Ingrés creat i conciliat' : 'Ingrés creat'); await onDone?.(created); return true;
+    toast(movement ? 'Ingrés creat i conciliat' : 'Ingrés creat', { tone: 'ok' }); await onDone?.(created); return true;
   } });
 }

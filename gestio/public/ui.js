@@ -23,10 +23,27 @@ export function guardBusy(node, listener) {
   };
 }
 
+// Phase J: one icon family for actions. A text button with a known action verb gets its icon (the label and the
+// accessible name do not change). Dismissive actions (Cancel·la, Tanca) and icon-only buttons stay as they are.
+const ACTION_ICONS = [
+  [/^(Guarda|Guardar|Desa)/, 'check'], [/^(Crea|Nou |Nova |Nou$|Afegeix|Afig|Agrupa)/, 'plus'], [/^(Edita|Editar|Corregeix|Corregir)/, 'pencil'],
+  [/^Classifica/, 'tag'], [/^(Concilia|Vincula|Torna a vincular)/, 'link'], [/^(Confirma|Accepta|Aprova|Reconeix|Marca com a vista|Aplica)/, 'check'],
+  [/^Verifica/, 'check-circle'], [/^(Publica|Envia|Proposa)/, 'send'], [/^(Importa|Puja)/, 'upload'], [/^(Descarrega|Exporta)/, 'download'],
+  [/^(Torna-ho a (intentar|provar)|Actualitza|Reobri|Reactiva|Torna a obrir)/, 'refresh'], [/^(Busca|Cerca)/, 'search'],
+  [/^(Anul·la|Rebutja|Revoca|Descarta|Dona de baixa|Retira|Finalitza|Elimina|Arxiva)/, 'x-circle'], [/^(Ratifica|Concedeix|Acredita|Marca com a acreditada)/, 'shield'],
+  [/^(Carrega’n més|Mostra’n més|Mostra-les totes)/, 'chevron'], [/^(Mostra|Veure)/, 'eye'], [/^(Assenyala|Obri una incidència|Marcar una incidència|Marca incidència)/, 'alert'],
+  [/^(Prepara|Inicia)/, 'play'], [/^(Escala|Continua)/, 'arrow-right'], [/^(Torna a carregar|Canvia)/, 'refresh'], [/^(Treu)/, 'x-circle'],
+  [/^(Registra|És un moviment vàlid|És aquesta persona)/, 'check'], [/^Resol/, 'check-circle'], [/^Llista de/, 'list'], [/^Tanca (totes|les)/, 'log-out'],
+  [/^Torna a (Participants|Activitats)/, 'arrow-left'], [/^Reassigna/, 'link'], [/^Neteja/, 'x-small']];
+const actionIcon = text => ACTION_ICONS.find(([pattern]) => pattern.test(text))?.[1] ?? null;
+
 export function h(tag, props = {}, ...children) {
   const node = document.createElement(tag);
   if (props.className) node.className = props.className;
-  if (props.text != null) node.textContent = props.text;
+  const glyph = tag === 'button' && props.text && !children.length && /\bbtn\b/.test(props.className ?? '') && !/btn-icon|btn-quiet/.test(props.className ?? '')
+    ? actionIcon(String(props.text)) : null;
+  if (glyph) node.append(icon(glyph), Object.assign(document.createElement('span'), { textContent: props.text }));
+  else if (props.text != null) node.textContent = props.text;
   for (const [name, value] of Object.entries(props.attrs ?? {})) {
     if (value === false || value == null) continue;
     node.setAttribute(name, value === true ? '' : String(value));
@@ -38,6 +55,7 @@ export function h(tag, props = {}, ...children) {
   return node;
 }
 export const icon = (name, className = '') => {
+  if (!document.createElementNS) return document.createElement('span'); // minimal test DOMs without SVG support
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('aria-hidden', 'true');
   if (className) svg.setAttribute('class', className);
@@ -85,10 +103,20 @@ function toastRegion() {
   }
   return region;
 }
-export function toast(text, { tone = 'neutral', timeout = 3600 } = {}) {
-  const node = h('div', { className: `toast toast-${tone}`, text });
-  toastRegion().append(node);
-  setTimeout(async () => { node.classList.add('toast-leaving'); await afterMotion(node, 200); node.remove(); }, timeout);
+// Phase J: tone + icon (CSS). Confirmations leave on their own; errors stay until they are closed, so they can be
+// read and acted on. The region keeps at most three toasts.
+export function toast(text, { tone = 'neutral', timeout = tone === 'danger' ? Infinity : 4200 } = {}) {
+  const close = async () => {
+    if (!node.isConnected || node.classList.contains('toast-leaving')) return;
+    node.classList.add('toast-leaving'); await afterMotion(node, 200); node.remove();
+  };
+  const node = h('div', { className: `toast toast-${tone}`, attrs: tone === 'danger' ? { role: 'alert' } : {} },
+    h('span', { className: 'toast-text', text }),
+    h('button', { className: 'toast-close', attrs: { type: 'button', 'aria-label': 'Tanca l’avís' }, on: { click: () => void close() } }, icon('close')));
+  const region = toastRegion();
+  region.append(node);
+  while (region.children.length > 3) region.firstElementChild.remove();
+  if (Number.isFinite(timeout)) setTimeout(() => void close(), timeout);
   return node;
 }
 
@@ -195,8 +223,8 @@ export function formDialog({ title, fields, confirm, tone = 'primary' }) {
 export function openMenu(trigger, items) {
   document.querySelector('.menu-popover')?.remove();
   const menu = h('div', { className: 'menu-popover', attrs: { role: 'menu' } },
-    items.map(item => h('button', { className: `menu-item${item.tone === 'danger' ? ' menu-item-danger' : ''}`, text: item.label,
-      attrs: { type: 'button', role: 'menuitem' }, on: { click: () => { close(); item.onSelect(); } } })));
+    items.map(item => h('button', { className: `menu-item${item.tone === 'danger' ? ' menu-item-danger' : ''}`,
+      attrs: { type: 'button', role: 'menuitem' }, on: { click: () => { close(); item.onSelect(); } } }, item.icon ? icon(item.icon) : null, h('span', { text: item.label }))));
   const rect = trigger.getBoundingClientRect();
   menu.style.top = `${Math.round(rect.bottom + 6 + window.scrollY)}px`;
   menu.style.right = `${Math.round(document.documentElement.clientWidth - rect.right)}px`;

@@ -2,8 +2,25 @@
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, "Segoe UI", sans-serif;
   color-scheme: light;
   --bg-primary:#F6F7FB; --surface-primary:#FFFFFF; --surface-elevated:#EFF0F6; --border-default:#D9DBE7;
-  --text-primary:#171821; --text-secondary:#6D7080; --iris-primary:#6E5CF5; --iris-strong:#5946E8;
+  --text-primary:#171821; --text-secondary:#63667A; --iris-primary:#6E5CF5; --iris-strong:#5946E8;
   --iris-soft:#EDEAFF; --iris-glass-tint:#F4F2FF; --success:#2F9E73; --warning:#D4932E; --danger:#D45B66; --info:#4A78E8;
+  /* Phase J (docs/design/DESIGN_SYSTEM.md §24): AA text tones, interaction surfaces, control lines and the filled
+     primary button. #63667A replaces #6D7080 (4.31:1 on the elevated surface). */
+  --surface-hover:#F1F2F8; --surface-pressed:#E7E8F1; --surface-sunken:#F3F4F9; --border-subtle:#E6E7EF; --border-control:#868A9E;
+  --iris-button:#6E5CF5; --iris-button-hover:#5946E8; --on-iris:#FFFFFF; --iris-tint:rgba(110,92,245,.10); --iris-tint-strong:rgba(110,92,245,.16);
+  --focus-ring:#6E5CF5; --link:#5946E8;
+  --success-text:#1E7A55; --success-soft:rgba(47,158,115,.12); --warning-text:#8A5A0B; --warning-soft:rgba(212,147,46,.14);
+  --danger-text:#B23A48; --danger-soft:rgba(212,91,102,.12); --info-text:#2F5FC4; --info-soft:rgba(74,120,232,.12); --neutral-soft:rgba(99,102,122,.12);
+  --danger-button:#C2414F; --danger-button-hover:#A8323F;
+  --money-in:#2F9E73; --money-in-text:#1E7A55; --money-out:#D45B66; --money-out-text:#B23A48; --money-transfer:#5B6274;
+  --section-manada:#E0A100; --section-manada-text:#8A5A00; --section-manada-soft:rgba(224,161,0,.14);
+  --section-tropa:#5E9A2E; --section-tropa-text:#3F6F1C; --section-tropa-soft:rgba(94,154,46,.14);
+  --section-escolta:#2F6FD0; --section-escolta-text:#1F55A8; --section-escolta-soft:rgba(47,111,208,.12);
+  --section-clan:#C2412D; --section-clan-text:#A3301E; --section-clan-soft:rgba(194,65,45,.12);
+  --section-group:#6E5CF5; --section-group-text:#5946E8; --section-group-soft:rgba(110,92,245,.12);
+  --control-sm:30px; --control-md:36px; --control-lg:40px; --touch:44px;
+  --shadow-medium:0 6px 20px rgba(20,20,35,.08); --shadow-control:0 1px 1px rgba(20,20,35,.05),inset 0 1px 0 rgba(255,255,255,.6);
+  --ease-spring:linear(0, .009, .035 2.1%, .141 4.4%, .723 12.9%, .938 16.7%, 1.017 20.6%, 1.032 23.9%, 1.025 27.6%, 1.006 34.9%, .998 44.2%, 1); --motion-spring:420ms;
   --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px; --space-6:24px;
   --space-8:32px; --space-10:40px; --space-12:48px; --space-16:64px;
   --radius-small:8px; --radius-control:10px; --radius-card:14px; --radius-large:18px; --radius-panel:22px; --radius-pill:999px;
@@ -18,6 +35,20 @@
   --text-primary:#F6F7FB; --text-secondary:#A7AABC; --iris-primary:#8E7DFF; --iris-strong:#A394FF;
   --iris-soft:#292347; --iris-glass-tint:#1A1B24; --success:#55C79B; --warning:#F0B85A; --danger:#FF7C88; --info:#75A0FF;
   --shadow-low:none; --shadow-float:0 20px 52px rgba(0,0,0,.24);
+  /* Phase J: white on #8E7DFF is 3.22:1, so the filled button keeps the deeper Iris in dark too (4.65:1). */
+  --surface-hover:#1C1F2A; --surface-pressed:#232634; --surface-sunken:#12141B; --border-subtle:#262937; --border-control:#646982;
+  --iris-button:#6E5CF5; --iris-button-hover:#5946E8; --on-iris:#FFFFFF; --iris-tint:rgba(142,125,255,.12); --iris-tint-strong:rgba(142,125,255,.2);
+  --focus-ring:#A394FF; --link:#A394FF;
+  --success-text:#5FD3A5; --success-soft:rgba(85,199,155,.14); --warning-text:#F0B85A; --warning-soft:rgba(240,184,90,.14);
+  --danger-text:#FF8A95; --danger-soft:rgba(255,124,136,.14); --info-text:#86ACFF; --info-soft:rgba(117,160,255,.14); --neutral-soft:rgba(167,170,188,.14);
+  --danger-button:#C2414F; --danger-button-hover:#D04C5A;
+  --money-in:#55C79B; --money-in-text:#5FD3A5; --money-out:#FF7C88; --money-out-text:#FF8A95; --money-transfer:#A7AABC;
+  --section-manada:#F5C542; --section-manada-text:#F7CF5E; --section-manada-soft:rgba(245,197,66,.14);
+  --section-tropa:#8CC762; --section-tropa-text:#9BD172; --section-tropa-soft:rgba(140,199,98,.14);
+  --section-escolta:#6EA2FF; --section-escolta-text:#86B2FF; --section-escolta-soft:rgba(110,162,255,.14);
+  --section-clan:#FF8366; --section-clan-text:#FF957C; --section-clan-soft:rgba(255,131,102,.14);
+  --section-group:#8E7DFF; --section-group-text:#A394FF; --section-group-soft:rgba(142,125,255,.16);
+  --shadow-medium:0 8px 24px rgba(0,0,0,.22); --shadow-control:inset 0 1px 0 rgba(255,255,255,.04);
   --sidebar-glass:rgba(22,24,33,.9); --floating-glass:rgba(29,32,43,.96); --glass-border:rgba(126,132,159,.22);
 }
 *,*::before,*::after{box-sizing:border-box}
@@ -73,16 +104,16 @@ body.shell-authenticated #login{display:none!important}
 .page-main>section h4{font-size:14px;line-height:20px;font-weight:600}
 .page-main p{margin-top:0}.page-main .muted{color:var(--text-secondary)}
 .page-main .note{background:var(--iris-glass-tint);border:1px solid var(--border-default);color:var(--text-secondary);padding:var(--space-3) var(--space-4);border-radius:var(--radius-control)}
-.page-main :where(section:not(.activities-view)) nav{display:flex;flex-wrap:wrap;gap:var(--space-2)}
-.page-main :where(section:not(.activities-view)) label{display:block;margin:var(--space-3) 0}.page-main :where(section:not(.activities-view)) label>input:not([type="checkbox"]),.page-main :where(section:not(.activities-view)) label>select,.page-main :where(section:not(.activities-view)) label>textarea{display:block;width:100%;margin-top:var(--space-2)}
-.page-main :where(section:not(.activities-view)) input:not([type="checkbox"]),.page-main :where(section:not(.activities-view)) select,.page-main :where(section:not(.activities-view)) textarea{max-width:100%;min-height:36px;padding:var(--space-2) var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary);color:var(--text-primary)}
-.page-main :where(section:not(.activities-view)) select[multiple]{height:auto}.page-main :where(section:not(.activities-view)) textarea{min-height:76px}.page-main :where(section:not(.activities-view)) input[type="checkbox"]{accent-color:var(--iris-primary)}
-.page-main :where(section:not(.activities-view)) button{min-height:36px;margin:2px 4px 2px 0;padding:var(--space-2) var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-elevated);color:var(--text-primary)}
-.page-main :where(section:not(.activities-view)) button:hover{border-color:var(--iris-primary);background:var(--iris-soft)}.page-main :where(section:not(.activities-view)) button:active{transform:translateY(1px)}
-.page-main :where(section:not(.activities-view)) button[type="submit"],#loginButton,#newActivity{background:var(--iris-primary);border-color:var(--iris-primary);color:white}.page-main :where(section:not(.activities-view)) button[type="submit"]:hover,#loginButton:hover,#newActivity:hover{background:var(--iris-strong)}
-.page-main :where(section:not(.activities-view)) li{margin:var(--space-2) 0;overflow-wrap:anywhere}.page-main :where(section:not(.activities-view)) ul{padding-left:var(--space-6)}
-.page-main :where(section:not(.activities-view)) pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;color:var(--text-primary);background:var(--surface-elevated);padding:var(--space-4);border-radius:var(--radius-control)}
-.page-main :where(section:not(.activities-view)) table{border-collapse:collapse;width:100%}.page-main :where(section:not(.activities-view)) th,.page-main :where(section:not(.activities-view)) td{text-align:left;border-bottom:1px solid var(--border-default);padding:var(--space-2)}
+.page-main>:where(section:not(.activities-view)) nav{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.page-main>:where(section:not(.activities-view)) label{display:block;margin:var(--space-3) 0}.page-main>:where(section:not(.activities-view)) label>input:not([type="checkbox"]),.page-main>:where(section:not(.activities-view)) label>select,.page-main>:where(section:not(.activities-view)) label>textarea{display:block;width:100%;margin-top:var(--space-2)}
+.page-main>:where(section:not(.activities-view)) input:not([type="checkbox"]),.page-main>:where(section:not(.activities-view)) select,.page-main>:where(section:not(.activities-view)) textarea{max-width:100%;min-height:36px;padding:var(--space-2) var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-primary);color:var(--text-primary)}
+.page-main>:where(section:not(.activities-view)) select[multiple]{height:auto}.page-main>:where(section:not(.activities-view)) textarea{min-height:76px}.page-main>:where(section:not(.activities-view)) input[type="checkbox"]{accent-color:var(--iris-primary)}
+.page-main>:where(section:not(.activities-view)) button{min-height:36px;margin:2px 4px 2px 0;padding:var(--space-2) var(--space-3);border:1px solid var(--border-default);border-radius:var(--radius-control);background:var(--surface-elevated);color:var(--text-primary)}
+.page-main>:where(section:not(.activities-view)) button:hover{border-color:var(--iris-primary);background:var(--iris-soft)}.page-main>:where(section:not(.activities-view)) button:active{transform:translateY(1px)}
+.page-main>:where(section:not(.activities-view)) button[type="submit"],#loginButton,#newActivity{background:var(--iris-primary);border-color:var(--iris-primary);color:white}.page-main>:where(section:not(.activities-view)) button[type="submit"]:hover,#loginButton:hover,#newActivity:hover{background:var(--iris-strong)}
+.page-main>:where(section:not(.activities-view)) li{margin:var(--space-2) 0;overflow-wrap:anywhere}.page-main>:where(section:not(.activities-view)) ul{padding-left:var(--space-6)}
+.page-main>:where(section:not(.activities-view)) pre{white-space:pre-wrap;overflow-wrap:anywhere;max-width:100%;color:var(--text-primary);background:var(--surface-elevated);padding:var(--space-4);border-radius:var(--radius-control)}
+.page-main>:where(section:not(.activities-view)) table{border-collapse:collapse;width:100%}.page-main>:where(section:not(.activities-view)) th,.page-main>:where(section:not(.activities-view)) td{text-align:left;border-bottom:1px solid var(--border-default);padding:var(--space-2)}
 #message{color:var(--text-secondary);font-size:13px;min-height:18px;max-width:1180px;margin:var(--space-4) auto;overflow-wrap:anywhere}
 .shell-empty{color:var(--text-secondary)}.shell-empty h2{color:var(--text-primary)}
 .popover,.more-sheet{position:fixed;left:236px;bottom:16px;width:248px;padding:var(--space-2);border:1px solid var(--glass-border);border-radius:var(--radius-large);background:var(--floating-glass);backdrop-filter:blur(22px) saturate(130%);-webkit-backdrop-filter:blur(22px) saturate(130%);box-shadow:var(--shadow-float);z-index:30;transform-origin:bottom left;animation:popover-in var(--motion-fast) var(--ease-enter)}

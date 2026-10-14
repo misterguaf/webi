@@ -89,7 +89,7 @@ function movementRow(row, ctx) {
   const actionable = canClassify(ctx.caps()) && (row.status === 'PENDING' || row.status === 'PARTIAL');
   const action = row.status === 'POSSIBLE_DUPLICATE' && canClassify(ctx.caps()) ? 'Revisa'
     : actionable ? 'Classifica' : 'Obri';
-  return h('li', { className: 'tx-row' },
+  return h('li', { className: 'tx-row', dataset: { id: row.id } },
     h('span', { className: 'tx-date', text: formatShortDay(row.operationDate) }),
     h('span', { className: 'tx-position', text: row.positionName }),
     h('a', { className: 'tx-label', attrs: { href: `#/tresoreria/moviments/${row.id}` }, on: { click: open } },
@@ -119,7 +119,8 @@ export async function renderMovementDetail(root, ctx, id) {
     root.replaceChildren(backLink(ctx), h('div', { className: 'activity-surface' }, h('div', { className: 'inline-error', attrs: { role: 'alert' } }, h('p', { text: errorCopy(error) }))));
     return;
   }
-  const reload = () => { void ctx.refreshSummary(); return renderMovementDetail(root, ctx, id); };
+  // Phase J: after a confirmed change the list beside the detail (split view) is reloaded from the server too.
+  const reload = () => { void ctx.refreshSummary(); ctx.movementChanged?.(); return renderMovementDetail(root, ctx, id); };
   const m = data.movement, status = movementStatus(m.status), caps = ctx.caps();
   const actions = [];
   const unallocated = m.state === 'ACTIVE' && m.unallocatedCents > 0;
@@ -277,7 +278,7 @@ function duplicateBlock(data, ctx, reload) {
         const trigger = event.currentTarget;
         if (!await confirmDialog({ title: 'Mantindre com a moviment vàlid?', body: 'Es manté el moviment i deixa de marcar-se com a possible duplicat. Es podrà classificar normalment.', confirm: 'Manté’l' })) return;
         trigger.setAttribute('aria-busy', 'true');
-        try { await ctx.call(`/api/finance/movements/${m.id}/clear-review`, { method: 'POST', body: JSON.stringify({ expectedReviewVersion: m.reviewVersion }) }); toast('Moviment mantingut com a vàlid'); await reload(); }
+        try { await ctx.call(`/api/finance/movements/${m.id}/clear-review`, { method: 'POST', body: JSON.stringify({ expectedReviewVersion: m.reviewVersion }) }); toast('Moviment mantingut com a vàlid', { tone: 'ok' }); await reload(); }
         catch (error) { toast(errorCopy(error), { tone: 'danger' }); trigger.removeAttribute('aria-busy'); }
       } } })) : null);
 }
@@ -294,7 +295,7 @@ function openVoidDuplicate(data, ctx, reload) {
     const chosen = drawer.submit.form.querySelector('input[name="duplicateOf"]:checked')?.value;
     if (!chosen) { drawer.showError('Tria el moviment original.'); return false; }
     await ctx.call(`/api/finance/movements/${m.id}/void-duplicate`, { method: 'POST', body: JSON.stringify({ duplicateOfId: chosen, expectedReviewVersion: m.reviewVersion }) });
-    toast('Moviment marcat com a duplicat'); await reload(); return true;
+    toast('Moviment marcat com a duplicat', { tone: 'ok' }); await reload(); return true;
   } });
 }
 
@@ -467,7 +468,7 @@ export function openClassify(data, ctx, onDone) {
       await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({ expectedVersion: m.allocationVersion,
         allocations: [...allocationPayload(data.allocations), result.allocation] }) });
     }
-    toast(choice === 'LINK_INCOME' ? 'Ingrés conciliat' : 'Classificació actualitzada'); await onDone?.(); return true;
+    toast(choice === 'LINK_INCOME' ? 'Ingrés conciliat' : 'Classificació actualitzada', { tone: 'ok' }); await onDone?.(); return true;
   } });
 }
 
@@ -501,7 +502,7 @@ function openCorrection(data, ctx, onDone) {
     if (kept.reduce((sum, item) => sum + item.amountCents, 0) > Math.abs(m.amountCents)) { drawer.showError('L’import assignat supera l’import disponible del moviment.'); return false; }
     await ctx.call(`/api/finance/movements/${m.id}/allocations`, { method: 'POST', body: JSON.stringify({
       expectedVersion: m.allocationVersion, allocations: kept, reason: reason.value.trim() }) });
-    toast('Classificació actualitzada'); await onDone?.(); return true;
+    toast('Classificació actualitzada', { tone: 'ok' }); await onDone?.(); return true;
   } });
 }
 
@@ -556,7 +557,7 @@ async function openReimbursementReassignment(data, ctx, onDone) {
     await ctx.call(`/api/finance/movements/${data.movement.id}/allocations`, { method: 'POST', body: JSON.stringify({
       expectedVersion: data.movement.allocationVersion,
       allocations: [...kept, ...selected.map(({ limit, ...row }) => row)], reason: reason.value.trim() }) });
-    toast('Reemborsaments corregits'); await onDone(); return true;
+    toast('Reemborsaments corregits', { tone: 'ok' }); await onDone(); return true;
   } });
 }
 

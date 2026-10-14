@@ -36,7 +36,7 @@ export function createIncidentsView({ call, reportLoadError, routes, setPageHead
     try {
       const created = await call('/api/work-incidents', { method: 'POST', body: JSON.stringify({ type: values.type, title: values.title,
         ...(values.description.trim() ? { description: values.description } : {}), module: values.module }) });
-      toast('Gràcies. L’hem rebut i el podràs seguir a «Les meues».');
+      toast('Gràcies. L’hem rebut i el podràs seguir a «Les meues».', { tone: 'ok' });
       await refreshBadge();
       go([created.id]);
     } catch (error) { toast(errorCopy(error), { tone: 'danger', timeout: 7000 }); }
@@ -96,7 +96,7 @@ export function createIncidentsView({ call, reportLoadError, routes, setPageHead
     if (mine !== token) return;
     const item = data.incident;
     const post = async (step, body = {}, success) => {
-      try { await call(`/api/work-incidents/${id}/${step}`, { method: 'POST', body: JSON.stringify({ expectedVersion: item.version, ...body }) }); toast(success); await refreshBadge(); await renderDetail(id); }
+      try { await call(`/api/work-incidents/${id}/${step}`, { method: 'POST', body: JSON.stringify({ expectedVersion: item.version, ...body }) }); toast(success, { tone: 'ok' }); await refreshBadge(); await renderDetail(id); }
       catch (error) { toast(errorCopy(error), { tone: 'danger', timeout: 7000 }); if (error.code === 'stale_incident') await renderDetail(id); }
     };
     const handlers = {

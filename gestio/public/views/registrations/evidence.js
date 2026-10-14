@@ -117,7 +117,7 @@ export function evidenceBlock({ call, payment, onChanged, attemptOnly = false })
       const result = await call(`/api/payments/${payment.id}/review`, { method: 'POST',
         body: JSON.stringify({ decision, expectedVersion: payment.registrationVersion, ...(decision === 'VERIFIED' ? { amountCents } : {}) }) });
       toast(decision !== 'VERIFIED' ? 'Incidència registrada' : result.paymentState === 'PAID' ? 'Pagament complet verificat'
-        : `Pagament parcial: ${formatEuros(result.paidCents)} / ${formatEuros(payment.amountCents)} · ${formatEuros(result.remainingCents)} pendents`);
+        : `Pagament parcial: ${formatEuros(result.paidCents)} / ${formatEuros(payment.amountCents)} · ${formatEuros(result.remainingCents)} pendents`, { tone: 'ok' });
       onChanged();
     } catch (error) {
       if (error.status === 401) return;

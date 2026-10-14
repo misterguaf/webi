@@ -15,6 +15,7 @@ import { accessibleRowName, canCreate, canManageSection, completenessSignal, EST
 const $ = id => document.getElementById(id);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const STALE_AFTER_MS = 30000;
+const FEE_TONE = { PAID: 'ok', PARTIAL: 'warning', PENDING: 'muted', ISSUE: 'danger' };
 const longDate = value => value == null ? '' : new Intl.DateTimeFormat('ca-ES', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(value));
 const monthYear = value => value == null ? '' : new Intl.DateTimeFormat('ca-ES', { month: 'short', year: 'numeric' }).format(new Date(value));
 
@@ -25,14 +26,16 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
   let search = '', listScroll = 0, lastOpened = null, wasOnList = false, openedFromList = false, lastListQuery = {};
 
   const caps = () => me?.capabilities;
+  // Phase J: the section's provisional identity colour (COLOR_CODING.md §5) travels as data-section; no inline styles.
+  const sectionData = id => { const code = sectionCode(id, sections()); return code ? { section: code } : {}; };
   const sections = () => me?.capabilities?.sections ?? [];
   const sectionIds = () => Object.fromEntries(sections().map(s => [s.code, s.id]));
   const invalidate = () => { loadedAt = 0; };
 
   const editor = createParticipantEditor({ call, caps, sectionIds, rows: () => rows,
     reload: id => call(`/api/participants/${id}`).then(r => r.participant),
-    onCreated: created => { invalidate(); toast('Participant afegit'); routes.go({ page: 'participants', path: [created.id] }); },
-    onSaved: id => { invalidate(); toast('Canvis guardats'); detailCache = null; if (route.path[0] === id) void showDetail(id, { force: true }); } });
+    onCreated: created => { invalidate(); toast('Participant afegit', { tone: 'ok' }); routes.go({ page: 'participants', path: [created.id] }); },
+    onSaved: id => { invalidate(); toast('Canvis guardats', { tone: 'ok' }); detailCache = null; if (route.path[0] === id) void showDetail(id, { force: true }); } });
   function openCreate() { if (canCreate(me?.capabilities)) editor.open({ trigger: document.activeElement }); }
   const familia = createFamiliaTab({ call, caps, onChanged: () => { invalidate(); detailCache = null; familia.clear(); if (route.path[0]) void showDetail(route.path[0], { force: true }); } });
   const readsContacts = p => { const s = caps()?.participants?.readContacts; return !!s && (s.all || s.sections.some(x => x.id === p.currentSectionId)); };
@@ -69,10 +72,10 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
       h('a', { className: 'participant-row', attrs: { href: `#/participants/${participant.id}`,
         'aria-label': accessibleRowName(participant, sections()) }, dataset: { id: participant.id },
       on: { click: event => openOnClick(participant.id, event) } },
-      h('span', { className: 'avatar person-avatar', attrs: { 'aria-hidden': 'true' }, text: initials(participant.display_name) }),
+      h('span', { className: 'avatar person-avatar', dataset: sectionData(participant.current_section_id), attrs: { 'aria-hidden': 'true' }, text: initials(participant.display_name) }),
       h('span', { className: 'person-name', text: participant.display_name }),
-      h('span', { className: 'person-section', text: sectionName(participant.current_section_id, sections()) }),
-      signal ? h('span', { className: `person-signal signal-${signal.tone}`, text: signal.text }) : null,
+      h('span', { className: 'person-section', dataset: sectionData(participant.current_section_id) }, h('span', { className: 'section-dot', attrs: { 'aria-hidden': 'true' } }), sectionName(participant.current_section_id, sections())),
+      signal ? h('span', { className: `person-signal badge tone-${signal.tone}`, text: signal.text }) : null,
       icon('chevron-right', 'row-chevron')));
   }
   function renderList() {
@@ -123,11 +126,11 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
       text: 'Informació pendent', on: { click: () => update({ completitud: compActive ? '' : 'pendents' }) } });
     const reset = h('button', { className: 'link-button filters-reset', text: 'Neteja filtres', attrs: { type: 'button', hidden: !filtersDiffer(filters) }, on: { click: clearFilters } });
     const cta = canCreate(me.capabilities)
-      ? h('button', { className: 'btn btn-primary toolbar-cta', attrs: { type: 'button' }, on: { click: () => openCreate() } }, icon('plus'), h('span', { text: 'Nou participant' })) : null;
+      ? h('button', { className: 'btn btn-primary toolbar-cta', attrs: { type: 'button' }, on: { click: () => openCreate() } }, icon('user-plus'), h('span', { text: 'Nou participant' })) : null;
     const reviewLink = me.capabilities.participants.review
-      ? h('a', { className: 'btn btn-secondary toolbar-reviews', text: 'Revisions', attrs: { href: '#/participants/revisions' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['revisions'] }); } } }) : null;
+      ? h('a', { className: 'btn btn-secondary toolbar-reviews', attrs: { href: '#/participants/revisions' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['revisions'] }); } } }, icon('shield'), h('span', { text: 'Revisions' })) : null;
     const admissionsLink = me.capabilities.admissions?.read
-      ? h('a', { className: 'btn btn-secondary toolbar-admissions', text: 'Noves altes', attrs: { href: '#/participants/altes' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['altes'] }); } } }) : null;
+      ? h('a', { className: 'btn btn-secondary toolbar-admissions', attrs: { href: '#/participants/altes' }, on: { click: e => { e.preventDefault(); routes.go({ page: 'participants', path: ['altes'] }); } } }, icon('inbox'), h('span', { text: 'Noves altes' })) : null;
     const toolbar = h('div', { className: 'participant-toolbar' },
       h('label', { className: 'search-field', attrs: { for: 'participantSearch' } }, icon('search'), searchInput),
       h('label', { className: 'select-field' }, h('span', { text: 'Secció' }), sectionSelect),
@@ -192,15 +195,30 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const badge = h('span', { className: `badge badge-${p.status === 'ACTIVE' ? 'published' : 'closed'}`, text: statusLabel(p.status) });
     const current = p.sectionHistory.find(h2 => h2.ended_at == null);
     const since = current ? `${sectionName(p.currentSectionId, sections())} · des de ${monthYear(current.started_at)}` : sectionName(p.currentSectionId, sections());
+    // Phase J: what is missing, with a direct way to complete it through the flows the user can already use.
+    const canEditRecord = canManageSection(me.capabilities, sectionCode(p.currentSectionId, sections()));
+    const missing = p.completeness?.missing ?? [];
     const completeness = p.completeness?.complete === false
-      ? h('p', { className: 'detail-timing timing-attention', text: missingSummary(p.completeness.missing) ?? 'Informació pendent' }) : null;
+      ? h('div', { className: 'record-notice', attrs: { role: 'note' } },
+        h('p', { className: 'record-notice-title', text: 'Informació pendent' }),
+        h('p', { text: `${missingSummary(missing) ?? 'Falta informació'}. No exclou de cap activitat ni quota: només avisa.` }),
+        h('div', { className: 'record-notice-actions' },
+          canEditRecord && missing.includes('birthDate') ? h('button', { className: 'btn btn-secondary btn-small', attrs: { type: 'button' }, on: { click: event => editor.open({ participant: p, trigger: event.currentTarget }) } },
+            icon('calendar'), h('span', { text: 'Afegeix la data de naixement' })) : null,
+          readsContacts(p) && (missing.includes('guardian') || missing.includes('contact')) && route.path[1] !== 'familia'
+            ? h('button', { className: 'btn btn-secondary btn-small', attrs: { type: 'button' }, on: { click: () => routes.go({ page: 'participants', path: [p.id, 'familia'] }) } },
+              icon('people'), h('span', { text: missing.includes('guardian') ? 'Completa a Família' : 'Afegeix el contacte a Família' })) : null)) : null;
     const fee = feeLine(p.feeStatus, p);
-    const header = h('header', { className: 'detail-header' },
+    const header = h('header', { className: 'detail-header record-header' },
       h('a', { className: 'back-link', attrs: { href: '#/participants' }, on: { click: e => { e.preventDefault(); back(); } } }, icon('arrow-left'), h('span', { text: 'Participants' })),
-      h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title, badge),
-        h('div', { className: 'detail-actions' }, detailActions(p))),
-      h('p', { className: 'detail-context', text: since }),
-      completeness, fee);
+      h('div', { className: 'record-identity' },
+        h('span', { className: 'avatar person-avatar record-avatar', dataset: sectionData(p.currentSectionId), attrs: { 'aria-hidden': 'true' }, text: initials(p.displayName) }),
+        h('div', { className: 'record-heading' },
+          h('div', { className: 'detail-heading' }, h('div', { className: 'detail-title-row' }, title, badge, p.completeness?.complete === false ? h('span', { className: 'badge tone-attention', text: 'Informació pendent' }) : null),
+            h('div', { className: 'detail-actions' }, detailActions(p))),
+          h('p', { className: 'detail-context', dataset: sectionData(p.currentSectionId) }, h('span', { className: 'section-dot', attrs: { 'aria-hidden': 'true' } }), since),
+          fee)),
+      completeness);
     const tabs = readsContacts(p) ? [{ id: 'fitxa', label: 'Fitxa' }, { id: 'familia', label: 'Família' }] : [];
     const tab = tabs.some(t => t.id === route.path[1]) ? route.path[1] : 'fitxa';
     const panel = h('div', { className: 'detail-tabpanel', attrs: tabs.length ? { role: 'tabpanel', id: 'participantTabPanel', 'aria-labelledby': `ptab-${tab}` } : {} });
@@ -227,15 +245,15 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const code = sectionCode(p.currentSectionId, sections());
     if (!canManageSection(me.capabilities, code)) return [];
     const nodes = [];
-    const edit = h('button', { className: 'btn btn-secondary', text: 'Editar', attrs: { type: 'button' } });
+    const edit = h('button', { className: 'btn btn-secondary', attrs: { type: 'button' } }, icon('pencil'), h('span', { text: 'Editar' }));
     edit.addEventListener('click', () => editor.open({ participant: p, trigger: edit }));
     nodes.push(edit);
     const items = [];
     // Section change needs manage over the target too; offer only the sections the user manages.
     const targets = manageableSections(me.capabilities).filter(c => c !== code);
-    if (p.status === 'ACTIVE' && targets.length) items.push({ label: 'Canviar de secció', onSelect: () => changeSection(p, targets) });
-    if (p.status === 'ACTIVE') items.push({ label: 'Donar de baixa', tone: 'danger', onSelect: () => setActive(p, false) });
-    else items.push({ label: 'Reactivar', onSelect: () => setActive(p, true) });
+    if (p.status === 'ACTIVE' && targets.length) items.push({ label: 'Canviar de secció', icon: 'swap-section', onSelect: () => changeSection(p, targets) });
+    if (p.status === 'ACTIVE') items.push({ label: 'Donar de baixa', icon: 'user-off', tone: 'danger', onSelect: () => setActive(p, false) });
+    else items.push({ label: 'Reactivar', icon: 'refresh', onSelect: () => setActive(p, true) });
     if (items.length) {
       const more = h('button', { className: 'btn btn-secondary btn-icon', attrs: { type: 'button', 'aria-label': 'Més accions', 'aria-haspopup': 'menu', 'aria-expanded': 'false' } }, icon('more'));
       more.addEventListener('click', () => openMenu(more, items));
@@ -244,11 +262,11 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     return nodes;
   }
   async function mutate(request, { success, note }) {
-    try { await request(); invalidate(); toast(success); detailCache = null; await showDetail(route.path[0], { force: true }); }
+    try { await request(); invalidate(); toast(success, { tone: 'ok' }); detailCache = null; await showDetail(route.path[0], { force: true }); }
     catch (error) {
       if (error.status === 401) return;
-      if (error.code === 'stale_participant' || error.code === 'invalid_transition') { detailCache = null; await showDetail(route.path[0], { force: true }); toast(note ?? 'La fitxa ha canviat. S’ha actualitzat.'); }
-      else toast(error.status === 403 ? 'No tens permís per a fer aquest canvi.' : 'No s’ha pogut completar l’acció.');
+      if (error.code === 'stale_participant' || error.code === 'invalid_transition') { detailCache = null; await showDetail(route.path[0], { force: true }); toast(note ?? 'La fitxa ha canviat. S’ha actualitzat.', { tone: 'warning' }); }
+      else toast(error.status === 403 ? 'No tens permís per a fer aquest canvi.' : 'No s’ha pogut completar l’acció.', { tone: 'danger' });
     }
   }
   async function setActive(p, active) {
@@ -293,8 +311,8 @@ export function createParticipantsView({ call, reportLoadError, routes, setPageH
     const quotes = p && (p.status === 'ACTIVE' || caps()?.fees?.read) ? h('a', { className: 'link-button detail-fees-link', text: 'Veure a Quotes',
       attrs: { href: `#/quotes/${p.id}` }, on: { click: event => { event.preventDefault(); routes.go({ page: 'quotes', path: [p.id] }); } } }) : null;
     return h('p', { className: 'detail-fees' }, feeStatus.map(item =>
-      h('span', { className: 'fee-chip' }, h('span', { className: 'fee-round', text: `Quota ${item.round}:` }),
-        h('span', { className: `fee-state fee-${item.status.toLowerCase()}`, text: feeLabel(item.status) }))), quotes);
+      h('span', { className: 'fee-chip' }, h('span', { className: 'fee-round', text: `Quota ${item.round}` }),
+        h('span', { className: `badge fee-state fee-${item.status.toLowerCase()} tone-${FEE_TONE[item.status] ?? 'muted'}`, text: feeLabel(item.status) }))), quotes);
   }
   function fitxa(p) {
     const row2 = (label, value) => value ? h('div', { className: 'info-row' }, h('dt', { text: label }), h('dd', { text: value })) : null;
